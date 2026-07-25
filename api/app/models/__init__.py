@@ -1,10 +1,10 @@
-"""Modelos ORM.
+"""ORM models.
 
-Deben importarse aquí para que Alembic los registre en `Base.metadata`
-al autogenerar migraciones.
+They must be imported here so Alembic registers them in `Base.metadata`
+when autogenerating migrations.
 """
 
 from app.db.base import Base
-from app.models.account import Account, AccountType
+from app.models.account import Account
 
-__all__ = ["Account", "AccountType", "Base"]
+__all__ = ["Account", "Base"]

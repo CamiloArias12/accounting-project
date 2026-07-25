@@ -33,7 +33,7 @@ services:
     build:
       target: dev
     environment:
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      API_URL: http://api:8000
     volumes:
       # Los volúmenes anónimos protegen node_modules y .next del bind mount.
       - ./web:/app

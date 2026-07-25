@@ -1,29 +1,46 @@
 # accounting-project
 
-Monorepo de la plataforma de contabilidad. Todo corre en Docker.
+Monorepo for the accounting platform. Everything runs in Docker.
 
-## Estructura
+## Layout
 
 ```
 accounting-project/
 ├── web/                        # Frontend — Next.js 16 + React 19 + Tailwind 4
-├── api/                        # Backend  — FastAPI + SQLAlchemy async
-├── docker-compose.yml          # Base = producción
-└── docker-compose.override.yml # Desarrollo (Compose lo aplica solo)
+├── api/                        # Backend  — FastAPI + async SQLAlchemy
+├── docker-compose.yml          # Base = production
+└── docker-compose.override.yml # Development (Compose applies it automatically)
 ```
 
-| Servicio | Stack                                | Puerto |
-| -------- | ------------------------------------ | ------ |
-| `web`    | Next.js 16, React 19, Tailwind 4     | 3000   |
-| `api`    | FastAPI 0.140, SQLAlchemy 2, Alembic | 8000   |
-| postgres | Postgres 17                          | 5432 (solo en dev) |
-| redis    | Redis 7                              | 6379 (solo en dev) |
+| Service  | Stack                                | Port               |
+| -------- | ------------------------------------ | ------------------ |
+| `web`    | Next.js 16, React 19, Tailwind 4     | 3000               |
+| `api`    | FastAPI 0.140, SQLAlchemy 2, Alembic | 8000               |
+| postgres | Postgres 17                          | 5432 (dev only)    |
+| redis    | Redis 7                              | 6379 (dev only)    |
 
-## Requisitos
+## Chart of accounts
 
-Docker. Nada más — no hace falta Node ni Python en la máquina.
+The implemented domain is the Colombian PUC: a five-level hierarchy where **the
+level is derived from the code length** and the parent is its prefix.
 
-## Desarrollo
+```
+1        Class       ACTIVOS
+11       Group         DISPONIBLE
+1105     Account         CAJA
+110505   Subaccount        CAJA GENERAL
+11050501 Auxiliary           (any longer code)
+```
+
+At <http://localhost:3000/accounts> you can browse the tree, search, create and
+edit accounts, soft-delete and restore them, and import the spreadsheet. The
+model and the import are documented in [`api/README.md`](./api/README.md).
+
+## Requirements
+
+Docker. Nothing else — no Node, no Python on the machine.
+
+## Development
 
 ```bash
 cp .env.example .env
@@ -32,74 +49,74 @@ docker compose exec api alembic upgrade head
 ```
 
 - Web: <http://localhost:3000>
-- API: <http://localhost:8000> · docs en <http://localhost:8000/docs>
+- API: <http://localhost:8000> · docs at <http://localhost:8000/docs>
 
-El código está montado en los contenedores, así que **web y API recargan solas**
-al editar. Postgres y Redis quedan expuestos en el host para poder conectarte
-con un cliente externo.
+The code is mounted into the containers, so **web and API both reload on edit**.
+Postgres and Redis are published on the host so you can attach an external
+client.
 
-## Producción
+## Production
 
-`docker-compose.override.yml` se aplica automáticamente, así que para producción
-hay que excluirlo pasando solo el fichero base:
+`docker-compose.override.yml` is applied automatically, so production means
+passing only the base file:
 
 ```bash
 docker compose -f docker-compose.yml up -d --build
 docker compose -f docker-compose.yml exec api alembic upgrade head
 ```
 
-Diferencias frente a dev:
+Differences from development:
 
-- Imágenes construidas con el target `prod`: sin dependencias de desarrollo, sin
-  código montado y con usuario sin privilegios (`app` en la API, `nextjs` en la web).
-- Next.js se sirve desde el output `standalone`, no con `next dev`.
-- Postgres y Redis **no** publican puertos en el host: solo se llega a ellos
-  desde la red interna de Compose.
-- `DEBUG=false` y `ENVIRONMENT=production`.
+- Images built from the `prod` target: no dev dependencies, no mounted code, and
+  an unprivileged user (`app` in the API, `nextjs` in the web).
+- Next is served from its `standalone` output, not `next dev`.
+- Postgres and Redis publish **no** host ports: they are reachable only from the
+  Compose network.
+- `DEBUG=false` and `ENVIRONMENT=production`.
 
-Las migraciones no se ejecutan solas al arrancar — lánzalas explícitamente para
-no sorprender a un despliegue con varias réplicas.
+Migrations do not run on startup — trigger them explicitly, so a multi-replica
+deploy never races itself.
 
-## Comandos
+## Commands
 
-Todo se ejecuta dentro de los contenedores:
+Everything runs inside the containers:
 
-| Comando                                                     | Descripción           |
-| ----------------------------------------------------------- | --------------------- |
-| `docker compose up -d`                                      | Levantar (dev)        |
-| `docker compose down`                                       | Parar                 |
-| `docker compose logs -f api`                                | Ver logs              |
-| `docker compose exec api pytest`                            | Tests de la API       |
-| `docker compose exec api ruff check .`                      | Lint de la API        |
-| `docker compose exec api mypy .`                            | Tipos de la API       |
-| `docker compose exec api alembic upgrade head`              | Aplicar migraciones   |
-| `docker compose exec api alembic revision --autogenerate -m "msg"` | Nueva migración |
-| `docker compose exec web npm run lint`                      | Lint de la web        |
+| Command                                                            | Description        |
+| ------------------------------------------------------------------ | ------------------ |
+| `docker compose up -d`                                             | Start (dev)        |
+| `docker compose down`                                              | Stop               |
+| `docker compose logs -f api`                                       | Logs               |
+| `docker compose exec api pytest`                                   | API tests          |
+| `docker compose exec api ruff check .`                             | API lint           |
+| `docker compose exec api mypy .`                                   | API types          |
+| `docker compose exec api alembic upgrade head`                     | Apply migrations   |
+| `docker compose exec api alembic revision --autogenerate -m "msg"` | New migration      |
+| `docker compose exec web npm run lint`                             | Web lint           |
+| `docker compose exec web npm run typecheck`                        | Web types          |
 
-## Variables de entorno
+## Environment
 
-Todas viven en el `.env` de la raíz — ver [`.env.example`](./.env.example).
-`POSTGRES_USER` y `POSTGRES_PASSWORD` son obligatorias: el compose falla si
-faltan, en vez de arrancar con credenciales por defecto.
+Everything lives in the root `.env` — see [`.env.example`](./.env.example).
+`POSTGRES_USER` and `POSTGRES_PASSWORD` are mandatory: Compose fails rather than
+starting with default credentials.
 
-`NEXT_PUBLIC_API_URL` se inyecta en el bundle del navegador **al construir la
-imagen**, no en runtime. Si cambia, hay que reconstruir la web.
+The web talks to the API **from the server only** (Server Components and Server
+Actions), through the Compose service name. That is why `API_URL` is not
+`NEXT_PUBLIC_*`: it never reaches the browser, is not baked into the bundle, and
+changing it does not require rebuilding the image.
 
-## Notas
+## Notes
 
-`docker-compose.yml` fija `name: accounting`. Sin un nombre explícito, Compose lo
-deduce del directorio y puede recrear los contenedores de cualquier otro proyecto
-que viva en una carpeta homónima.
+`docker-compose.yml` pins `name: accounting`. Without an explicit name, Compose
+derives one from the directory and can recreate the containers of any other
+project living in a directory with the same name.
 
-Dev y prod usan tags de imagen distintos (`accounting-api:dev` /
-`accounting-api:prod`, y lo mismo para `web`). Con un tag compartido, alternar
-entre modos hace que `up` sin `--build` reutilice en silencio la imagen del otro
-modo: la web arrancaba con el `CMD` de producción sobre el código montado de
-desarrollo y entraba en bucle de reinicio.
+Dev and prod use different image tags (`accounting-api:dev` /
+`accounting-api:prod`, likewise for `web`). With a shared tag, switching modes
+makes `up` without `--build` silently reuse the other mode's image: the web
+would boot with the production `CMD` on top of the development bind mount and
+restart-loop.
 
-Detalle de cada parte en [`web/README.md`](./web/README.md) y
-[`api/README.md`](./api/README.md).
+## License
 
-## Licencia
-
-Por definir.
+To be defined.

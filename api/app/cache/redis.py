@@ -9,7 +9,7 @@ pool = ConnectionPool.from_url(
 
 
 def get_redis() -> Redis:
-    """Dependencia de FastAPI: cliente Redis sobre el pool compartido."""
+    """FastAPI dependency: a Redis client over the shared pool."""
     return Redis(connection_pool=pool)
 
 

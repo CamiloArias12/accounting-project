@@ -5,11 +5,11 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
 class Base(DeclarativeBase):
-    """Base declarativa para todos los modelos."""
+    """Declarative base for every model."""
 
 
 class TimestampMixin:
-    """Columnas de auditoría temporal, gestionadas por la base de datos."""
+    """Audit timestamps, maintained by the database."""
 
     created_at: Mapped[datetime] = mapped_column(
         server_default=func.now(),

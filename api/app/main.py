@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.errors import register_error_handlers
 from app.api.v1.router import api_router
 from app.cache.redis import close_redis_pool
 from app.core.config import settings
@@ -33,6 +34,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+register_error_handlers(app)
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 
 

@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     ENVIRONMENT: Literal["local", "staging", "production"] = "local"
     DEBUG: bool = False
 
-    # CORS: orígenes permitidos, separados por coma
+    # CORS: allowed origins
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
 
     # Postgres

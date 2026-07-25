@@ -84,11 +84,12 @@ services:
     build:
       context: ./web
       target: prod
-      args:
-        # NEXT_PUBLIC_* se inyecta en el bundle del navegador al construir,
-        # no en runtime: tiene que ser build arg.
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
     restart: unless-stopped
+    environment:
+      # La web habla con la API solo desde el servidor, por el nombre de
+      # servicio de Compose. Al no ser NEXT_PUBLIC_* se lee en runtime, así que
+      # cambiarla no obliga a reconstruir la imagen.
+      API_URL: http://api:8000
     ports:
       - "${WEB_PORT:-3000}:3000"
     depends_on:

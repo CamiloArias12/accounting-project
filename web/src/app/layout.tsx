@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale } from "next-intl/server";
 import { Inter } from "next/font/google";
 import "./globals.css";
 
@@ -9,18 +11,20 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "Accounting Project",
-  description: "Plataforma de contabilidad",
+  description: "Accounting platform",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
+
   return (
-    <html lang="es">
+    <html lang={locale}>
       <body className={`${inter.variable} font-sans antialiased`}>
-        {children}
+        <NextIntlClientProvider>{children}</NextIntlClientProvider>
       </body>
     </html>
   );

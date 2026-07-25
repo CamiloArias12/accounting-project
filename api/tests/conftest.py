@@ -8,12 +8,12 @@ from sqlalchemy.pool import StaticPool
 from app.db.base import Base
 from app.db.session import get_session
 from app.main import app
-from app.models import Account  # noqa: F401 - registra la tabla en el metadata
+from app.models import Account  # noqa: F401 - registers the table in metadata
 
 
 @pytest.fixture
 async def session() -> AsyncGenerator[AsyncSession, None]:
-    """Sesión contra SQLite en memoria, con el esquema recreado por test."""
+    """An in-memory SQLite session, with the schema rebuilt per test."""
     engine = create_async_engine(
         "sqlite+aiosqlite:///:memory:",
         connect_args={"check_same_thread": False},
@@ -33,7 +33,7 @@ async def session() -> AsyncGenerator[AsyncSession, None]:
 
 @pytest.fixture
 async def client(session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
-    """Cliente HTTP contra la app, con la sesión de test inyectada."""
+    """HTTP client against the app, with the test session injected."""
 
     async def override_get_session() -> AsyncGenerator[AsyncSession, None]:
         yield session

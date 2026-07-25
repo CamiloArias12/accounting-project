@@ -1,0 +1,79 @@
+{
+  "home": {
+    "title": "Accounting Project",
+    "subtitle": "Plataforma de contabilidad",
+    "goToAccounts": "Ir al plan de cuentas"
+  },
+  "accounts": {
+    "title": "Plan de cuentas",
+    "count": "{count, plural, =0 {Sin cuentas} one {# cuenta} other {# cuentas}}",
+    "includingDeleted": "incluyendo eliminadas",
+    "newAccount": "Nueva cuenta",
+    "importSpreadsheet": "Importar Excel",
+    "showDeleted": "Ver eliminadas",
+    "hideDeleted": "Ocultar eliminadas",
+    "searchPlaceholder": "Buscar por código o nombre…",
+    "empty": "Todavía no hay cuentas. Importa el Excel o crea una.",
+    "expand": "Expandir",
+    "collapse": "Colapsar",
+    "deletedBadge": "eliminada"
+  },
+  "form": {
+    "editTitle": "Editar {code}",
+    "createTitle": "Nueva cuenta",
+    "code": "Código",
+    "codeHint": "El nivel y la cuenta padre se deducen del código: 1 dígito es clase, 2 grupo, 4 cuenta, 6 subcuenta.",
+    "codePlaceholder": "110505",
+    "name": "Nombre",
+    "namePlaceholder": "CAJA GENERAL",
+    "nature": "Naturaleza",
+    "active": "Activa",
+    "save": "Guardar",
+    "saving": "Guardando…",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "deleting": "Eliminando…",
+    "restore": "Restaurar",
+    "restoring": "Restaurando…",
+    "deletedNotice": "Esta cuenta está eliminada. Restáurala para volver a usarla."
+  },
+  "import": {
+    "title": "Importar plan de cuentas",
+    "hint": "Excel con las columnas Codigo, Nombre, Tipo y Naturaleza.",
+    "onExisting": "Si la cuenta ya existe",
+    "skip": "Omitirla",
+    "update": "Actualizar nombre y naturaleza",
+    "submit": "Importar",
+    "importing": "Importando…",
+    "created": "Creadas",
+    "updated": "Actualizadas",
+    "skipped": "Omitidas",
+    "rowErrors": "{count, plural, one {# fila con error} other {# filas con error}}",
+    "row": "Fila {row}"
+  },
+  "nature": {
+    "Debito": "Débito",
+    "Crédito": "Crédito"
+  },
+  "level": {
+    "Clase": "Clase",
+    "Grupo": "Grupo",
+    "Cuenta": "Cuenta",
+    "Subcuenta": "Subcuenta",
+    "Auxiliar": "Auxiliar"
+  },
+  "errors": {
+    "apiUnreachable": "No se pudo conectar con la API",
+    "codeRequired": "El código es obligatorio",
+    "nameRequired": "El nombre es obligatorio",
+    "invalidNature": "Naturaleza no válida",
+    "missingCode": "Falta el código de la cuenta",
+    "chooseFile": "Selecciona un fichero .xlsx"
+  },
+  "success": {
+    "created": "Cuenta {code} creada",
+    "updated": "Cuenta {code} actualizada",
+    "deleted": "Cuenta {code} eliminada",
+    "restored": "Cuenta {code} restaurada"
+  }
+}

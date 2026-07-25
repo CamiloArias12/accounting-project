@@ -1,0 +1,79 @@
+{
+  "home": {
+    "title": "Accounting Project",
+    "subtitle": "Accounting platform",
+    "goToAccounts": "Go to the chart of accounts"
+  },
+  "accounts": {
+    "title": "Chart of accounts",
+    "count": "{count, plural, =0 {No accounts} one {# account} other {# accounts}}",
+    "includingDeleted": "including deleted",
+    "newAccount": "New account",
+    "importSpreadsheet": "Import spreadsheet",
+    "showDeleted": "Show deleted",
+    "hideDeleted": "Hide deleted",
+    "searchPlaceholder": "Search by code or name…",
+    "empty": "No accounts yet. Import the spreadsheet or create one.",
+    "expand": "Expand",
+    "collapse": "Collapse",
+    "deletedBadge": "deleted"
+  },
+  "form": {
+    "editTitle": "Edit {code}",
+    "createTitle": "New account",
+    "code": "Code",
+    "codeHint": "Level and parent are derived from the code: 1 digit is a class, 2 a group, 4 an account, 6 a subaccount.",
+    "codePlaceholder": "110505",
+    "name": "Name",
+    "namePlaceholder": "CAJA GENERAL",
+    "nature": "Nature",
+    "active": "Active",
+    "save": "Save",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "deleting": "Deleting…",
+    "restore": "Restore",
+    "restoring": "Restoring…",
+    "deletedNotice": "This account is deleted. Restore it to use it again."
+  },
+  "import": {
+    "title": "Import chart of accounts",
+    "hint": "Spreadsheet with the columns Codigo, Nombre, Tipo and Naturaleza.",
+    "onExisting": "If the account already exists",
+    "skip": "Skip it",
+    "update": "Update name and nature",
+    "submit": "Import",
+    "importing": "Importing…",
+    "created": "Created",
+    "updated": "Updated",
+    "skipped": "Skipped",
+    "rowErrors": "{count, plural, one {# row failed} other {# rows failed}}",
+    "row": "Row {row}"
+  },
+  "nature": {
+    "Debito": "Debit",
+    "Crédito": "Credit"
+  },
+  "level": {
+    "Clase": "Class",
+    "Grupo": "Group",
+    "Cuenta": "Account",
+    "Subcuenta": "Subaccount",
+    "Auxiliar": "Auxiliary"
+  },
+  "errors": {
+    "apiUnreachable": "Could not reach the API",
+    "codeRequired": "Code is required",
+    "nameRequired": "Name is required",
+    "invalidNature": "Invalid nature",
+    "missingCode": "Missing account code",
+    "chooseFile": "Choose an .xlsx file"
+  },
+  "success": {
+    "created": "Account {code} created",
+    "updated": "Account {code} updated",
+    "deleted": "Account {code} deleted",
+    "restored": "Account {code} restored"
+  }
+}

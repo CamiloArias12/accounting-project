@@ -1,81 +1,132 @@
 # accounting-web
 
-Frontend de **Accounting Project**. Basado en el boilerplate de
+Frontend of **Accounting Project**. Started from
 [OwlByTech/nextjs-boilerplate](https://github.com/OwlByTech/nextjs-boilerplate),
-actualizado a las últimas versiones.
+brought up to the latest versions.
 
 ## Stack
 
-| Paquete    | Versión                          |
+| Package    | Version                          |
 | ---------- | -------------------------------- |
 | Next.js    | 16.2.11 (App Router + Turbopack) |
 | React      | 19.2.8                           |
 | Tailwind   | 4.3.3                            |
+| next-intl  | 4.13.4                           |
 | TypeScript | 5.9.3                            |
 | ESLint     | 9 (flat config)                  |
 
-## Requisitos
+## Requirements
 
-Docker. No hace falta Node en la máquina.
+Docker. No Node needed on the machine.
 
-## Desarrollo
+## Development
 
-Se levanta desde el compose de la raíz del monorepo, no desde aquí:
+Brought up from the monorepo root compose, not from here:
 
 ```bash
-cd ..                 # raíz del repo
+cd ..                 # repo root
 cp .env.example .env
 docker compose up -d
 ```
 
-Abre [http://localhost:3000](http://localhost:3000). El código va montado en el
-contenedor, así que Next recarga al editar.
+Open [http://localhost:3000](http://localhost:3000). The code is mounted into
+the container, so Next reloads on edit.
 
-## Comandos
+## Commands
 
-Todos se ejecutan desde la raíz del repo, dentro del contenedor:
+All run from the repo root, inside the container:
 
-| Comando                                       | Descripción     |
-| --------------------------------------------- | --------------- |
-| `docker compose exec web npm run lint`        | ESLint          |
-| `docker compose exec web npm run typecheck`   | `tsc --noEmit`  |
-| `docker compose logs -f web`                  | Logs            |
+| Command                                     | Description    |
+| ------------------------------------------- | -------------- |
+| `docker compose exec web npm run lint`      | ESLint         |
+| `docker compose exec web npm run typecheck` | `tsc --noEmit` |
+| `docker compose logs -f web`                | Logs           |
 
-Tras cambiar `package.json` hay que reconstruir: `docker compose up -d --build web`.
+After changing `package.json`, rebuild: `docker compose up -d --build web`.
 
-## Variables de entorno
-
-Se definen en el `.env` de la raíz, no aquí. `NEXT_PUBLIC_API_URL` se inyecta en
-el bundle del navegador **al construir la imagen**, no en runtime: si la cambias,
-reconstruye la web.
-
-## Estructura
+## Layout
 
 ```
 web/
-├── src/app/            # App Router (layout, page, globals.css)
-├── public/             # Assets estáticos
-├── Dockerfile          # Targets dev y prod
-├── eslint.config.mjs   # ESLint flat config
-├── postcss.config.mjs  # Tailwind v4 vía @tailwindcss/postcss
-└── tsconfig.json       # Alias @/* -> ./src/*
+├── messages/                     # Translations: en.json, es.json
+└── src/
+    ├── app/
+    │   ├── layout.tsx            # Locale + NextIntlClientProvider
+    │   ├── page.tsx              # Landing
+    │   └── accounts/
+    │       ├── page.tsx          # Server Component: fetches the tree
+    │       ├── actions.ts        # Server Actions (async functions only)
+    │       └── action-state.ts   # Their types and idle constants
+    ├── components/
+    │   ├── AccountsWorkspace.tsx # UI state (selection, search, panel)
+    │   ├── AccountTree.tsx       # Collapsible tree
+    │   ├── AccountForm.tsx       # Create, edit, delete, restore
+    │   └── ImportForm.tsx        # Spreadsheet upload and summary
+    ├── i18n/                     # next-intl config and request handler
+    ├── lib/api.ts                # API client, `server-only`
+    └── types/account.ts          # Shared types
 ```
 
-## Imagen
+## Architecture
 
-`Dockerfile` multi-stage con dos targets:
+Data is fetched in **Server Components** and every mutation goes through a
+**Server Action**, which revalidates `/accounts` with `revalidatePath`.
+Consequences:
 
-- **`dev`** — `next dev` con el código montado.
-- **`prod`** — sirve el output `standalone` de Next con `node server.js`, como
-  usuario `nextjs` sin privilegios. Requiere `output: "standalone"` en
+- The browser never calls the API: no CORS to configure, no public URL to
+  expose.
+- The chart arrives rendered in the HTML, without waiting for hydration.
+- Only what needs interaction ships to the client: expanding the tree,
+  searching, switching panels.
+
+Forms use `useActionState` for the action result and `useFormStatus` for the
+pending state, so there is no hand-rolled loading flag.
+
+### Things that bite
+
+- **`actions.ts` may only export async functions.** Its types and the `IDLE`
+  constants live in `action-state.ts`; exporting an object from a `"use server"`
+  module fails the whole route.
+- **Delete and restore share one action**, dispatched by a hidden `intent`
+  field. They are two directions of the same toggle, and each flips the
+  condition that would choose between two separate `useActionState`s — so the
+  confirmation used to vanish the moment it was earned.
+- **Post-delete navigation happens on the server**, inside the action. A deleted
+  account leaves the default tree, unmounting the form; reacting to that from a
+  client effect races the revalidation and loses.
+- **`AccountForm` remounts via `key={code}`.** Resetting fields with a
+  `useEffect` is an anti-pattern that React's lint rejects; remounting makes
+  `defaultValue` enough.
+- **The tree expands while searching.** A match buried under collapsed ancestors
+  reads as no result at all.
+
+## Internationalization
+
+next-intl **without locale routing**: the language comes from a `locale` cookie
+instead of a URL segment, so adding a language never changes a route. Default is
+`en`; `messages/es.json` ships alongside it.
+
+Some values stay Spanish on purpose — `Debito`, `Clase`, `Subcuenta` — because
+they are the contract with the API and the source spreadsheet. Only the labels
+shown to the user are translated, through the `nature` and `level` message
+namespaces.
+
+## Environment
+
+`API_URL` (set in the compose file) points at the API through its Docker service
+name. **Deliberately not `NEXT_PUBLIC_*`**: the browser never sees it, it is not
+baked into the bundle, and changing it does not require rebuilding the image.
+
+`allowedDevOrigins` in `next.config.mjs` matters more than it looks. The dev
+server rejects cross-origin requests, which silently breaks hydration — the page
+renders and forms still submit through progressive enhancement, but nothing
+interactive works. It costs an afternoon to diagnose. Production is unaffected.
+
+## Image
+
+Multi-stage `Dockerfile` with two targets:
+
+- **`dev`** — `next dev` with the code mounted.
+- **`prod`** — serves Next's `standalone` output with `node server.js`, as the
+  unprivileged `nextjs` user. Requires `output: "standalone"` in
   `next.config.mjs`.
-
-## Notas de la migración
-
-- **Tailwind 4** usa configuración en CSS, no `tailwind.config.ts`. El tema se
-  define con `@theme` dentro de `src/app/globals.css`.
-- **ESLint 9, no 10**: `eslint-config-next@16` declara `eslint >=9`, pero su
-  `eslint-plugin-react` todavía llama a APIs que ESLint 10 eliminó
-  (`context.getFilename`). Subir a 10 rompe el lint.
-- **`next lint` fue eliminado** en Next 16; el script `lint` invoca `eslint`
-  directamente.
