@@ -17,49 +17,53 @@ sobre Postgres y Redis.
 
 ## Requisitos
 
-- Python 3.12
-- Docker (para Postgres y Redis)
+Docker. No hace falta Python en la máquina.
 
 ## Puesta en marcha
 
+Se levanta desde el compose de la raíz del monorepo, no desde aquí:
+
 ```bash
-cd api
-
-# 1. Entorno virtual
-python3.12 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements-dev.txt   # o requirements.txt en producción
-
-# 2. Configuración
+cd ..                 # raíz del repo
 cp .env.example .env
-
-# 3. Postgres + Redis
 docker compose up -d
-
-# 4. Migraciones
-alembic upgrade head
-
-# 5. Servidor
-uvicorn app.main:app --reload
+docker compose exec api alembic upgrade head
 ```
 
 - API: <http://localhost:8000>
 - Swagger UI: <http://localhost:8000/docs>
 - ReDoc: <http://localhost:8000/redoc>
 
+El código va montado en el contenedor, así que uvicorn recarga al editar.
+
 ## Comandos
 
-| Comando                                        | Descripción              |
-| ---------------------------------------------- | ------------------------ |
-| `uvicorn app.main:app --reload`                | Servidor de desarrollo   |
-| `pytest`                                       | Tests                    |
-| `ruff check . && ruff format --check .`        | Lint y formato           |
-| `mypy .`                                       | Tipos (modo strict)      |
-| `alembic revision --autogenerate -m "mensaje"` | Nueva migración          |
-| `alembic upgrade head`                         | Aplicar migraciones      |
-| `alembic downgrade -1`                         | Revertir la última       |
+Todos se ejecutan desde la raíz del repo, dentro del contenedor:
 
-Los tests corren sobre SQLite en memoria, así que no necesitan Docker.
+| Comando                                                            | Descripción            |
+| ------------------------------------------------------------------ | ---------------------- |
+| `docker compose exec api pytest`                                   | Tests                  |
+| `docker compose exec api ruff check .`                             | Lint                   |
+| `docker compose exec api ruff format .`                            | Formato                |
+| `docker compose exec api mypy .`                                   | Tipos (modo strict)    |
+| `docker compose exec api alembic revision --autogenerate -m "msg"` | Nueva migración        |
+| `docker compose exec api alembic upgrade head`                     | Aplicar migraciones    |
+| `docker compose exec api alembic downgrade -1`                     | Revertir la última     |
+| `docker compose logs -f api`                                       | Logs                   |
+
+Los tests corren sobre SQLite en memoria: no tocan el Postgres del stack.
+
+## Imagen
+
+`Dockerfile` multi-stage con dos targets:
+
+- **`dev`** — incluye `requirements-dev.txt` (pytest, ruff, mypy) y arranca
+  uvicorn con `--reload`.
+- **`prod`** — solo `requirements.txt`, sin herramientas de desarrollo, corriendo
+  como usuario `app` sin privilegios.
+
+El target lo elige el compose: `dev` vía `docker-compose.override.yml`, `prod` en
+el fichero base.
 
 ## Endpoints
 
@@ -89,7 +93,7 @@ api/
 │       └── v1/           # Router y endpoints
 ├── alembic/              # Migraciones (env.py async)
 ├── tests/                # pytest sobre SQLite en memoria
-├── docker-compose.yml    # Postgres + Redis
+├── Dockerfile            # Targets dev y prod
 └── pyproject.toml        # ruff, mypy, pytest
 ```
 
@@ -98,11 +102,9 @@ endpoint → test. El resto del dominio contable se construye sobre ese patrón.
 
 ## Notas
 
-- **`name: accounting` en `docker-compose.yml` es obligatorio.** Sin él, Compose
-  deduce el nombre del proyecto del directorio (`api`) y puede recrear los
-  contenedores de cualquier otro proyecto que viva en una carpeta homónima.
 - El hook `post_write_hooks` de Alembic usa `type = exec`, así que `ruff` debe
-  estar en el `PATH` (basta con el venv activo) al generar migraciones.
+  estar en el `PATH`. Dentro del contenedor `dev` lo está; por eso las
+  migraciones se generan con `docker compose exec api`.
 - `AccountType` es `enum.StrEnum` con `native_enum=False`: se persiste como
   `VARCHAR`, lo que evita tipos ENUM nativos en Postgres y permite que los tests
   corran sobre SQLite.

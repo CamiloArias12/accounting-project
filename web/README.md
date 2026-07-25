@@ -16,34 +16,38 @@ actualizado a las últimas versiones.
 
 ## Requisitos
 
-- Node.js 20.9+
+Docker. No hace falta Node en la máquina.
 
 ## Desarrollo
 
+Se levanta desde el compose de la raíz del monorepo, no desde aquí:
+
 ```bash
-npm install
-npm run dev
+cd ..                 # raíz del repo
+cp .env.example .env
+docker compose up -d
 ```
 
-Abre [http://localhost:3000](http://localhost:3000).
+Abre [http://localhost:3000](http://localhost:3000). El código va montado en el
+contenedor, así que Next recarga al editar.
 
-## Scripts
+## Comandos
 
-| Comando             | Descripción                  |
-| ------------------- | ---------------------------- |
-| `npm run dev`       | Servidor de desarrollo       |
-| `npm run build`     | Build de producción          |
-| `npm run start`     | Sirve el build de producción |
-| `npm run lint`      | ESLint                       |
-| `npm run typecheck` | `tsc --noEmit`               |
+Todos se ejecutan desde la raíz del repo, dentro del contenedor:
+
+| Comando                                       | Descripción     |
+| --------------------------------------------- | --------------- |
+| `docker compose exec web npm run lint`        | ESLint          |
+| `docker compose exec web npm run typecheck`   | `tsc --noEmit`  |
+| `docker compose logs -f web`                  | Logs            |
+
+Tras cambiar `package.json` hay que reconstruir: `docker compose up -d --build web`.
 
 ## Variables de entorno
 
-Copia `.env.example` a `.env.local` y ajusta los valores:
-
-```bash
-cp .env.example .env.local
-```
+Se definen en el `.env` de la raíz, no aquí. `NEXT_PUBLIC_API_URL` se inyecta en
+el bundle del navegador **al construir la imagen**, no en runtime: si la cambias,
+reconstruye la web.
 
 ## Estructura
 
@@ -51,10 +55,20 @@ cp .env.example .env.local
 web/
 ├── src/app/            # App Router (layout, page, globals.css)
 ├── public/             # Assets estáticos
+├── Dockerfile          # Targets dev y prod
 ├── eslint.config.mjs   # ESLint flat config
 ├── postcss.config.mjs  # Tailwind v4 vía @tailwindcss/postcss
 └── tsconfig.json       # Alias @/* -> ./src/*
 ```
+
+## Imagen
+
+`Dockerfile` multi-stage con dos targets:
+
+- **`dev`** — `next dev` con el código montado.
+- **`prod`** — sirve el output `standalone` de Next con `node server.js`, como
+  usuario `nextjs` sin privilegios. Requiere `output: "standalone"` en
+  `next.config.mjs`.
 
 ## Notas de la migración
 
