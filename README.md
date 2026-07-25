@@ -1,36 +1,35 @@
 # accounting-project
 
-## Descripción
+Monorepo de la plataforma de contabilidad.
 
-Proyecto de contabilidad.
+## Estructura
 
-## Stack
+```
+accounting-project/
+├── web/    # Frontend — Next.js 16 + React 19 + Tailwind 4
+└── api/    # Backend — pendiente
+```
 
-- Node.js / Next.js
-- Python
+| Paquete            | Descripción     | Estado      |
+| ------------------ | --------------- | ----------- |
+| [`web/`](./web)    | Frontend Next.js| ✅ Listo    |
+| `api/`             | Backend         | ⏳ Pendiente |
 
 ## Requisitos
 
-- Node.js 20+
-- Python 3.11+
+- Node.js 20.9+
 
-## Instalación
+## Empezar
 
 ```bash
-# Dependencias de Node
+cd web
 npm install
-
-# Dependencias de Python
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-## Uso
-
-```bash
+cp .env.example .env.local
 npm run dev
 ```
+
+Abre [http://localhost:3000](http://localhost:3000).
+Ver [`web/README.md`](./web/README.md) para el detalle del frontend.
 
 ## Licencia
 
