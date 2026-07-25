@@ -10,7 +10,7 @@ from collections.abc import Awaitable, Callable
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 
-from app.modules.accounts.domain.errors import (
+from app.modules.accounts.errors import (
     AccountAlreadyExists,
     AccountHasChildren,
     AccountNotDeleted,
@@ -18,8 +18,8 @@ from app.modules.accounts.domain.errors import (
     ParentAccountDeleted,
     ParentAccountMissing,
 )
-from app.modules.accounts.infrastructure.spreadsheet import SpreadsheetError
-from app.modules.auth.domain.errors import (
+from app.modules.accounts.importer import SpreadsheetError
+from app.modules.auth.errors import (
     EmailAlreadyRegistered,
     InactiveUser,
     InvalidCredentials,

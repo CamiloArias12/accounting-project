@@ -6,12 +6,10 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.pool import StaticPool
 
 from app.main import app
-from app.modules.accounts.infrastructure.http.dependencies import get_repository
-from app.modules.accounts.infrastructure.repository import SqlAlchemyAccountRepository
+from app.modules.accounts.cache import NullAccountTreeCache
+from app.modules.accounts.router import get_cache
 from app.shared.database import get_session
 from app.shared.models import Base
-from app.shared.redis import get_redis
-from tests.fakes import FakeRedis
 
 
 @pytest.fixture
@@ -36,21 +34,13 @@ async def session() -> AsyncGenerator[AsyncSession, None]:
 
 @pytest.fixture
 async def client(session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
-    """HTTP client against the app, with the test session injected.
-
-    The cache decorator is left out: it is exercised on its own in
-    `test_cache.py`, and skipping it keeps every other test reading the
-    database it just wrote to.
-    """
+    """HTTP client against the app, on the test session and without Redis."""
 
     async def override_get_session() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
     app.dependency_overrides[get_session] = override_get_session
-    app.dependency_overrides[get_repository] = lambda: SqlAlchemyAccountRepository(
-        session
-    )
-    app.dependency_overrides[get_redis] = FakeRedis
+    app.dependency_overrides[get_cache] = NullAccountTreeCache
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:

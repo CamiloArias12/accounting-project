@@ -1,14 +1,10 @@
-"""Aggregates the routers each module exposes.
-
-Adding a module is one import and one `include_router` here; nothing else in
-the codebase needs to know it exists.
-"""
+"""Mounts each module's router. Adding a module is one import and one line."""
 
 from fastapi import APIRouter
 
-from app.modules.accounts.infrastructure.http.router import router as accounts_router
-from app.modules.auth.infrastructure.http.router import router as auth_router
-from app.modules.health.http.router import router as health_router
+from app.modules.accounts.router import router as accounts_router
+from app.modules.auth.router import router as auth_router
+from app.modules.health.router import router as health_router
 
 api_router = APIRouter()
 api_router.include_router(health_router)

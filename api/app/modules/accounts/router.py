@@ -1,0 +1,134 @@
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, File, Query, UploadFile, status
+from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.modules.accounts.cache import AccountTreeCache
+from app.modules.accounts.importer import AccountImporter, ExistingAccounts
+from app.modules.accounts.models import Account
+from app.modules.accounts.puc import AccountLevel
+from app.modules.accounts.schemas import (
+    AccountCreate,
+    AccountNode,
+    AccountRead,
+    AccountUpdate,
+    ImportResult,
+)
+from app.modules.accounts.service import AccountService
+from app.modules.auth.dependencies import CurrentUser
+from app.shared.config import settings
+from app.shared.database import get_session
+from app.shared.redis import get_redis
+
+router = APIRouter(prefix="/accounts", tags=["accounts"])
+
+SessionDep = Annotated[AsyncSession, Depends(get_session)]
+RedisDep = Annotated[Redis, Depends(get_redis)]
+
+
+def get_cache(redis: RedisDep) -> AccountTreeCache:
+    return AccountTreeCache(redis, ttl=settings.CACHE_TTL_SECONDS)
+
+
+CacheDep = Annotated[AccountTreeCache, Depends(get_cache)]
+
+
+def get_service(session: SessionDep, cache: CacheDep) -> AccountService:
+    return AccountService(session, cache)
+
+
+def get_importer(session: SessionDep, cache: CacheDep) -> AccountImporter:
+    return AccountImporter(session, cache)
+
+
+ServiceDep = Annotated[AccountService, Depends(get_service)]
+ImporterDep = Annotated[AccountImporter, Depends(get_importer)]
+
+IncludeDeleted = Annotated[bool, Query(description="Include soft-deleted accounts")]
+
+
+@router.get("", response_model=list[AccountRead])
+async def list_accounts(
+    service: ServiceDep,
+    level: Annotated[AccountLevel | None, Query()] = None,
+    parent_code: Annotated[str | None, Query()] = None,
+    search: Annotated[str | None, Query(description="Match code or name")] = None,
+    only_active: Annotated[bool | None, Query()] = None,
+    include_deleted: IncludeDeleted = False,
+    skip: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=500)] = 100,
+) -> list[Account]:
+    return list(
+        await service.find_many(
+            level=level,
+            parent_code=parent_code,
+            search=search,
+            only_active=only_active,
+            include_deleted=include_deleted,
+            skip=skip,
+            limit=limit,
+        )
+    )
+
+
+@router.get("/tree", response_model=list[AccountNode])
+async def account_tree(
+    service: ServiceDep,
+    root_code: Annotated[str | None, Query(description="Start here")] = None,
+    max_depth: Annotated[int | None, Query(ge=0, description="Levels below")] = None,
+    include_deleted: IncludeDeleted = False,
+) -> list[AccountNode]:
+    """The chart of accounts, or one branch of it.
+
+    `root_code` and `max_depth` bound the query itself, so rendering two levels
+    does not read the whole chart.
+    """
+    return await service.tree(
+        root_code=root_code, max_depth=max_depth, include_deleted=include_deleted
+    )
+
+
+@router.post("", response_model=AccountRead, status_code=status.HTTP_201_CREATED)
+async def create_account(
+    payload: AccountCreate, service: ServiceDep, _: CurrentUser
+) -> Account:
+    return await service.create(payload)
+
+
+@router.post("/import", response_model=ImportResult)
+async def import_accounts(
+    importer: ImporterDep,
+    _: CurrentUser,
+    file: Annotated[
+        UploadFile,
+        File(description="PUC spreadsheet: Codigo, Nombre, Tipo, Naturaleza"),
+    ],
+    on_existing: Annotated[ExistingAccounts, Query()] = ExistingAccounts.SKIP,
+) -> ImportResult:
+    return await importer.run(file.file, on_existing=on_existing)
+
+
+@router.get("/{code}", response_model=AccountRead)
+async def get_account(
+    code: str, service: ServiceDep, include_deleted: IncludeDeleted = False
+) -> Account:
+    return await service.get(code, include_deleted=include_deleted)
+
+
+@router.patch("/{code}", response_model=AccountRead)
+async def update_account(
+    code: str, payload: AccountUpdate, service: ServiceDep, _: CurrentUser
+) -> Account:
+    return await service.update(code, payload)
+
+
+@router.delete("/{code}", response_model=AccountRead)
+async def delete_account(code: str, service: ServiceDep, _: CurrentUser) -> Account:
+    """Soft delete: the row is kept and stamped with `deleted_at`."""
+    return await service.delete(code)
+
+
+@router.post("/{code}/restore", response_model=AccountRead)
+async def restore_account(code: str, service: ServiceDep, _: CurrentUser) -> Account:
+    return await service.restore(code)

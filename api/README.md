@@ -88,83 +88,72 @@ Read endpoints take `?include_deleted=true` to see soft-deleted rows.
 
 Reads are public; every write needs `Authorization: Bearer <token>`.
 
-`/accounts/tree` takes `root_code` and `max_depth` so a caller does not download
-the whole chart to render two levels:
+`/accounts/tree` takes `root_code` and `max_depth`, and both bound the **query**,
+not just the response — asking for the classes reads nine rows, not the whole
+chart:
 
-| Request                    | Payload |
-| -------------------------- | ------- |
-| `/accounts/tree`           | 603 KB  |
-| `/accounts/tree?max_depth=1` | 12.7 KB |
-| `/accounts/tree?max_depth=0` | 2 KB    |
-| `/accounts/tree?root_code=1105` | 920 B |
+| Request                         | Rows read | Payload |
+| ------------------------------- | --------- | ------- |
+| `/accounts/tree`                | 2446      | 603 KB  |
+| `/accounts/tree?max_depth=2`    | 397       | 116 KB  |
+| `/accounts/tree?max_depth=1`    | 55        | 12.7 KB |
+| `/accounts/tree?max_depth=0`    | 9         | 2 KB    |
+| `/accounts/tree?root_code=1105` | 3         | 920 B   |
 
 ## Architecture
 
-Clean architecture in vertical slices: one folder per feature, three layers
-inside it, dependencies pointing inward only.
+Modular monolith in vertical slices: one folder per feature, and inside it the
+plain FastAPI shape — **router → service → SQLAlchemy model**, with Pydantic at
+the edge.
 
 ```
 api/app/
 ├── modules/
 │   ├── accounts/
-│   │   ├── domain/          # Entities and rules. No framework, no I/O
-│   │   ├── application/     # Use cases + the ports they depend on
-│   │   └── infrastructure/  # SQLAlchemy, Redis, openpyxl, FastAPI
-│   ├── auth/                # Same three layers
+│   │   ├── puc.py       # Chart-of-accounts rules. Pure functions, no I/O
+│   │   ├── models.py    # The table, and the object the service works with
+│   │   ├── schemas.py   # Pydantic: what comes in and goes out
+│   │   ├── service.py   # Business rules and queries. Owns the transaction
+│   │   ├── importer.py  # Spreadsheet import
+│   │   ├── cache.py     # Redis cache for the tree
+│   │   ├── errors.py    # Business errors, unaware of HTTP
+│   │   └── router.py    # Endpoints and dependency wiring
+│   ├── auth/            # Same shape
 │   └── health/
-├── shared/                  # config, database, redis, logging, clock
-└── api/v1/router.py         # Mounts each module's router
+├── shared/              # config, database, redis, logging, error handlers
+└── api/v1/router.py     # Mounts each module's router
 ```
 
-**Why slices and not `models/ schemas/ services/`.** With one feature the flat
-layout looks tidy; the accounting domain has movements, journal entries, thirds,
-credits and treasury still to come. Grouping by type means every new feature
-scatters five files across five folders and touching one feature means opening
-all five. A slice keeps a feature in one place and makes it deletable.
+**Slices, not layers-by-type.** With one feature `models/ schemas/ services/`
+looks tidy; the accounting domain still has movements, journal entries, thirds
+and treasury to come. Grouping by type means every new feature scatters files
+across five folders and every change opens all five. A slice keeps a feature in
+one place and makes it deletable.
 
-**Where the dependency inversion is.** `application/ports.py` declares what the
-use cases need — a repository, a spreadsheet reader, a clock — as `Protocol`s.
-`infrastructure/` implements them. So SQLAlchemy knows about the use cases and
-never the reverse, and swapping Postgres for anything else does not touch a
-business rule.
+**No repository, no domain entity, no ports.** An earlier version had them:
+entities separate from the ORM, `Protocol` ports, one class per use case. It was
+dropped on purpose. Over a single table a repository only forwards calls, and a
+mapper between two near-identical shapes is ceremony with nothing to show for
+it. The SQLAlchemy model *is* the business object.
 
-They are `Protocol`s rather than ABCs deliberately: adapters do not import the
-port to inherit from it, so the coupling stays one-directional.
+The trade-off is real and worth stating: business rules can no longer be tested
+without a database. The tests use in-memory SQLite instead, which costs a few
+seconds and is what most FastAPI codebases do.
 
-**What that buys.** `tests/test_use_cases.py` drives every rule — create,
-delete, restore, the tree, the import — against in-memory doubles. No database,
-no HTTP, no Redis, and it runs in milliseconds.
+**What survives from the strict version**, because it earns its keep:
 
-**The cost.** The entity and the ORM row are separate objects, so
-`infrastructure/orm.py` carries a mapper between them. That is the honest price
-of keeping the domain free of SQLAlchemy, and it is the first thing to
-reconsider if the mapping ever grows faster than the rules.
+- `puc.py` has no framework and no I/O, so the code/level/parent rules are
+  tested as pure functions.
+- Business errors are separate from HTTP; one table in `shared/http/errors.py`
+  maps them to status codes.
+- The service owns the session, so **it** decides what a transaction is. The
+  import commits once for the whole file — a chart of accounts committed halfway
+  is worse than one not imported at all.
 
-**Caching is not a port.** It is a persistence concern, so
-`infrastructure/cache.py` is a decorator implementing the *same*
-`AccountRepository`. The use cases cannot tell whether a read came from Postgres
-or Redis, and a Redis outage degrades to slow rather than broken — every cache
-call falls through to the database on error.
-
-## Layout
-
-```
-api/app/modules/accounts/
-├── domain/
-│   ├── puc.py            # Level, parent, code validation. Pure functions
-│   ├── account.py        # The Account entity, a plain dataclass
-│   └── errors.py         # Business errors, unaware of HTTP
-├── application/
-│   ├── ports.py          # Protocols the use cases depend on
-│   ├── queries.py        # Input shapes, plain dataclasses
-│   └── use_cases/        # One object per operation
-└── infrastructure/
-    ├── orm.py            # SQLAlchemy row + mapper to the entity
-    ├── repository.py     # Implements AccountRepository
-    ├── cache.py          # Redis decorator over the same port
-    ├── spreadsheet.py    # openpyxl behind SpreadsheetReader
-    └── http/             # Router, wire schemas, composition root
-```
+**Cross-module import.** `accounts/router.py` imports `CurrentUser` from
+`auth/dependencies.py`. Authentication is cross-cutting, and in this style a
+feature depends on the auth module much as it depends on the session. Under the
+stricter layering that was a violation; here it is the normal shape.
 
 ## The account model
 

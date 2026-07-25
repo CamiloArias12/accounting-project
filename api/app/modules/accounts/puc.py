@@ -127,3 +127,17 @@ def ancestors_of(code: str) -> list[str]:
 def depth_of(code: str) -> int:
     """Depth in the tree; 0 for classes. Used to order bulk inserts."""
     return len(ancestors_of(code))
+
+
+def code_lengths_up_to(max_depth: int) -> list[int]:
+    """Code lengths at or above a depth, to bound a subtree query in SQL.
+
+    Depth 0 is a class (1 digit), depth 1 a group (2), and so on. Auxiliaries
+    have no fixed length, so anything deeper than a subaccount is expressed as
+    the lengths a code may take rather than an open range.
+    """
+    fixed = sorted(_LENGTH_TO_LEVEL)
+    if max_depth < len(fixed):
+        return fixed[: max_depth + 1]
+
+    return [*fixed, *range(_SUBACCOUNT_LENGTH + 1, MAX_CODE_LENGTH + 1)]
