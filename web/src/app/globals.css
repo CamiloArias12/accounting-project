@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+/*
+ * Dark mode is driven by `data-theme` on <html>, which ThemeScript sets before
+ * the first paint. Tailwind's default `dark:` variant follows the OS instead,
+ * which would ignore an explicit choice.
+ */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 @theme {
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
@@ -7,18 +14,54 @@
 :root {
   --background: #ffffff;
   --foreground: #0a0a0a;
+  --surface: #f7f7f8;
+  --border: #e4e4e7;
+  --muted: #6b7280;
+  --accent: #2563eb;
+  --accent-foreground: #ffffff;
 }
 
+/* No-JS fallback: without the script `data-theme` is never set. */
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --surface: #151518;
+    --border: #27272a;
+    --muted: #9ca3af;
+    --accent: #3b82f6;
+    --accent-foreground: #ffffff;
   }
+}
+
+:root[data-theme="light"] {
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+  --surface: #f7f7f8;
+  --border: #e4e4e7;
+  --muted: #6b7280;
+  --accent: #2563eb;
+  --accent-foreground: #ffffff;
+}
+
+:root[data-theme="dark"] {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --surface: #151518;
+  --border: #27272a;
+  --muted: #9ca3af;
+  --accent: #3b82f6;
+  --accent-foreground: #ffffff;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
 }
 
 body {

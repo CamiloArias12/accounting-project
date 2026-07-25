@@ -18,10 +18,10 @@ export function ImportForm() {
   return (
     <form action={submit} className="flex flex-col gap-4">
       <header>
-        <h2 className="text-sm font-semibold uppercase tracking-wide opacity-60">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
           {t("title")}
         </h2>
-        <p className="mt-1 text-xs opacity-60">{t("hint")}</p>
+        <p className="mt-1 text-xs text-muted">{t("hint")}</p>
       </header>
 
       <input
@@ -29,7 +29,7 @@ export function ImportForm() {
         name="file"
         accept=".xlsx"
         required
-        className="text-sm file:mr-3 file:rounded-md file:border-0 file:bg-black/5 file:px-3 file:py-2 file:text-sm dark:file:bg-white/10"
+        className="text-sm file:mr-3 file:rounded-md file:border-0 file:bg-foreground/10 file:px-3 file:py-2 file:text-sm"
       />
 
       <label className="flex flex-col gap-1 text-sm">
@@ -37,7 +37,7 @@ export function ImportForm() {
         <select
           name="on_existing"
           defaultValue="skip"
-          className="rounded-md border border-black/15 bg-transparent px-3 py-2 dark:border-white/15"
+          className="rounded-md border border-border bg-transparent px-3 py-2"
         >
           <option value="skip">{t("skip")}</option>
           <option value="update">{t("update")}</option>
@@ -72,7 +72,7 @@ function ImportButton({
     <button
       type="submit"
       disabled={pending}
-      className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+      className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground disabled:opacity-50"
     >
       {pending ? pendingLabel : label}
     </button>
@@ -122,7 +122,7 @@ function ImportSummary({ result }: { result: ImportResult }) {
 function Stat({ label, value }: { label: string; value: number }) {
   return (
     <div>
-      <dt className="text-xs uppercase tracking-wide opacity-60">{label}</dt>
+      <dt className="text-xs uppercase tracking-wide text-muted">{label}</dt>
       <dd className="text-lg font-semibold tabular-nums">{value}</dd>
     </div>
   );

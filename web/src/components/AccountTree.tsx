@@ -25,7 +25,7 @@ export function AccountTree({
   const t = useTranslations("accounts");
 
   if (nodes.length === 0) {
-    return <p className="p-6 text-sm opacity-60">{t("empty")}</p>;
+    return <p className="p-6 text-sm text-muted">{t("empty")}</p>;
   }
 
   return (
@@ -74,17 +74,17 @@ function TreeItem({
       <div
         className={`flex items-center gap-1 rounded-md pr-2 text-sm transition-colors ${
           isSelected
-            ? "bg-blue-600/15 text-blue-700 dark:text-blue-300"
-            : "hover:bg-black/5 dark:hover:bg-white/5"
+            ? "bg-accent/15 text-blue-700 dark:text-blue-300"
+            : "hover:bg-foreground/5"
         }`}
         style={{ paddingLeft: `${depth * 1.1 + 0.5}rem` }}
       >
         <button
           type="button"
           onClick={() => setExpanded((value) => !value)}
-          className={`grid size-5 shrink-0 place-items-center rounded text-xs opacity-60 ${
+          className={`grid size-5 shrink-0 place-items-center rounded text-xs text-muted ${
             hasChildren
-              ? "hover:bg-black/10 dark:hover:bg-white/10"
+              ? "hover:bg-foreground/10"
               : "invisible"
           }`}
           aria-label={expanded ? t("collapse") : t("expand")}

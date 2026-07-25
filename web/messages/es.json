@@ -1,8 +1,18 @@
 {
-  "home": {
-    "title": "Accounting Project",
+  "nav": {
+    "brand": "Accounting Project",
+    "tagline": "Plataforma de contabilidad",
+    "overview": "Resumen",
+    "accounts": "Plan de cuentas",
+    "menu": "Abrir menú",
+    "close": "Cerrar menú"
+  },
+  "overview": {
+    "title": "Resumen",
     "subtitle": "Plataforma de contabilidad",
-    "goToAccounts": "Ir al plan de cuentas"
+    "accountsCard": "Plan de cuentas",
+    "accountsCardHint": "Consulta, crea e importa las cuentas del PUC.",
+    "open": "Abrir"
   },
   "accounts": {
     "title": "Plan de cuentas",
@@ -61,6 +71,15 @@
     "Cuenta": "Cuenta",
     "Subcuenta": "Subcuenta",
     "Auxiliar": "Auxiliar"
+  },
+  "theme": {
+    "label": "Tema",
+    "light": "Claro",
+    "dark": "Oscuro",
+    "system": "Sistema"
+  },
+  "locale": {
+    "label": "Idioma"
   },
   "errors": {
     "apiUnreachable": "No se pudo conectar con la API",

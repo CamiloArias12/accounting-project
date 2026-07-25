@@ -44,13 +44,13 @@ export function AccountForm({ account, onCancel }: Props) {
     <div className="flex flex-col gap-4">
       <form action={submit} className="flex flex-col gap-4">
         <header className="flex items-baseline justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-wide opacity-60">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
             {isEditing
               ? t("editTitle", { code: account.code })
               : t("createTitle")}
           </h2>
           {isEditing && (
-            <span className="text-xs opacity-60">{tLevel(account.level)}</span>
+            <span className="text-xs text-muted">{tLevel(account.level)}</span>
           )}
         </header>
 
@@ -69,10 +69,10 @@ export function AccountForm({ account, onCancel }: Props) {
             required
             inputMode="numeric"
             placeholder={t("codePlaceholder")}
-            className="rounded-md border border-black/15 bg-transparent px-3 py-2 font-mono read-only:opacity-50 dark:border-white/15"
+            className="rounded-md border border-border bg-transparent px-3 py-2 font-mono read-only:opacity-50"
           />
           {!isEditing && (
-            <span className="text-xs opacity-60">{t("codeHint")}</span>
+            <span className="text-xs text-muted">{t("codeHint")}</span>
           )}
         </label>
 
@@ -83,7 +83,7 @@ export function AccountForm({ account, onCancel }: Props) {
             defaultValue={account?.name ?? ""}
             required
             placeholder={t("namePlaceholder")}
-            className="rounded-md border border-black/15 bg-transparent px-3 py-2 dark:border-white/15"
+            className="rounded-md border border-border bg-transparent px-3 py-2"
           />
         </label>
 
@@ -92,7 +92,7 @@ export function AccountForm({ account, onCancel }: Props) {
           <select
             name="nature"
             defaultValue={account?.nature ?? "Debito"}
-            className="rounded-md border border-black/15 bg-transparent px-3 py-2 dark:border-white/15"
+            className="rounded-md border border-border bg-transparent px-3 py-2"
           >
             {NATURES.map((value) => (
               <option key={value} value={value}>
@@ -118,7 +118,7 @@ export function AccountForm({ account, onCancel }: Props) {
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-md border border-black/15 px-4 py-2 text-sm dark:border-white/15"
+            className="rounded-md border border-border px-4 py-2 text-sm"
           >
             {t("cancel")}
           </button>
@@ -128,7 +128,7 @@ export function AccountForm({ account, onCancel }: Props) {
       {isEditing && (
         <form
           action={submitLifecycle}
-          className="flex flex-col gap-2 border-t border-black/10 pt-4 dark:border-white/10"
+          className="flex flex-col gap-2 border-t border-border pt-4"
         >
           <input type="hidden" name="code" value={account.code} />
           <input
@@ -177,7 +177,7 @@ function SubmitButton({ label, pendingLabel }: ButtonProps) {
     <button
       type="submit"
       disabled={pending}
-      className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+      className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground disabled:opacity-50"
     >
       {pending ? pendingLabel : label}
     </button>
@@ -203,7 +203,7 @@ function RestoreButton({ label, pendingLabel }: ButtonProps) {
     <button
       type="submit"
       disabled={pending}
-      className="self-start rounded-md border border-black/15 px-4 py-2 text-sm disabled:opacity-50 dark:border-white/15"
+      className="self-start rounded-md border border-border px-4 py-2 text-sm disabled:opacity-50"
     >
       {pending ? pendingLabel : label}
     </button>

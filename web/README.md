@@ -51,19 +51,26 @@ web/
 ├── messages/                     # Translations: en.json, es.json
 └── src/
     ├── app/
-    │   ├── layout.tsx            # Locale + NextIntlClientProvider
-    │   ├── page.tsx              # Landing
+    │   ├── layout.tsx            # Shell: sidebar, theme, i18n provider
+    │   ├── page.tsx              # Overview
     │   └── accounts/
     │       ├── page.tsx          # Server Component: fetches the tree
     │       ├── actions.ts        # Server Actions (async functions only)
     │       └── action-state.ts   # Their types and idle constants
     ├── components/
+    │   ├── Sidebar.tsx           # Navigation + preference toggles
+    │   ├── ThemeScript.tsx       # Resolves the theme before first paint
+    │   ├── ThemeToggle.tsx       # Light / dark / system
+    │   ├── LocaleToggle.tsx      # en / es
     │   ├── AccountsWorkspace.tsx # UI state (selection, search, panel)
     │   ├── AccountTree.tsx       # Collapsible tree
     │   ├── AccountForm.tsx       # Create, edit, delete, restore
     │   └── ImportForm.tsx        # Spreadsheet upload and summary
     ├── i18n/                     # next-intl config and request handler
-    ├── lib/api.ts                # API client, `server-only`
+    ├── lib/
+    │   ├── api.ts                # API client, `server-only`
+    │   ├── theme.ts              # Theme constants and types
+    │   └── preferences.ts        # Cookie + DOM writes, at module scope
     └── types/account.ts          # Shared types
 ```
 
@@ -99,6 +106,33 @@ pending state, so there is no hand-rolled loading flag.
   `defaultValue` enough.
 - **The tree expands while searching.** A match buried under collapsed ancestors
   reads as no result at all.
+
+## Theming
+
+Light, dark and system, chosen from the sidebar and stored in a `theme` cookie.
+
+The colors are CSS custom properties (`--background`, `--surface`, `--border`,
+`--muted`, `--accent`) exposed to Tailwind through `@theme inline`, so a
+component writes `bg-surface` or `text-muted` and never a hardcoded shade.
+
+Two details that make it behave:
+
+- **`data-theme` on `<html>` drives the `dark:` variant**, redefined with
+  `@custom-variant`. Tailwind's default variant follows the OS, which would
+  ignore an explicit choice.
+- **`ThemeScript` resolves the theme in a blocking inline script.** The server
+  knows the cookie but not the OS preference, so "system" can only be settled in
+  the browser; doing it in an effect would flash the wrong theme first. The
+  `<html>` element carries `suppressHydrationWarning` because that attribute is
+  deliberately written before React hydrates.
+
+The toggle writes the DOM and the cookie directly instead of going through a
+server action — a theme switch should be instant. The language toggle cannot:
+messages are resolved on the server, so it sets the cookie and calls
+`router.refresh()`.
+
+Both live in `lib/preferences.ts` at module scope. Mutating `document` from
+inside a component body trips React's `immutability` lint.
 
 ## Internationalization
 

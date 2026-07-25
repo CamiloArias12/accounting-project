@@ -1,22 +1,28 @@
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 
-export default function Home() {
-  const t = useTranslations("home");
+export default function Overview() {
+  const t = useTranslations("overview");
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-6 p-24">
-      <div className="text-center">
-        <h1 className="text-4xl font-semibold tracking-tight">{t("title")}</h1>
-        <p className="mt-2 text-sm opacity-60">{t("subtitle")}</p>
-      </div>
+    <main className="mx-auto flex max-w-6xl flex-col gap-6 p-6 pt-16 lg:pt-6">
+      <header>
+        <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+        <p className="text-sm text-muted">{t("subtitle")}</p>
+      </header>
 
-      <Link
-        href="/accounts"
-        className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white"
-      >
-        {t("goToAccounts")}
-      </Link>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Link
+          href="/accounts"
+          className="flex flex-col gap-1 rounded-lg border border-border bg-surface p-4 transition-colors hover:border-accent"
+        >
+          <span className="text-sm font-medium">{t("accountsCard")}</span>
+          <span className="text-sm text-muted">{t("accountsCardHint")}</span>
+          <span className="mt-2 text-sm font-medium text-accent">
+            {t("open")} →
+          </span>
+        </Link>
+      </div>
     </main>
   );
 }

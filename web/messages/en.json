@@ -1,8 +1,18 @@
 {
-  "home": {
-    "title": "Accounting Project",
+  "nav": {
+    "brand": "Accounting Project",
+    "tagline": "Accounting platform",
+    "overview": "Overview",
+    "accounts": "Chart of accounts",
+    "menu": "Open menu",
+    "close": "Close menu"
+  },
+  "overview": {
+    "title": "Overview",
     "subtitle": "Accounting platform",
-    "goToAccounts": "Go to the chart of accounts"
+    "accountsCard": "Chart of accounts",
+    "accountsCardHint": "Browse, create and import the PUC accounts.",
+    "open": "Open"
   },
   "accounts": {
     "title": "Chart of accounts",
@@ -61,6 +71,15 @@
     "Cuenta": "Account",
     "Subcuenta": "Subaccount",
     "Auxiliar": "Auxiliary"
+  },
+  "theme": {
+    "label": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "locale": {
+    "label": "Language"
   },
   "errors": {
     "apiUnreachable": "Could not reach the API",

@@ -37,13 +37,13 @@ export function AccountsWorkspace({ tree, loadError, showDeleted }: Props) {
   );
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-6 p-6">
+    <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-6 p-6 pt-16 lg:pt-6">
       <header className="flex flex-wrap items-baseline justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">
             {t("title")}
           </h1>
-          <p className="text-sm opacity-60">
+          <p className="text-sm text-muted">
             {t("count", { count: total })}
             {showDeleted && ` · ${t("includingDeleted")}`}
           </p>
@@ -56,20 +56,20 @@ export function AccountsWorkspace({ tree, loadError, showDeleted }: Props) {
               setSelectedCode(null);
               setPanel("form");
             }}
-            className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white"
+            className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground"
           >
             {t("newAccount")}
           </button>
           <button
             type="button"
             onClick={() => setPanel("import")}
-            className="rounded-md border border-black/15 px-3 py-1.5 text-sm dark:border-white/15"
+            className="rounded-md border border-border px-3 py-1.5 text-sm"
           >
             {t("importSpreadsheet")}
           </button>
           <Link
             href={showDeleted ? "/accounts" : "/accounts?deleted=1"}
-            className="rounded-md border border-black/15 px-3 py-1.5 text-sm dark:border-white/15"
+            className="rounded-md border border-border px-3 py-1.5 text-sm"
           >
             {showDeleted ? t("hideDeleted") : t("showDeleted")}
           </Link>
@@ -86,13 +86,13 @@ export function AccountsWorkspace({ tree, loadError, showDeleted }: Props) {
       )}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
-        <section className="min-w-0 rounded-lg border border-black/10 dark:border-white/10">
-          <div className="border-b border-black/10 p-3 dark:border-white/10">
+        <section className="min-w-0 rounded-lg border border-border">
+          <div className="border-b border-border p-3">
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder={t("searchPlaceholder")}
-              className="w-full rounded-md border border-black/15 bg-transparent px-3 py-1.5 text-sm dark:border-white/15"
+              className="w-full rounded-md border border-border bg-transparent px-3 py-1.5 text-sm"
             />
           </div>
 
@@ -111,7 +111,7 @@ export function AccountsWorkspace({ tree, loadError, showDeleted }: Props) {
           </div>
         </section>
 
-        <aside className="rounded-lg border border-black/10 p-4 dark:border-white/10">
+        <aside className="rounded-lg border border-border p-4">
           {panel === "import" ? (
             <ImportForm />
           ) : (
