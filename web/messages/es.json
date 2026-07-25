@@ -61,6 +61,20 @@
     "rowErrors": "{count, plural, one {# fila con error} other {# filas con error}}",
     "row": "Fila {row}"
   },
+  "login": {
+    "title": "Iniciar sesión",
+    "subtitle": "Accede a la plataforma de contabilidad",
+    "email": "Correo",
+    "password": "Contraseña",
+    "signIn": "Entrar",
+    "signingIn": "Entrando…",
+    "missingFields": "El correo y la contraseña son obligatorios"
+  },
+  "session": {
+    "signIn": "Entrar",
+    "signOut": "Salir",
+    "signingOut": "Saliendo…"
+  },
   "nature": {
     "Debito": "Débito",
     "Crédito": "Crédito"

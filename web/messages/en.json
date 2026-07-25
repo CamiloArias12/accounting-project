@@ -61,6 +61,20 @@
     "rowErrors": "{count, plural, one {# row failed} other {# rows failed}}",
     "row": "Row {row}"
   },
+  "login": {
+    "title": "Sign in",
+    "subtitle": "Access the accounting platform",
+    "email": "Email",
+    "password": "Password",
+    "signIn": "Sign in",
+    "signingIn": "Signing in…",
+    "missingFields": "Email and password are required"
+  },
+  "session": {
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "signingOut": "Signing out…"
+  },
   "nature": {
     "Debito": "Debit",
     "Crédito": "Credit"

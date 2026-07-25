@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 import { LocaleToggle } from "@/components/LocaleToggle";
+import { SessionPanel } from "@/components/SessionPanel";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import type { Theme } from "@/lib/theme";
 
@@ -22,9 +23,11 @@ const NAV: NavItem[] = [
 
 interface Props {
   initialTheme: Theme;
+  /** Null when nobody is signed in. */
+  userEmail: string | null;
 }
 
-export function Sidebar({ initialTheme }: Props) {
+export function Sidebar({ initialTheme, userEmail }: Props) {
   const t = useTranslations("nav");
   const pathname = usePathname();
   // Collapsed by default on small screens; the toggle is hidden from lg up,
@@ -92,6 +95,7 @@ export function Sidebar({ initialTheme }: Props) {
         </nav>
 
         <div className="flex flex-col gap-2 border-t border-border p-3">
+          <SessionPanel email={userEmail} />
           <ThemeToggle initialTheme={initialTheme} />
           <LocaleToggle />
         </div>

@@ -6,8 +6,8 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from sqlalchemy.pool import NullPool
 
 from alembic import context
-from app.core.config import settings
-from app.models import Base  # imports every model
+from app.shared.config import settings
+from app.shared.models import Base  # imports every model
 
 config = context.config
 config.set_main_option("sqlalchemy.url", str(settings.DATABASE_URL))

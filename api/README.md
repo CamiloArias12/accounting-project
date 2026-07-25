@@ -73,7 +73,10 @@ the base file.
 | `GET`    | `/api/v1/health`                  | Liveness                                 |
 | `GET`    | `/api/v1/health/ready`            | Readiness (Postgres + Redis)             |
 | `GET`    | `/api/v1/accounts`                | List, filterable by level/parent/search  |
-| `GET`    | `/api/v1/accounts/tree`           | Nested chart of accounts                 |
+| `GET`    | `/api/v1/accounts/tree`           | Nested chart, or one branch of it        |
+| `POST`   | `/api/v1/auth/register`           | Create a user                            |
+| `POST`   | `/api/v1/auth/login`              | Exchange credentials for a token         |
+| `GET`    | `/api/v1/auth/me`                 | The authenticated user                   |
 | `POST`   | `/api/v1/accounts`                | Create (409 if the code is already live) |
 | `POST`   | `/api/v1/accounts/import`         | Import the spreadsheet                   |
 | `GET`    | `/api/v1/accounts/{code}`         | Detail                                   |
@@ -83,30 +86,84 @@ the base file.
 
 Read endpoints take `?include_deleted=true` to see soft-deleted rows.
 
-## Layout
+Reads are public; every write needs `Authorization: Bearer <token>`.
 
-Layered, innermost first. Each layer only knows the one below it:
+`/accounts/tree` takes `root_code` and `max_depth` so a caller does not download
+the whole chart to render two levels:
+
+| Request                    | Payload |
+| -------------------------- | ------- |
+| `/accounts/tree`           | 603 KB  |
+| `/accounts/tree?max_depth=1` | 12.7 KB |
+| `/accounts/tree?max_depth=0` | 2 KB    |
+| `/accounts/tree?root_code=1105` | 920 B |
+
+## Architecture
+
+Clean architecture in vertical slices: one folder per feature, three layers
+inside it, dependencies pointing inward only.
 
 ```
-api/
-├── app/
-│   ├── domain/puc.py     # PUC rules. No I/O: level, parent, validation
-│   ├── models/           # ORM (imported in __init__ for Alembic)
-│   ├── schemas/          # Pydantic request/response contracts
-│   ├── repositories/     # Data access, no business rules
-│   ├── services/         # Business rules + spreadsheet import
-│   │   └── errors.py     # Domain errors, unaware of HTTP
-│   ├── api/
-│   │   ├── deps.py       # Session, repository and service injection
-│   │   ├── errors.py     # Maps domain errors to HTTP status codes
-│   │   └── v1/           # Router and endpoints (thin layer)
-│   ├── core/config.py    # Settings via pydantic-settings
-│   ├── db/               # Declarative base + async session
-│   └── cache/redis.py    # Redis pool
-├── alembic/              # Migrations (async env.py)
-├── tests/                # pytest on in-memory SQLite
-├── Dockerfile            # dev and prod targets
-└── pyproject.toml        # ruff, mypy, pytest
+api/app/
+├── modules/
+│   ├── accounts/
+│   │   ├── domain/          # Entities and rules. No framework, no I/O
+│   │   ├── application/     # Use cases + the ports they depend on
+│   │   └── infrastructure/  # SQLAlchemy, Redis, openpyxl, FastAPI
+│   ├── auth/                # Same three layers
+│   └── health/
+├── shared/                  # config, database, redis, logging, clock
+└── api/v1/router.py         # Mounts each module's router
+```
+
+**Why slices and not `models/ schemas/ services/`.** With one feature the flat
+layout looks tidy; the accounting domain has movements, journal entries, thirds,
+credits and treasury still to come. Grouping by type means every new feature
+scatters five files across five folders and touching one feature means opening
+all five. A slice keeps a feature in one place and makes it deletable.
+
+**Where the dependency inversion is.** `application/ports.py` declares what the
+use cases need — a repository, a spreadsheet reader, a clock — as `Protocol`s.
+`infrastructure/` implements them. So SQLAlchemy knows about the use cases and
+never the reverse, and swapping Postgres for anything else does not touch a
+business rule.
+
+They are `Protocol`s rather than ABCs deliberately: adapters do not import the
+port to inherit from it, so the coupling stays one-directional.
+
+**What that buys.** `tests/test_use_cases.py` drives every rule — create,
+delete, restore, the tree, the import — against in-memory doubles. No database,
+no HTTP, no Redis, and it runs in milliseconds.
+
+**The cost.** The entity and the ORM row are separate objects, so
+`infrastructure/orm.py` carries a mapper between them. That is the honest price
+of keeping the domain free of SQLAlchemy, and it is the first thing to
+reconsider if the mapping ever grows faster than the rules.
+
+**Caching is not a port.** It is a persistence concern, so
+`infrastructure/cache.py` is a decorator implementing the *same*
+`AccountRepository`. The use cases cannot tell whether a read came from Postgres
+or Redis, and a Redis outage degrades to slow rather than broken — every cache
+call falls through to the database on error.
+
+## Layout
+
+```
+api/app/modules/accounts/
+├── domain/
+│   ├── puc.py            # Level, parent, code validation. Pure functions
+│   ├── account.py        # The Account entity, a plain dataclass
+│   └── errors.py         # Business errors, unaware of HTTP
+├── application/
+│   ├── ports.py          # Protocols the use cases depend on
+│   ├── queries.py        # Input shapes, plain dataclasses
+│   └── use_cases/        # One object per operation
+└── infrastructure/
+    ├── orm.py            # SQLAlchemy row + mapper to the entity
+    ├── repository.py     # Implements AccountRepository
+    ├── cache.py          # Redis decorator over the same port
+    ├── spreadsheet.py    # openpyxl behind SpreadsheetReader
+    └── http/             # Router, wire schemas, composition root
 ```
 
 ## The account model
@@ -167,6 +224,39 @@ Expected columns: `Codigo`, `Nombre`, `Tipo`, `Naturaleza`.
 - It is partial and transparent: valid rows go in, failing rows come back with
   their row number and the reason.
 - `?on_existing=skip|update` decides what happens to accounts already stored.
+
+## Authentication
+
+JWT bearer tokens. Passwords are hashed with Argon2id via `pwdlib`.
+
+```bash
+curl -X POST http://localhost:8000/api/v1/auth/register \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"admin@acme.com","password":"sup3r-secret-1","full_name":"Admin"}'
+
+curl -X POST http://localhost:8000/api/v1/auth/login \
+  -d 'username=admin@acme.com&password=sup3r-secret-1'
+```
+
+Login answers the same 401 whether the email is unknown or the password is
+wrong, and verifies a hash either way, so neither the message nor the response
+time reveals which accounts exist.
+
+`JWT_SECRET` has a development default that **the settings refuse outside
+`ENVIRONMENT=local`**: startup fails rather than shipping a guessable signing
+key. Generate one with `openssl rand -hex 32`.
+
+## Operations
+
+- **Connection pool.** `DB_POOL_SIZE` + `DB_MAX_OVERFLOW` per replica; multiply
+  by the replica count and keep it under Postgres `max_connections`.
+- **Cache.** `CACHE_TTL_SECONDS` bounds staleness if an invalidation is ever
+  missed; every write drops the namespace anyway.
+- **Logs** are JSON on stdout, each line carrying `request_id`. The same id is
+  returned in `X-Request-ID`, and an incoming one is reused so a trace survives
+  across services.
+- **Import** works in batches of 500, so neither the entity list nor an
+  `IN (...)` grows with the file.
 
 ## Notes
 

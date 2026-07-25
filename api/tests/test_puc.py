@@ -1,6 +1,6 @@
 import pytest
 
-from app.domain.puc import (
+from app.modules.accounts.domain.puc import (
     AccountLevel,
     InvalidAccountCode,
     ancestors_of,

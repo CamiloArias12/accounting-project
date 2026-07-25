@@ -21,7 +21,7 @@ export default async function AccountsPage({ searchParams }: Props) {
   let loadError: string | null = null;
 
   try {
-    tree = await accountsApi.tree(showDeleted);
+    tree = await accountsApi.tree({ includeDeleted: showDeleted });
   } catch (caught) {
     loadError =
       caught instanceof ApiError ? caught.message : "Could not reach the API";

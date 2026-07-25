@@ -51,8 +51,9 @@ web/
 ├── messages/                     # Translations: en.json, es.json
 └── src/
     ├── app/
-    │   ├── layout.tsx            # Shell: sidebar, theme, i18n provider
+    │   ├── layout.tsx            # Shell: sidebar, theme, i18n, session
     │   ├── page.tsx              # Overview
+    │   ├── login/                # Sign-in page and its actions
     │   └── accounts/
     │       ├── page.tsx          # Server Component: fetches the tree
     │       ├── actions.ts        # Server Actions (async functions only)
@@ -62,6 +63,8 @@ web/
     │   ├── ThemeScript.tsx       # Resolves the theme before first paint
     │   ├── ThemeToggle.tsx       # Light / dark / system
     │   ├── LocaleToggle.tsx      # en / es
+    │   ├── LoginForm.tsx         # Sign in
+    │   ├── SessionPanel.tsx      # Current user / sign out
     │   ├── AccountsWorkspace.tsx # UI state (selection, search, panel)
     │   ├── AccountTree.tsx       # Collapsible tree
     │   ├── AccountForm.tsx       # Create, edit, delete, restore
@@ -69,6 +72,7 @@ web/
     ├── i18n/                     # next-intl config and request handler
     ├── lib/
     │   ├── api.ts                # API client, `server-only`
+    │   ├── session.ts            # httpOnly token cookie
     │   ├── theme.ts              # Theme constants and types
     │   └── preferences.ts        # Cookie + DOM writes, at module scope
     └── types/account.ts          # Shared types
@@ -106,6 +110,20 @@ pending state, so there is no hand-rolled loading flag.
   `defaultValue` enough.
 - **The tree expands while searching.** A match buried under collapsed ancestors
   reads as no result at all.
+
+## Authentication
+
+Reads are public; writing needs a session. Signing in exchanges the credentials
+for a JWT and stores it in an **httpOnly** cookie, so page JavaScript cannot
+read it and an XSS bug cannot exfiltrate it. Only the server-side API client
+attaches it.
+
+The cookie's `Secure` flag is derived from `x-forwarded-proto`, not from
+`NODE_ENV`. Tying it to the build mode means a production image served over
+plain HTTP marks the cookie `Secure`, the browser silently drops it, and every
+write comes back unauthenticated — while the server, which sees its own cookie
+jar within the same request, still renders as signed in. That failure took a
+browser and a cookie dump to find.
 
 ## Theming
 
