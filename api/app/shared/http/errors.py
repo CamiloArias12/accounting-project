@@ -25,6 +25,19 @@ from app.modules.auth.errors import (
     InvalidCredentials,
     InvalidToken,
 )
+from app.modules.locations.errors import (
+    CityNotFound,
+    CountryNotFound,
+    DepartmentNotFound,
+    InconsistentPlace,
+)
+from app.modules.third_parties.documents import InvalidDocument
+from app.modules.third_parties.errors import (
+    IncompleteThirdParty,
+    ThirdPartyAlreadyExists,
+    ThirdPartyNotDeleted,
+    ThirdPartyNotFound,
+)
 
 Handler = Callable[[Request, Exception], Awaitable[JSONResponse]]
 
@@ -37,6 +50,19 @@ _STATUS_BY_ERROR: dict[type[Exception], int] = {
     ParentAccountMissing: status.HTTP_422_UNPROCESSABLE_CONTENT,
     ParentAccountDeleted: status.HTTP_422_UNPROCESSABLE_CONTENT,
     SpreadsheetError: status.HTTP_400_BAD_REQUEST,
+    # third parties
+    ThirdPartyNotFound: status.HTTP_404_NOT_FOUND,
+    ThirdPartyAlreadyExists: status.HTTP_409_CONFLICT,
+    ThirdPartyNotDeleted: status.HTTP_409_CONFLICT,
+    IncompleteThirdParty: status.HTTP_422_UNPROCESSABLE_CONTENT,
+    # Not a Pydantic error: the check digit and the format of a document depend
+    # on its type, which only the domain knows.
+    InvalidDocument: status.HTTP_422_UNPROCESSABLE_CONTENT,
+    # locations
+    CountryNotFound: status.HTTP_404_NOT_FOUND,
+    DepartmentNotFound: status.HTTP_404_NOT_FOUND,
+    CityNotFound: status.HTTP_404_NOT_FOUND,
+    InconsistentPlace: status.HTTP_422_UNPROCESSABLE_CONTENT,
     # auth
     InvalidCredentials: status.HTTP_401_UNAUTHORIZED,
     InvalidToken: status.HTTP_401_UNAUTHORIZED,
