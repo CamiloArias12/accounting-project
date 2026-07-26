@@ -42,10 +42,13 @@ done
 
 # 2. Los puertos que vamos a publicar tienen que estar libres, o ya ser
 #    nuestros (un redeploy normal).
-if [ -f "$APP_DIR/.env" ]; then
-  # shellcheck disable=SC1091
-  set -a; . "$APP_DIR/.env"; set +a
-fi
+# Se leen las dos variables sueltas, sin `source`. Bash y Docker no parsean un
+# .env igual: `CORS_ORIGINS=["http://host:3001"]` sourceado en bash pierde las
+# comillas y queda como JSON inválido, y al exportarse gana sobre el fichero en
+# la interpolación de Compose. Lo pagamos con un arranque roto de la API.
+leer_env() { [ -f "$APP_DIR/.env" ] && sed -n "s/^$1=//p" "$APP_DIR/.env" | tail -1; }
+WEB_PORT="$(leer_env WEB_PORT)"
+API_PORT="$(leer_env API_PORT)"
 for puerto in "${WEB_PORT:-3000}" "${API_PORT:-8000}"; do
   en_uso="$(ss -tlnp 2>/dev/null | grep -E "[:.]${puerto} " || true)"
   if [ -n "$en_uso" ] && ! docker ps --filter "label=com.docker.compose.project=$PROJECT" \
