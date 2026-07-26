@@ -99,7 +99,9 @@ log "Aplicando migraciones"
 # falla, los viejos siguen sirviendo con el esquema viejo. `run` respeta
 # depends_on, así que espera a que Postgres esté healthy.
 "${COMPOSE[@]}" up -d postgres redis
-"${COMPOSE[@]}" run --rm --no-build api alembic upgrade head
+# `run` no tiene --no-build (solo `up`); con la imagen ya presente
+# y pull_policy: missing, no construye nada igualmente.
+"${COMPOSE[@]}" run --rm api alembic upgrade head
 
 log "Levantando los servicios"
 "${COMPOSE[@]}" up -d --no-build --remove-orphans
