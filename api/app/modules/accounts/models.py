@@ -47,6 +47,17 @@ class Account(Base, TimestampMixin):
     #: Whether the account may be posted to. Unrelated to whether it exists.
     is_active: Mapped[bool] = mapped_column(default=True)
 
+    #: The DIAN concept this account reports under in `información exógena`,
+    #: or null when the account is not reportable.
+    #:
+    #: The concept groups a payment with the withholding taken off it, so an
+    #: account and its retention counterpart carry the same one — which is what
+    #: lets a `Registro` show `valorBruto` and `valorRetencion` side by side.
+    dian_concept: Mapped[str | None] = mapped_column(String(10), default=None)
+
+    #: Whether amounts here are the withholding rather than the payment.
+    is_withholding: Mapped[bool] = mapped_column(default=False)
+
     #: Whether every entry on this account must name a third party.
     #:
     #: Receivables and payables are meaningless without one — a balance of
@@ -75,6 +86,8 @@ class Account(Base, TimestampMixin):
         nature: Nature,
         is_active: bool = True,
         requires_third_party: bool = False,
+        dian_concept: str | None = None,
+        is_withholding: bool = False,
     ) -> Account:
         """Build an account, deriving level and parent from its code."""
         normalized = validate_code(code)
@@ -84,6 +97,8 @@ class Account(Base, TimestampMixin):
             nature=nature,
             is_active=is_active,
             requires_third_party=requires_third_party,
+            dian_concept=(dian_concept or "").strip() or None,
+            is_withholding=is_withholding,
             level=level_of(normalized),
             parent_code=parent_code_of(normalized),
         )

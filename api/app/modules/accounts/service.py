@@ -157,6 +157,8 @@ class AccountService:
                 nature=payload.nature,
                 is_active=payload.is_active,
                 requires_third_party=payload.requires_third_party,
+                dian_concept=payload.dian_concept,
+                is_withholding=payload.is_withholding,
             )
             self._session.add(account)
         else:
@@ -165,6 +167,8 @@ class AccountService:
             account.nature = payload.nature
             account.is_active = payload.is_active
             account.requires_third_party = payload.requires_third_party
+            account.dian_concept = payload.dian_concept
+            account.is_withholding = payload.is_withholding
             account.restore()
 
         return await self._commit(account)

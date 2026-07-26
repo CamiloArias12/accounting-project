@@ -26,11 +26,18 @@ class Settings(BaseSettings):
     # Configuration, not a table: this deployment keeps one set of books, so the
     # company is the same on every voucher and storing it per row would be a
     # column with one value in it. A voucher shows it; nothing selects it.
-    COMPANY_NIT: str = "900000000-0"
+    # The check digit is real: exógena verifies the informante's own NIT
+    # before writing a file, and 900000000 checks out to 5.
+    COMPANY_NIT: str = "900000000-5"
     COMPANY_LEGAL_NAME: str = "Mi Empresa S.A.S."
     COMPANY_ADDRESS: str | None = None
     COMPANY_PHONE: str | None = None
     COMPANY_EMAIL: str | None = None
+
+    # The simulated UVT source. The failure rate is there so the retry and the
+    # run log are exercised in a real deployment, not only in tests.
+    UVT_SOURCE_FAILURE_RATE: float = 0.0
+    UVT_SOURCE_LATENCY_SECONDS: float = 0.0
 
     # Postgres
     POSTGRES_HOST: str = "localhost"

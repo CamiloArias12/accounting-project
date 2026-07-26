@@ -88,6 +88,12 @@ class CompanyType(enum.StrEnum):
     TEMPORARY_JOINT_VENTURE = "Temporary joint venture"
 
 
+#: DIAN's own codes for document types, which is what a fiscal file carries.
+#: Our member names are for the code to read; these two digits are what the
+#: DIAN parses, and printing "Citizen ID" in an exógena file would be rejected.
+DIAN_CODES: Final[dict[DocumentType, str]] = {}
+
+
 #: The only type allowed to hold letters; every other one is numeric.
 _ALPHANUMERIC_DOCUMENTS: Final = frozenset({DocumentType.PASSPORT})
 
@@ -170,3 +176,26 @@ def validate_check_digit(nit: str, check_digit: int) -> int:
 def requires_check_digit(document_type: DocumentType) -> bool:
     """Only the NIT carries a check digit."""
     return document_type is DocumentType.NIT
+
+
+# Filled after the class so the enum members exist. The codes come from the
+# DIAN's resolution: 11 registro civil, 12 tarjeta de identidad, 13 cédula de
+# ciudadanía, 22 cédula de extranjería, 31 NIT, 41 pasaporte.
+DIAN_CODES.update(
+    {
+        DocumentType.BIRTH_CERTIFICATE: "11",
+        DocumentType.MINOR_ID: "12",
+        DocumentType.CITIZEN_ID: "13",
+        # The NUIP is the number printed on a citizen's own document, so it
+        # reports under the same code rather than one of its own.
+        DocumentType.NUIP: "13",
+        DocumentType.FOREIGNER_ID: "22",
+        DocumentType.NIT: "31",
+        DocumentType.PASSPORT: "41",
+    }
+)
+
+
+def dian_code(document_type: DocumentType) -> str:
+    """The two digits the DIAN expects for a document type."""
+    return DIAN_CODES[document_type]

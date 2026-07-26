@@ -23,6 +23,16 @@ class AccountCreate(BaseModel):
         default=False,
         description="Whether every entry on this account must name a third party",
     )
+    dian_concept: str | None = Field(
+        default=None,
+        max_length=10,
+        description="DIAN concept for información exógena; null means not reportable",
+        examples=["5002"],
+    )
+    is_withholding: bool = Field(
+        default=False,
+        description="Whether amounts here are the withholding, not the payment",
+    )
 
     @field_validator("code")
     @classmethod
@@ -40,6 +50,8 @@ class AccountUpdate(BaseModel):
     nature: Nature | None = None
     is_active: bool | None = None
     requires_third_party: bool | None = None
+    dian_concept: str | None = Field(default=None, max_length=10)
+    is_withholding: bool | None = None
 
 
 class AccountRead(BaseModel):
@@ -52,6 +64,8 @@ class AccountRead(BaseModel):
     parent_code: str | None
     is_active: bool
     requires_third_party: bool
+    dian_concept: str | None
+    is_withholding: bool
     deleted_at: datetime | None
     created_at: datetime
     updated_at: datetime

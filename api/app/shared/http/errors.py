@@ -25,6 +25,8 @@ from app.modules.auth.errors import (
     InvalidCredentials,
     InvalidToken,
 )
+from app.modules.exogena.errors import GenerationNotFound, ThresholdNeedsUvt
+from app.modules.exogena.report import ExogenaError
 from app.modules.locations.errors import (
     CityNotFound,
     CountryNotFound,
@@ -44,6 +46,7 @@ from app.modules.third_parties.errors import (
     ThirdPartyNotDeleted,
     ThirdPartyNotFound,
 )
+from app.modules.uvt.errors import UvtValueNotFound
 from app.modules.vouchers.errors import (
     AccountNotPostable,
     ThirdPartyRequired,
@@ -94,6 +97,13 @@ _STATUS_BY_ERROR: dict[type[Exception], int] = {
     PeriodAlreadyClosed: status.HTTP_409_CONFLICT,
     PeriodAlreadyOpen: status.HTTP_409_CONFLICT,
     InvalidPeriod: status.HTTP_422_UNPROCESSABLE_CONTENT,
+    # exógena
+    GenerationNotFound: status.HTTP_404_NOT_FOUND,
+    ThresholdNeedsUvt: status.HTTP_409_CONFLICT,
+    UvtValueNotFound: status.HTTP_404_NOT_FOUND,
+    # Not a Pydantic error: whether the informante's own NIT checks out is a
+    # rule about the document, which no field validator knows.
+    ExogenaError: status.HTTP_422_UNPROCESSABLE_CONTENT,
     # locations
     CountryNotFound: status.HTTP_404_NOT_FOUND,
     DepartmentNotFound: status.HTTP_404_NOT_FOUND,

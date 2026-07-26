@@ -5,9 +5,11 @@ A module's tables are invisible to autogenerate until they are listed here.
 
 from app.modules.accounts.models import Account
 from app.modules.auth.models import User
+from app.modules.exogena.models import ExogenaGeneration
 from app.modules.locations.models import City, Country, Department
 from app.modules.periods.models import Period
 from app.modules.third_parties.models import ThirdParty
+from app.modules.uvt.models import UvtFetchRun, UvtValue
 from app.modules.vouchers.models import Voucher, VoucherLine
 from app.shared.database import Base
 
@@ -17,9 +19,12 @@ __all__ = [
     "City",
     "Country",
     "Department",
+    "ExogenaGeneration",
     "Period",
     "ThirdParty",
     "User",
+    "UvtFetchRun",
+    "UvtValue",
     "Voucher",
     "VoucherLine",
 ]
