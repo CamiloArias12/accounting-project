@@ -107,9 +107,18 @@ async def test_me_returns_the_authenticated_user(auth_client: AsyncClient) -> No
 ACCOUNT = {"code": "1", "name": "ACTIVOS", "nature": "Debito"}
 
 
-async def test_reading_accounts_is_public(client: AsyncClient) -> None:
-    assert (await client.get("/api/v1/accounts")).status_code == 200
-    assert (await client.get("/api/v1/accounts/tree")).status_code == 200
+async def test_reading_accounts_requires_a_token(client: AsyncClient) -> None:
+    """A chart of accounts is business data, not a public resource."""
+    assert (await client.get("/api/v1/accounts")).status_code == 401
+    assert (await client.get("/api/v1/accounts/tree")).status_code == 401
+    assert (await client.get("/api/v1/accounts/1")).status_code == 401
+
+
+async def test_reading_accounts_rejects_a_forged_token(client: AsyncClient) -> None:
+    response = await client.get(
+        "/api/v1/accounts", headers={"Authorization": "Bearer not-a-real-token"}
+    )
+    assert response.status_code == 401
 
 
 async def test_creating_an_account_requires_a_token(client: AsyncClient) -> None:
@@ -128,5 +137,6 @@ async def test_importing_requires_a_token(client: AsyncClient) -> None:
     assert response.status_code == 401
 
 
-async def test_a_token_unlocks_writing(auth_client: AsyncClient) -> None:
+async def test_a_token_unlocks_the_module(auth_client: AsyncClient) -> None:
     assert (await auth_client.post("/api/v1/accounts", json=ACCOUNT)).status_code == 201
+    assert (await auth_client.get("/api/v1/accounts")).status_code == 200

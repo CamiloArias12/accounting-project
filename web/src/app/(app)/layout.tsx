@@ -1,35 +1,49 @@
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 import { Sidebar } from "@/components/Sidebar";
 import { ApiError, authApi } from "@/lib/api";
 import { readToken } from "@/lib/session";
 import { DEFAULT_THEME, THEME_COOKIE, isTheme } from "@/lib/theme";
 
-/** The signed-in shell: everything reachable from the sidebar. */
+/**
+ * The signed-in shell.
+ *
+ * The guard lives here rather than on each page: a route added to this group
+ * is protected by being in it, and cannot be forgotten.
+ */
 export default async function AppLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const email = await currentUserEmail();
+  if (email === null) redirect("/login");
+
   const stored = (await cookies()).get(THEME_COOKIE)?.value;
   const theme = isTheme(stored) ? stored : DEFAULT_THEME;
 
   return (
     <>
-      <Sidebar initialTheme={theme} userEmail={await currentUserEmail()} />
+      <Sidebar initialTheme={theme} userEmail={email} />
       <div className="lg:pl-60">{children}</div>
     </>
   );
 }
 
-/** Resolves the signed-in user, treating an expired token as signed out. */
+/**
+ * The signed-in user, or null.
+ *
+ * The token is verified against the API rather than merely being present: an
+ * expired or revoked one must send the visitor back to the login screen, not
+ * render a shell whose every request then fails.
+ */
 async function currentUserEmail(): Promise<string | null> {
   if (!(await readToken())) return null;
 
   try {
     return (await authApi.me()).email;
   } catch (caught) {
-    // A stale or revoked token must not break every page.
     if (caught instanceof ApiError) return null;
     throw caught;
   }

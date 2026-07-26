@@ -129,7 +129,13 @@ out of `app/` means moving a page between groups never rewrites an import.
 
 ## Authentication
 
-Reads are public; writing needs a session. Signing in exchanges the credentials
+**The whole app is behind the login.** The guard sits in `(app)/layout.tsx`, so
+a route added to that group is protected by being in it. Reaching any of them
+without a session redirects to `/login`, and the sidebar never renders.
+
+The token is verified against the API on each render rather than merely checked
+for presence: an expired or revoked one has to send the visitor back to the
+login screen, not paint a shell whose every request then fails. Signing in exchanges the credentials
 for a JWT and stores it in an **httpOnly** cookie, so page JavaScript cannot
 read it and an XSS bug cannot exfiltrate it. Only the server-side API client
 attaches it.

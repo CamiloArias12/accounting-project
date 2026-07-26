@@ -86,7 +86,13 @@ the base file.
 
 Read endpoints take `?include_deleted=true` to see soft-deleted rows.
 
-Reads are public; every write needs `Authorization: Bearer <token>`.
+**Every `/accounts` endpoint needs `Authorization: Bearer <token>`**, reads
+included: a chart of accounts is business data, not a public resource. The
+requirement is declared once on the router, so an endpoint added later is
+protected by being there rather than by someone remembering to annotate it.
+
+Only `/health` and `/health/ready` are open, since probes run before anything
+can authenticate.
 
 `/accounts/tree` takes `root_code` and `max_depth`, and both bound the **query**,
 not just the response — asking for the classes reads nine rows, not the whole

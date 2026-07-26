@@ -16,12 +16,19 @@ from app.modules.accounts.schemas import (
     ImportResult,
 )
 from app.modules.accounts.service import AccountService
-from app.modules.auth.dependencies import CurrentUser
+from app.modules.auth.dependencies import current_user
 from app.shared.config import settings
 from app.shared.database import get_session
 from app.shared.redis import get_redis
 
-router = APIRouter(prefix="/accounts", tags=["accounts"])
+# Applied to the whole router: an endpoint added later is protected by being
+# here, instead of by remembering to annotate it.
+router = APIRouter(
+    prefix="/accounts",
+    tags=["accounts"],
+    dependencies=[Depends(current_user)],
+    responses={401: {"description": "Missing or invalid token"}},
+)
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 RedisDep = Annotated[Redis, Depends(get_redis)]
@@ -90,16 +97,13 @@ async def account_tree(
 
 
 @router.post("", response_model=AccountRead, status_code=status.HTTP_201_CREATED)
-async def create_account(
-    payload: AccountCreate, service: ServiceDep, _: CurrentUser
-) -> Account:
+async def create_account(payload: AccountCreate, service: ServiceDep) -> Account:
     return await service.create(payload)
 
 
 @router.post("/import", response_model=ImportResult)
 async def import_accounts(
     importer: ImporterDep,
-    _: CurrentUser,
     file: Annotated[
         UploadFile,
         File(description="PUC spreadsheet: Codigo, Nombre, Tipo, Naturaleza"),
@@ -118,17 +122,17 @@ async def get_account(
 
 @router.patch("/{code}", response_model=AccountRead)
 async def update_account(
-    code: str, payload: AccountUpdate, service: ServiceDep, _: CurrentUser
+    code: str, payload: AccountUpdate, service: ServiceDep
 ) -> Account:
     return await service.update(code, payload)
 
 
 @router.delete("/{code}", response_model=AccountRead)
-async def delete_account(code: str, service: ServiceDep, _: CurrentUser) -> Account:
+async def delete_account(code: str, service: ServiceDep) -> Account:
     """Soft delete: the row is kept and stamped with `deleted_at`."""
     return await service.delete(code)
 
 
 @router.post("/{code}/restore", response_model=AccountRead)
-async def restore_account(code: str, service: ServiceDep, _: CurrentUser) -> Account:
+async def restore_account(code: str, service: ServiceDep) -> Account:
     return await service.restore(code)
