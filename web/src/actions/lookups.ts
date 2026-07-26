@@ -21,12 +21,15 @@ export async function searchAccounts(search: string): Promise<Account[]> {
     // Leaves only. Not "level Auxiliar": a six-digit subaccount with nothing
     // under it takes entries too, and offering a heading would only earn a
     // rejection from the server.
-    return await accountsApi.list({
+    // The pickers want the rows, not the envelope: a combobox showing twenty
+    // matches has no use for a total.
+    const page = await accountsApi.list({
       search: query,
       only_active: true,
       only_postable: true,
       limit: 20,
     });
+    return page.items;
   } catch {
     return [];
   }
@@ -37,11 +40,12 @@ export async function searchThirdParties(search: string): Promise<ThirdParty[]> 
   if (query.length < 2) return [];
 
   try {
-    return await thirdPartiesApi.list({
+    const page = await thirdPartiesApi.list({
       search: query,
       only_active: true,
       limit: 20,
     });
+    return page.items;
   } catch {
     return [];
   }

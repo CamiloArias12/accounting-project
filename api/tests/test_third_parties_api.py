@@ -191,10 +191,10 @@ async def test_searching_by_document_and_by_name(
     await auth_client.post(BASE, json=legal_payload(places))
 
     by_document = await auth_client.get(BASE, params={"search": "1020304"})
-    assert [t["full_name"] for t in by_document.json()] == ["Ana Restrepo"]
+    assert [t["full_name"] for t in by_document.json()["items"]] == ["Ana Restrepo"]
 
     by_name = await auth_client.get(BASE, params={"search": "comercializadora"})
-    assert [t["document_number"] for t in by_name.json()] == ["800197268"]
+    assert [t["document_number"] for t in by_name.json()["items"]] == ["800197268"]
 
 
 async def test_filtering_by_person_type(
@@ -206,7 +206,7 @@ async def test_filtering_by_person_type(
 
     companies = await auth_client.get(BASE, params={"person_type": "Legal entity"})
 
-    assert [t["legal_name"] for t in companies.json()] == [
+    assert [t["legal_name"] for t in companies.json()["items"]] == [
         "Comercializadora del Norte S.A.S."
     ]
 

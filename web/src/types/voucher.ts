@@ -73,6 +73,20 @@ export interface VoucherReverse {
   description?: string | null;
 }
 
+/**
+ * The envelope every list endpoint returns.
+ *
+ * A bare array cannot be paged: the client has no way to tell whether it is
+ * looking at everything or at the first fifty of nine hundred.
+ */
+export interface Page<T> {
+  items: T[];
+  /** Rows matching the filters, not rows in this page. */
+  total: number;
+  skip: number;
+  limit: number;
+}
+
 export interface VoucherListParams {
   status?: VoucherStatus;
   period_year?: number;

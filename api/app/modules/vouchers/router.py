@@ -18,6 +18,7 @@ from app.modules.vouchers.schemas import (
 from app.modules.vouchers.service import VoucherService
 from app.shared.config import settings
 from app.shared.database import get_session
+from app.shared.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page
 
 # Applied to the whole router: an endpoint added later is protected by being
 # here, instead of by remembering to annotate it.
@@ -56,7 +57,7 @@ async def issuing_company() -> CompanyRead:
     )
 
 
-@router.get("", response_model=list[VoucherRead])
+@router.get("", response_model=Page[VoucherRead])
 async def list_vouchers(
     service: ServiceDep,
     voucher_status: Annotated[VoucherStatus | None, Query(alias="status")] = None,
@@ -66,20 +67,19 @@ async def list_vouchers(
     date_to: Annotated[date | None, Query()] = None,
     search: Annotated[str | None, Query(description="Match the description")] = None,
     skip: Annotated[int, Query(ge=0)] = 0,
-    limit: Annotated[int, Query(ge=1, le=500)] = 100,
-) -> list[Voucher]:
-    return list(
-        await service.find_many(
-            status=voucher_status,
-            period_year=period_year,
-            period_month=period_month,
-            date_from=date_from,
-            date_to=date_to,
-            search=search,
-            skip=skip,
-            limit=limit,
-        )
+    limit: Annotated[int, Query(ge=1, le=MAX_LIMIT)] = DEFAULT_LIMIT,
+) -> Page[VoucherRead]:
+    items, total = await service.find_many(
+        status=voucher_status,
+        period_year=period_year,
+        period_month=period_month,
+        date_from=date_from,
+        date_to=date_to,
+        search=search,
+        skip=skip,
+        limit=limit,
     )
+    return Page[VoucherRead](items=list(items), total=total, skip=skip, limit=limit)
 
 
 @router.post("", response_model=VoucherRead, status_code=status.HTTP_201_CREATED)

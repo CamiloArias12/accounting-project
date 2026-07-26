@@ -19,6 +19,7 @@ from app.modules.accounts.service import AccountService
 from app.modules.auth.dependencies import current_user
 from app.shared.config import settings
 from app.shared.database import get_session
+from app.shared.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page
 from app.shared.redis import get_redis
 
 # Applied to the whole router: an endpoint added later is protected by being
@@ -55,7 +56,7 @@ ImporterDep = Annotated[AccountImporter, Depends(get_importer)]
 IncludeDeleted = Annotated[bool, Query(description="Include soft-deleted accounts")]
 
 
-@router.get("", response_model=list[AccountRead])
+@router.get("", response_model=Page[AccountRead])
 async def list_accounts(
     service: ServiceDep,
     level: Annotated[AccountLevel | None, Query()] = None,
@@ -67,20 +68,19 @@ async def list_accounts(
     ] = False,
     include_deleted: IncludeDeleted = False,
     skip: Annotated[int, Query(ge=0)] = 0,
-    limit: Annotated[int, Query(ge=1, le=500)] = 100,
-) -> list[Account]:
-    return list(
-        await service.find_many(
-            level=level,
-            parent_code=parent_code,
-            search=search,
-            only_active=only_active,
-            only_postable=only_postable,
-            include_deleted=include_deleted,
-            skip=skip,
-            limit=limit,
-        )
+    limit: Annotated[int, Query(ge=1, le=MAX_LIMIT)] = DEFAULT_LIMIT,
+) -> Page[AccountRead]:
+    items, total = await service.find_many(
+        level=level,
+        parent_code=parent_code,
+        search=search,
+        only_active=only_active,
+        only_postable=only_postable,
+        include_deleted=include_deleted,
+        skip=skip,
+        limit=limit,
     )
+    return Page[AccountRead](items=list(items), total=total, skip=skip, limit=limit)
 
 
 @router.get("/tree", response_model=list[AccountNode])

@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { fetchCities, fetchDepartments } from "@/actions/locations";
-import { NativeSelect } from "@/components/NativeSelect";
+import { SearchableSelect } from "@/components/SearchableSelect";
 import { Label } from "@/components/ui/label";
 import type { City, Country, Department } from "@/types/third-party";
 
@@ -88,11 +88,12 @@ export function PlaceFields({
     <div className="grid gap-3 sm:grid-cols-3">
       <div className="flex flex-col gap-1.5">
         <Label>{t("country")}</Label>
-        <NativeSelect
+        <SearchableSelect
           name={names.country}
           value={String(countryId)}
           required={requireCountry}
           placeholder={t("choose")}
+          searchPlaceholder={t("searchCountry")}
           options={countries.map((country) => ({
             value: String(country.id),
             label: country.name,
@@ -110,11 +111,12 @@ export function PlaceFields({
 
       <div className="flex flex-col gap-1.5">
         <Label>{t("department")}</Label>
-        <NativeSelect
+        <SearchableSelect
           name={names.department}
           value={String(departmentId)}
           disabled={departments.length === 0}
           placeholder={t("choose")}
+          searchPlaceholder={t("searchDepartment")}
           options={departments.map((department) => ({
             value: String(department.id),
             label: department.name,
@@ -129,11 +131,12 @@ export function PlaceFields({
 
       <div className="flex flex-col gap-1.5">
         <Label>{t("city")}</Label>
-        <NativeSelect
+        <SearchableSelect
           name={names.city}
           value={String(cityId)}
           disabled={cities.length === 0}
           placeholder={t("choose")}
+          searchPlaceholder={t("searchCity")}
           options={cities.map((city) => ({
             value: String(city.id),
             label: city.name,
@@ -141,8 +144,6 @@ export function PlaceFields({
           onChange={setCityId}
         />
       </div>
-
-
     </div>
   );
 }

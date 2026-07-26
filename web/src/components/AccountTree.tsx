@@ -1,8 +1,10 @@
 "use client";
 
+import { ChevronRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
+import { cn } from "@/lib/utils";
 import type { AccountNode, Nature } from "@/types/account";
 
 interface Props {
@@ -25,11 +27,15 @@ export function AccountTree({
   const t = useTranslations("accounts");
 
   if (nodes.length === 0) {
-    return <p className="p-6 text-sm text-muted-foreground">{t("empty")}</p>;
+    return (
+      <p className="p-10 text-center text-sm text-muted-foreground">
+        {t("empty")}
+      </p>
+    );
   }
 
   return (
-    <ul className="py-2">
+    <ul className="p-2">
       {nodes.map((node) => (
         <TreeItem
           key={node.code}
@@ -72,44 +78,56 @@ function TreeItem({
   return (
     <li>
       <div
-        className={`flex items-center gap-1 rounded-md pr-2 text-sm transition-colors ${
-          isSelected
-            ? "bg-primary/15 text-blue-700 dark:text-blue-300"
-            : "hover:bg-foreground/5"
-        }`}
-        style={{ paddingLeft: `${depth * 1.1 + 0.5}rem` }}
+        // The indent comes from the nested lists below, not from a computed
+        // padding: one rule instead of one per level, and the guide line lands
+        // exactly where the children start.
+        className={cn(
+          "group flex items-center gap-1 rounded-lg pl-1 pr-2 text-sm transition-colors",
+          isSelected ? "bg-primary/10 text-primary" : "hover:bg-muted",
+        )}
       >
         <button
           type="button"
           onClick={() => setExpanded((value) => !value)}
-          className={`grid size-5 shrink-0 place-items-center rounded text-xs text-muted-foreground ${
-            hasChildren
-              ? "hover:bg-foreground/10"
-              : "invisible"
-          }`}
+          className={cn(
+            "grid size-5 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors",
+            hasChildren ? "hover:bg-foreground/10" : "invisible",
+          )}
           aria-label={expanded ? t("collapse") : t("expand")}
           aria-expanded={hasChildren ? expanded : undefined}
         >
-          {expanded ? "▾" : "▸"}
+          <ChevronRight
+            className={cn(
+              "size-3.5 transition-transform duration-150",
+              expanded && "rotate-90",
+            )}
+          />
         </button>
 
         <button
           type="button"
           onClick={() => onSelect(node)}
-          className="flex min-w-0 flex-1 items-baseline gap-2 py-1 text-left"
+          className="flex min-w-0 flex-1 items-baseline gap-2 py-1.5 text-left outline-none"
         >
-          <span className="shrink-0 font-mono text-xs tabular-nums opacity-70">
+          <span
+            className={cn(
+              "shrink-0 font-mono text-xs tabular-nums",
+              isSelected ? "text-primary/80" : "text-muted-foreground",
+            )}
+          >
             {node.code}
           </span>
           <span
-            className={`truncate ${
-              isDeleted || !node.is_active ? "line-through opacity-50" : ""
-            }`}
+            className={cn(
+              "truncate",
+              (isDeleted || !node.is_active) && "line-through opacity-50",
+              depth === 0 && "font-medium",
+            )}
           >
             {node.name}
           </span>
           {isDeleted && (
-            <span className="shrink-0 rounded bg-red-500/15 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-red-700 dark:text-red-400">
+            <span className="shrink-0 rounded-md bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-destructive">
               {t("deletedBadge")}
             </span>
           )}
@@ -118,7 +136,11 @@ function TreeItem({
       </div>
 
       {hasChildren && expanded && (
-        <ul>
+        <ul
+          // The guide line: at four levels deep, indentation alone stops being
+          // enough to tell which parent a row belongs to.
+          className="ml-[0.85rem] border-l border-border/70"
+        >
           {node.children.map((child) => (
             <TreeItem
               key={child.code}
@@ -141,11 +163,12 @@ function NatureBadge({ nature }: { nature: Nature }) {
 
   return (
     <span
-      className={`ml-auto shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide ${
+      className={cn(
+        "ml-auto shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide",
         isDebit
-          ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
-          : "bg-amber-500/15 text-amber-700 dark:text-amber-400"
-      }`}
+          ? "bg-emerald-500/12 text-emerald-700 dark:text-emerald-400"
+          : "bg-amber-500/12 text-amber-700 dark:text-amber-400",
+      )}
     >
       {t(nature)}
     </span>

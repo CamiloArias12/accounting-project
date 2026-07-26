@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, X } from "lucide-react";
+import { Check, Plus, TriangleAlert, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
 
@@ -127,11 +127,11 @@ export function VoucherLines({ initial, readOnly, labels }: Props) {
     <div className="flex flex-col gap-3">
       <input type="hidden" name="lines" value={JSON.stringify(payload)} />
 
-      <div className="overflow-x-auto">
+      <div className="scrollbar-slim overflow-x-auto rounded-xl ring-1 ring-border">
         <Table className="min-w-[54rem]">
           <TableHeader>
-            <TableRow>
-              <TableHead className="w-[26%]">{t("account")}</TableHead>
+            <TableRow className="bg-muted/50 hover:bg-muted/50">
+              <TableHead className="w-[26%] pl-3">{t("account")}</TableHead>
               <TableHead className="w-[22%]">{t("thirdParty")}</TableHead>
               <TableHead className="w-[15%] text-right">{t("debit")}</TableHead>
               <TableHead className="w-[15%] text-right">
@@ -143,8 +143,8 @@ export function VoucherLines({ initial, readOnly, labels }: Props) {
           </TableHeader>
           <TableBody>
             {lines.map((line) => (
-              <TableRow key={line.key}>
-                <TableCell>
+              <TableRow key={line.key} className="hover:bg-transparent">
+                <TableCell className="pl-3">
                   <AsyncCombobox
                     value={line.account_code}
                     selectedLabel={line.account_label}
@@ -242,8 +242,10 @@ export function VoucherLines({ initial, readOnly, labels }: Props) {
             ))}
           </TableBody>
           <TableFooter>
-            <TableRow>
-              <TableCell colSpan={2}>{t("totals")}</TableCell>
+            <TableRow className="hover:bg-transparent">
+              <TableCell colSpan={2} className="pl-3">
+                {t("totals")}
+              </TableCell>
               <TableCell className="text-right tabular-nums">
                 {formatMoney(totals.debit)}
               </TableCell>
@@ -279,14 +281,16 @@ function Difference({ cents }: { cents: number }) {
 
   if (cents === 0) {
     return (
-      <span className="text-sm text-emerald-700 dark:text-emerald-400">
-        ✓ {t("balanced")}
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-2.5 py-1 text-xs font-medium text-success">
+        <Check className="size-3.5" />
+        {t("balanced")}
       </span>
     );
   }
 
   return (
-    <span className="text-sm text-destructive">
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-destructive/10 px-2.5 py-1 text-xs font-medium text-destructive">
+      <TriangleAlert className="size-3.5" />
       {t("offBy", { amount: formatMoney(Math.abs(cents)) })}
     </span>
   );

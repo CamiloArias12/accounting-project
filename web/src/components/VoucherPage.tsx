@@ -5,9 +5,9 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import { LoadError, PageShell } from "@/components/PageHeader";
 import { VoucherForm } from "@/components/VoucherForm";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import type { Company, Voucher } from "@/types/voucher";
 
 interface Props {
@@ -30,11 +30,11 @@ export function VoucherPage({
   const router = useRouter();
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-6 p-6 pt-16 lg:pt-6">
+    <PageShell>
       <Button
         variant="ghost"
         size="sm"
-        className="self-start"
+        className="-ml-2 self-start text-muted-foreground"
         // `nativeButton={false}`: this renders an <a>, and Base UI warns when a
         // component styled as a button is not one — the semantics differ.
         nativeButton={false}
@@ -44,26 +44,17 @@ export function VoucherPage({
         {t("backToList")}
       </Button>
 
-      {loadError && (
-        <p
-          role="alert"
-          className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive"
-        >
-          {loadError}
-        </p>
-      )}
+      {loadError && <LoadError message={loadError} />}
 
-      <Card>
-        <CardContent>
-          <VoucherForm
-            voucher={voucher}
-            company={company}
-            thirdPartyLabels={thirdPartyLabels}
-            today={today}
-            onCancel={() => router.push("/vouchers")}
-          />
-        </CardContent>
-      </Card>
-    </main>
+      <div className="rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border sm:p-6">
+        <VoucherForm
+          voucher={voucher}
+          company={company}
+          thirdPartyLabels={thirdPartyLabels}
+          today={today}
+          onCancel={() => router.push("/vouchers")}
+        />
+      </div>
+    </PageShell>
   );
 }

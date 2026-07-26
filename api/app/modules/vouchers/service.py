@@ -37,6 +37,7 @@ from app.modules.vouchers.schemas import (
     VoucherReverse,
     VoucherUpdate,
 )
+from app.shared.pagination import count_of
 
 #: How many times a posting retries when two of them race for the same number.
 #: The unique index is what makes the collision safe; this only makes it rare.
@@ -65,8 +66,9 @@ class VoucherService:
         date_to: date | None = None,
         search: str | None = None,
         skip: int = 0,
-        limit: int = 100,
-    ) -> Sequence[Voucher]:
+        limit: int = 50,
+    ) -> tuple[Sequence[Voucher], int]:
+        """The slice and the total, so a caller can page through it."""
         query: Select[tuple[Voucher]] = select(Voucher)
 
         if status is not None:
@@ -82,6 +84,7 @@ class VoucherService:
         if search:
             query = query.where(Voucher.description.ilike(f"%{search.strip()}%"))
 
+        total = await count_of(self._session, query)
         result = await self._session.execute(
             # Newest first, and drafts — which have no number — before the
             # posted ones of the same day.
@@ -89,7 +92,7 @@ class VoucherService:
             .offset(skip)
             .limit(limit)
         )
-        return result.scalars().all()
+        return result.scalars().all(), total
 
     # --- writes -----------------------------------------------------------
 

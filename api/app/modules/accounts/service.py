@@ -35,6 +35,7 @@ from app.modules.accounts.schemas import (
     AccountRead,
     AccountUpdate,
 )
+from app.shared.pagination import count_of
 
 
 class AccountService:
@@ -60,8 +61,9 @@ class AccountService:
         only_postable: bool = False,
         include_deleted: bool = False,
         skip: int = 0,
-        limit: int = 100,
-    ) -> Sequence[Account]:
+        limit: int = 50,
+    ) -> tuple[Sequence[Account], int]:
+        """The slice and the total, so a caller can page through it."""
         query = self._visible(include_deleted)
 
         if level is not None:
@@ -86,10 +88,11 @@ class AccountService:
                 Account.name.ilike(pattern) | Account.code.like(pattern)
             )
 
+        total = await count_of(self._session, query)
         result = await self._session.execute(
             query.order_by(Account.code).offset(skip).limit(limit)
         )
-        return result.scalars().all()
+        return result.scalars().all(), total
 
     async def tree(
         self,

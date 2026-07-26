@@ -1,5 +1,6 @@
 "use client";
 
+import { Eye, EyeOff, Plus, Search, Upload } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -7,6 +8,9 @@ import { useMemo, useState } from "react";
 import { AccountForm } from "@/components/AccountForm";
 import { AccountTree } from "@/components/AccountTree";
 import { ImportForm } from "@/components/ImportForm";
+import { LoadError, PageHeader, PageShell } from "@/components/PageHeader";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import type { AccountNode } from "@/types/account";
 
 type Panel = "form" | "import";
@@ -31,72 +35,74 @@ export function AccountsWorkspace({ tree, loadError, showDeleted }: Props) {
   const query = search.trim();
   const visible = useMemo(() => filterTree(tree, query), [tree, query]);
   const total = useMemo(() => countNodes(tree), [tree]);
+  const shown = useMemo(() => countNodes(visible), [visible]);
   const selected = useMemo(
     () => (selectedCode ? findNode(tree, selectedCode) : null),
     [tree, selectedCode],
   );
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-6 p-6 pt-16 lg:pt-6">
-      <header className="flex flex-wrap items-baseline justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {t("title")}
-          </h1>
-          <p className="text-sm text-muted-foreground">
+    <PageShell>
+      <PageHeader
+        eyebrow={t("eyebrow")}
+        title={t("title")}
+        subtitle={
+          <>
             {t("count", { count: total })}
             {showDeleted && ` · ${t("includingDeleted")}`}
-          </p>
-        </div>
+          </>
+        }
+        actions={
+          <>
+            <Button
+              variant="outline"
+              nativeButton={false}
+              render={
+                <Link href={showDeleted ? "/accounts" : "/accounts?deleted=1"} />
+              }
+            >
+              {showDeleted ? <EyeOff /> : <Eye />}
+              {showDeleted ? t("hideDeleted") : t("showDeleted")}
+            </Button>
+            <Button variant="outline" onClick={() => setPanel("import")}>
+              <Upload />
+              {t("importSpreadsheet")}
+            </Button>
+            <Button
+              onClick={() => {
+                setSelectedCode(null);
+                setPanel("form");
+              }}
+            >
+              <Plus />
+              {t("newAccount")}
+            </Button>
+          </>
+        }
+      />
 
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedCode(null);
-              setPanel("form");
-            }}
-            className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground"
-          >
-            {t("newAccount")}
-          </button>
-          <button
-            type="button"
-            onClick={() => setPanel("import")}
-            className="rounded-md border border-border px-3 py-1.5 text-sm"
-          >
-            {t("importSpreadsheet")}
-          </button>
-          <Link
-            href={showDeleted ? "/accounts" : "/accounts?deleted=1"}
-            className="rounded-md border border-border px-3 py-1.5 text-sm"
-          >
-            {showDeleted ? t("hideDeleted") : t("showDeleted")}
-          </Link>
-        </div>
-      </header>
+      {loadError && <LoadError message={loadError} />}
 
-      {loadError && (
-        <p
-          role="alert"
-          className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-400"
-        >
-          {loadError}
-        </p>
-      )}
-
-      <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
-        <section className="min-w-0 rounded-lg border border-border">
-          <div className="border-b border-border p-3">
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder={t("searchPlaceholder")}
-              className="w-full rounded-md border border-border bg-transparent px-3 py-1.5 text-sm"
-            />
+      <div className="grid gap-5 lg:grid-cols-[1fr_23rem] lg:items-start">
+        <section className="min-w-0 overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-border">
+          <div className="flex items-center gap-2 border-b border-border p-3">
+            <div className="relative flex-1">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder={t("searchPlaceholder")}
+                className="pl-8"
+              />
+            </div>
+            {query !== "" && (
+              <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                {t("matches", { count: shown })}
+              </span>
+            )}
           </div>
 
-          <div className="max-h-[65vh] overflow-y-auto">
+          <div className="scrollbar-slim max-h-[65vh] overflow-y-auto">
             <AccountTree
               // Remounting on a new query re-evaluates each item's expansion.
               key={query}
@@ -111,7 +117,7 @@ export function AccountsWorkspace({ tree, loadError, showDeleted }: Props) {
           </div>
         </section>
 
-        <aside className="rounded-lg border border-border p-4">
+        <aside className="rounded-xl bg-card p-4 shadow-sm ring-1 ring-border lg:sticky lg:top-6">
           {panel === "import" ? (
             <ImportForm />
           ) : (
@@ -124,7 +130,7 @@ export function AccountsWorkspace({ tree, loadError, showDeleted }: Props) {
           )}
         </aside>
       </div>
-    </main>
+    </PageShell>
   );
 }
 

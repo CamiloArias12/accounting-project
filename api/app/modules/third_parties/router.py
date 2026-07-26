@@ -13,6 +13,7 @@ from app.modules.third_parties.schemas import (
 )
 from app.modules.third_parties.service import ThirdPartyService
 from app.shared.database import get_session
+from app.shared.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page
 
 # Applied to the whole router: an endpoint added later is protected by being
 # here, instead of by remembering to annotate it.
@@ -34,7 +35,7 @@ ServiceDep = Annotated[ThirdPartyService, Depends(get_service)]
 IncludeDeleted = Annotated[bool, Query(description="Include soft-deleted rows")]
 
 
-@router.get("", response_model=list[ThirdPartyRead])
+@router.get("", response_model=Page[ThirdPartyRead])
 async def list_third_parties(
     service: ServiceDep,
     person_type: Annotated[PersonType | None, Query()] = None,
@@ -45,19 +46,18 @@ async def list_third_parties(
     only_active: Annotated[bool | None, Query()] = None,
     include_deleted: IncludeDeleted = False,
     skip: Annotated[int, Query(ge=0)] = 0,
-    limit: Annotated[int, Query(ge=1, le=500)] = 100,
-) -> list[ThirdParty]:
-    return list(
-        await service.find_many(
-            person_type=person_type,
-            document_type=document_type,
-            search=search,
-            only_active=only_active,
-            include_deleted=include_deleted,
-            skip=skip,
-            limit=limit,
-        )
+    limit: Annotated[int, Query(ge=1, le=MAX_LIMIT)] = DEFAULT_LIMIT,
+) -> Page[ThirdPartyRead]:
+    items, total = await service.find_many(
+        person_type=person_type,
+        document_type=document_type,
+        search=search,
+        only_active=only_active,
+        include_deleted=include_deleted,
+        skip=skip,
+        limit=limit,
     )
+    return Page[ThirdPartyRead](items=list(items), total=total, skip=skip, limit=limit)
 
 
 @router.post("", response_model=ThirdPartyRead, status_code=status.HTTP_201_CREATED)

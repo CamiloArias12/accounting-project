@@ -27,12 +27,12 @@ async def test_deleted_accounts_are_hidden_from_lists(auth_client: AsyncClient) 
     await auth_client.delete("/api/v1/accounts/110505")
 
     listed = await auth_client.get("/api/v1/accounts")
-    assert "110505" not in [a["code"] for a in listed.json()]
+    assert "110505" not in [a["code"] for a in listed.json()["items"]]
 
     with_deleted = await auth_client.get(
         "/api/v1/accounts", params={"include_deleted": True}
     )
-    assert "110505" in [a["code"] for a in with_deleted.json()]
+    assert "110505" in [a["code"] for a in with_deleted.json()["items"]]
 
 
 async def test_deleted_accounts_are_hidden_from_the_tree(

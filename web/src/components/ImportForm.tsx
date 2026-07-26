@@ -1,11 +1,15 @@
 "use client";
 
+import { Upload } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { IMPORT_IDLE, type ImportState } from "@/actions/state";
 import { importAccounts } from "@/actions/accounts";
+import { SearchableSelect } from "@/components/SearchableSelect";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import type { ImportResult } from "@/types/account";
 
 export function ImportForm() {
@@ -18,10 +22,10 @@ export function ImportForm() {
   return (
     <form action={submit} className="flex flex-col gap-4">
       <header>
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          {t("title")}
-        </h2>
-        <p className="mt-1 text-xs text-muted-foreground">{t("hint")}</p>
+        <h2 className="text-sm font-semibold tracking-tight">{t("title")}</h2>
+        <p className="mt-1 text-xs leading-snug text-muted-foreground">
+          {t("hint")}
+        </p>
       </header>
 
       <input
@@ -29,27 +33,27 @@ export function ImportForm() {
         name="file"
         accept=".xlsx"
         required
-        className="text-sm file:mr-3 file:rounded-md file:border-0 file:bg-foreground/10 file:px-3 file:py-2 file:text-sm"
+        className="w-full cursor-pointer rounded-lg border border-dashed border-input bg-muted/40 p-3 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-foreground/10 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-foreground"
       />
 
-      <label className="flex flex-col gap-1 text-sm">
-        {t("onExisting")}
-        <select
+      <div className="flex flex-col gap-1.5">
+        <Label>{t("onExisting")}</Label>
+        <SearchableSelect
           name="on_existing"
           defaultValue="skip"
-          className="rounded-md border border-border bg-transparent px-3 py-2"
-        >
-          <option value="skip">{t("skip")}</option>
-          <option value="update">{t("update")}</option>
-        </select>
-      </label>
+          options={[
+            { value: "skip", label: t("skip") },
+            { value: "update", label: t("update") },
+          ]}
+        />
+      </div>
 
       <ImportButton label={t("submit")} pendingLabel={t("importing")} />
 
       {state.status === "error" && (
         <p
           role="alert"
-          className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-400"
+          className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive ring-1 ring-destructive/20"
         >
           {state.message}
         </p>
@@ -69,13 +73,10 @@ function ImportButton({
 }) {
   const { pending } = useFormStatus();
   return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
-    >
+    <Button type="submit" disabled={pending}>
+      <Upload />
       {pending ? pendingLabel : label}
-    </button>
+    </Button>
   );
 }
 
@@ -85,7 +86,7 @@ function ImportSummary({ result }: { result: ImportResult }) {
   return (
     <div
       role="status"
-      className="flex flex-col gap-3 rounded-md bg-black/5 p-3 text-sm dark:bg-white/5"
+      className="flex flex-col gap-3 rounded-xl bg-muted/60 p-3 text-sm ring-1 ring-border"
     >
       <dl className="grid grid-cols-3 gap-2 text-center">
         <Stat label={t("created")} value={result.created} />
@@ -95,10 +96,10 @@ function ImportSummary({ result }: { result: ImportResult }) {
 
       {result.errors.length > 0 && (
         <details open={result.errors.length <= 10}>
-          <summary className="cursor-pointer text-red-700 dark:text-red-400">
+          <summary className="cursor-pointer text-destructive">
             {t("rowErrors", { count: result.errors.length })}
           </summary>
-          <ul className="mt-2 max-h-56 space-y-1 overflow-y-auto text-xs">
+          <ul className="scrollbar-slim mt-2 max-h-56 space-y-1 overflow-y-auto text-xs">
             {result.errors.map((rowError) => (
               <li
                 key={`${rowError.row}-${rowError.code}`}
@@ -121,8 +122,10 @@ function ImportSummary({ result }: { result: ImportResult }) {
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div>
-      <dt className="text-xs uppercase tracking-wide text-muted-foreground">{label}</dt>
+    <div className="rounded-lg bg-card px-2 py-2 ring-1 ring-border">
+      <dt className="text-[0.7rem] uppercase tracking-wide text-muted-foreground">
+        {label}
+      </dt>
       <dd className="text-lg font-semibold tabular-nums">{value}</dd>
     </div>
   );

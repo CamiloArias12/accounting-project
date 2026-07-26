@@ -5,10 +5,10 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import { LoadError, PageShell } from "@/components/PageHeader";
 import type { Preloaded } from "@/components/ThirdPartyForm";
 import { ThirdPartyForm } from "@/components/ThirdPartyForm";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import type { Country, Department, ThirdParty } from "@/types/third-party";
 
 interface Props {
@@ -31,11 +31,11 @@ export function ThirdPartyPage({
   const router = useRouter();
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-6 p-6 pt-16 lg:pt-6">
+    <PageShell className="max-w-4xl">
       <Button
         variant="ghost"
         size="sm"
-        className="self-start"
+        className="-ml-2 self-start text-muted-foreground"
         // `nativeButton={false}`: this renders an <a>, and Base UI warns when a
         // component styled as a button is not one — the semantics differ.
         nativeButton={false}
@@ -45,26 +45,17 @@ export function ThirdPartyPage({
         {t("backToList")}
       </Button>
 
-      {loadError && (
-        <p
-          role="alert"
-          className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive"
-        >
-          {loadError}
-        </p>
-      )}
+      {loadError && <LoadError message={loadError} />}
 
-      <Card>
-        <CardContent>
-          <ThirdPartyForm
-            thirdParty={thirdParty}
-            countries={countries}
-            departments={departments}
-            preloaded={preloaded}
-            onCancel={() => router.push("/third-parties")}
-          />
-        </CardContent>
-      </Card>
-    </main>
+      <div className="rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border sm:p-6">
+        <ThirdPartyForm
+          thirdParty={thirdParty}
+          countries={countries}
+          departments={departments}
+          preloaded={preloaded}
+          onCancel={() => router.push("/third-parties")}
+        />
+      </div>
+    </PageShell>
   );
 }

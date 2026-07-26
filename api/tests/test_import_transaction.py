@@ -50,7 +50,7 @@ async def test_a_large_file_lands_in_one_transaction(
 
     assert result["created"] == len(rows)
     listed = await auth_client.get("/api/v1/accounts", params={"limit": 500})
-    assert len(listed.json()) == len(rows)
+    assert listed.json()["total"] == len(rows)
 
 
 async def test_rows_that_fail_do_not_stop_the_rest(auth_client: AsyncClient) -> None:

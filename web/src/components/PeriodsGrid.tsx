@@ -1,7 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight } from "lucide-react";
-
+import { ChevronLeft, ChevronRight, Lock, LockOpen } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -10,9 +9,10 @@ import { useFormStatus } from "react-dom";
 
 import { IDLE, type FormState } from "@/actions/state";
 import { changePeriodState } from "@/actions/vouchers";
+import { LoadError, PageHeader, PageShell } from "@/components/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import type { Period } from "@/types/voucher";
 
 interface Props {
@@ -35,49 +35,43 @@ export function PeriodsGrid({ year, periods, loadError }: Props) {
   }, [state]);
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 p-6 pt-16 lg:pt-6">
-      <header className="flex flex-wrap items-baseline justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            aria-label={t("previousYear")}
-            onClick={() => router.push(`/periods?year=${year - 1}`)}
-          >
-            <ChevronLeft />
-          </Button>
-          <span className="text-lg font-semibold tabular-nums">{year}</span>
-          <Button
-            variant="outline"
-            size="icon"
-            aria-label={t("nextYear")}
-            onClick={() => router.push(`/periods?year=${year + 1}`)}
-          >
-            <ChevronRight />
-          </Button>
-        </div>
-      </header>
+    <PageShell className="max-w-5xl">
+      <PageHeader
+        eyebrow={t("eyebrow")}
+        title={t("title")}
+        subtitle={t("subtitle")}
+        actions={
+          <div className="flex items-center gap-1 rounded-lg bg-card p-1 shadow-xs ring-1 ring-border">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={t("previousYear")}
+              onClick={() => router.push(`/periods?year=${year - 1}`)}
+            >
+              <ChevronLeft />
+            </Button>
+            <span className="min-w-14 text-center text-sm font-semibold tabular-nums">
+              {year}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={t("nextYear")}
+              onClick={() => router.push(`/periods?year=${year + 1}`)}
+            >
+              <ChevronRight />
+            </Button>
+          </div>
+        }
+      />
 
-      {loadError && (
-        <p
-          role="alert"
-          className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-400"
-        >
-          {loadError}
-        </p>
-      )}
+      {loadError && <LoadError message={loadError} />}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {periods.map((period) => {
           const closed = period.status === "Closed";
           return (
             <form key={period.month} action={submit}>
-              <Card>
-                <CardContent className="flex items-center justify-between gap-3">
               <input type="hidden" name="year" value={period.year} />
               <input type="hidden" name="month" value={period.month} />
               <input
@@ -86,13 +80,38 @@ export function PeriodsGrid({ year, periods, loadError }: Props) {
                 value={closed ? "reopen" : "close"}
               />
 
-                <div className="flex flex-col items-start gap-1">
-                  <p className="text-sm font-medium">
-                    {t(`months.${period.month}`)}
-                  </p>
-                  <Badge variant={closed ? "secondary" : "outline"}>
-                    {t(`statuses.${period.status}`)}
-                  </Badge>
+              <div
+                className={cn(
+                  "flex items-center justify-between gap-3 rounded-xl p-4 shadow-xs ring-1 transition-shadow hover:shadow-sm",
+                  closed
+                    ? "bg-muted/50 ring-border"
+                    : "bg-card ring-border",
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "grid size-9 shrink-0 place-items-center rounded-lg",
+                      closed
+                        ? "bg-foreground/5 text-muted-foreground"
+                        : "bg-success/10 text-success",
+                    )}
+                  >
+                    {closed ? (
+                      <Lock className="size-4" />
+                    ) : (
+                      <LockOpen className="size-4" />
+                    )}
+                  </span>
+                  <div className="flex flex-col items-start gap-1">
+                    <p className="text-sm font-medium">
+                      {t(`months.${period.month}`)}
+                    </p>
+                    <Badge variant={closed ? "secondary" : "outline"}>
+                      {t(`statuses.${period.status}`)}
+                    </Badge>
+                  </div>
                 </div>
 
                 <Action
@@ -100,15 +119,16 @@ export function PeriodsGrid({ year, periods, loadError }: Props) {
                   pendingLabel={closed ? t("reopening") : t("closing")}
                   closed={closed}
                 />
-                </CardContent>
-              </Card>
+              </div>
             </form>
           );
         })}
       </div>
 
-      <p className="text-xs text-muted-foreground">{t("hint")}</p>
-    </main>
+      <p className="text-xs leading-relaxed text-muted-foreground">
+        {t("hint")}
+      </p>
+    </PageShell>
   );
 }
 
@@ -126,7 +146,7 @@ function Action({
   return (
     <Button
       type="submit"
-      variant={closed ? "outline" : "default"}
+      variant={closed ? "outline" : "secondary"}
       size="sm"
       disabled={pending}
     >

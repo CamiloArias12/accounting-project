@@ -1,50 +1,106 @@
+import {
+  ArrowRight,
+  BookOpen,
+  CalendarRange,
+  ListTree,
+  ReceiptText,
+  Users,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
+
+import { PageHeader, PageShell } from "@/components/PageHeader";
+
+interface Card {
+  href: string;
+  titleKey: "accountsCard" | "thirdPartiesCard" | "vouchersCard" | "ledgerCard" | "periodsCard";
+  hintKey:
+    | "accountsCardHint"
+    | "thirdPartiesCardHint"
+    | "vouchersCardHint"
+    | "ledgerCardHint"
+    | "periodsCardHint";
+  icon: LucideIcon;
+}
+
+const CARDS: Card[] = [
+  {
+    href: "/accounts",
+    titleKey: "accountsCard",
+    hintKey: "accountsCardHint",
+    icon: ListTree,
+  },
+  {
+    href: "/third-parties",
+    titleKey: "thirdPartiesCard",
+    hintKey: "thirdPartiesCardHint",
+    icon: Users,
+  },
+  {
+    href: "/vouchers",
+    titleKey: "vouchersCard",
+    hintKey: "vouchersCardHint",
+    icon: ReceiptText,
+  },
+  {
+    href: "/ledger",
+    titleKey: "ledgerCard",
+    hintKey: "ledgerCardHint",
+    icon: BookOpen,
+  },
+  {
+    href: "/periods",
+    titleKey: "periodsCard",
+    hintKey: "periodsCardHint",
+    icon: CalendarRange,
+  },
+];
 
 export default function Overview() {
   const t = useTranslations("overview");
 
   return (
-    <main className="mx-auto flex max-w-6xl flex-col gap-6 p-6 pt-16 lg:pt-6">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
-      </header>
+    <PageShell>
+      <PageHeader eyebrow={t("eyebrow")} title={t("title")} subtitle={t("subtitle")} />
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Link
-          href="/accounts"
-          className="flex flex-col gap-1 rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary"
-        >
-          <span className="text-sm font-medium">{t("accountsCard")}</span>
-          <span className="text-sm text-muted-foreground">{t("accountsCardHint")}</span>
-          <span className="mt-2 text-sm font-medium text-primary">
-            {t("open")} →
-          </span>
-        </Link>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {CARDS.map((card) => {
+          const Icon = card.icon;
+          return (
+            <Link
+              key={card.href}
+              href={card.href}
+              className="group relative flex flex-col gap-3 overflow-hidden rounded-2xl bg-card p-5 shadow-xs ring-1 ring-border transition-all hover:-translate-y-0.5 hover:shadow-md hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {/* A wash that only appears on hover: it signals the whole card
+                  is the target, which a link-coloured word alone does not. */}
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/[0.07] to-transparent opacity-0 transition-opacity group-hover:opacity-100"
+              />
 
-        <Link
-          href="/third-parties"
-          className="flex flex-col gap-1 rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary"
-        >
-          <span className="text-sm font-medium">{t("thirdPartiesCard")}</span>
-          <span className="text-sm text-muted-foreground">{t("thirdPartiesCardHint")}</span>
-          <span className="mt-2 text-sm font-medium text-primary">
-            {t("open")} →
-          </span>
-        </Link>
+              <span className="relative grid size-10 place-items-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/15 transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                <Icon className="size-5" />
+              </span>
 
-        <Link
-          href="/vouchers"
-          className="flex flex-col gap-1 rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary"
-        >
-          <span className="text-sm font-medium">{t("vouchersCard")}</span>
-          <span className="text-sm text-muted-foreground">{t("vouchersCardHint")}</span>
-          <span className="mt-2 text-sm font-medium text-primary">
-            {t("open")} →
-          </span>
-        </Link>
+              <span className="relative flex flex-col gap-1">
+                <span className="font-medium tracking-tight">
+                  {t(card.titleKey)}
+                </span>
+                <span className="text-sm leading-snug text-muted-foreground">
+                  {t(card.hintKey)}
+                </span>
+              </span>
+
+              <span className="relative mt-auto inline-flex items-center gap-1 pt-1 text-sm font-medium text-primary">
+                {t("open")}
+                <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+              </span>
+            </Link>
+          );
+        })}
       </div>
-    </main>
+    </PageShell>
   );
 }

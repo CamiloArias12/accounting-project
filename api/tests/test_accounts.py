@@ -70,7 +70,7 @@ async def test_list_filters_by_level(auth_client: AsyncClient) -> None:
     response = await auth_client.get("/api/v1/accounts", params={"level": "Cuenta"})
 
     assert response.status_code == 200
-    assert [a["code"] for a in response.json()] == ["1105"]
+    assert [a["code"] for a in response.json()["items"]] == ["1105"]
 
 
 async def test_list_filters_by_parent(auth_client: AsyncClient) -> None:
@@ -78,7 +78,7 @@ async def test_list_filters_by_parent(auth_client: AsyncClient) -> None:
 
     response = await auth_client.get("/api/v1/accounts", params={"parent_code": "11"})
 
-    assert [a["code"] for a in response.json()] == ["1105"]
+    assert [a["code"] for a in response.json()["items"]] == ["1105"]
 
 
 async def test_search_matches_code_and_name(auth_client: AsyncClient) -> None:
@@ -87,10 +87,10 @@ async def test_search_matches_code_and_name(auth_client: AsyncClient) -> None:
     by_name = await auth_client.get(
         "/api/v1/accounts", params={"search": "CAJA GENERAL"}
     )
-    assert [a["code"] for a in by_name.json()] == ["110505"]
+    assert [a["code"] for a in by_name.json()["items"]] == ["110505"]
 
     by_code = await auth_client.get("/api/v1/accounts", params={"search": "1105"})
-    assert {a["code"] for a in by_code.json()} == {"1105", "110505"}
+    assert {a["code"] for a in by_code.json()["items"]} == {"1105", "110505"}
 
 
 async def test_tree_nests_the_whole_branch(auth_client: AsyncClient) -> None:
@@ -135,4 +135,4 @@ async def test_only_postable_returns_the_leaves(auth_client: AsyncClient) -> Non
 
     # 1 > 11 > 1105 > 110505: only the deepest one takes entries, even though it
     # is a six-digit subaccount rather than an auxiliary.
-    assert [a["code"] for a in postable.json()] == ["110505"]
+    assert [a["code"] for a in postable.json()["items"]] == ["110505"]

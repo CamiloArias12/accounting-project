@@ -32,6 +32,7 @@ from app.modules.third_parties.schemas import (
     NaturalPersonCreate,
     ThirdPartyUpdate,
 )
+from app.shared.pagination import count_of
 
 #: Never copied when reviving a soft-deleted row: they belong to the stored row,
 #: not to the payload that revived it.
@@ -61,8 +62,9 @@ class ThirdPartyService:
         only_active: bool | None = None,
         include_deleted: bool = False,
         skip: int = 0,
-        limit: int = 100,
-    ) -> Sequence[ThirdParty]:
+        limit: int = 50,
+    ) -> tuple[Sequence[ThirdParty], int]:
+        """The slice and the total, so a caller can page through it."""
         query = self._visible(include_deleted)
 
         if person_type is not None:
@@ -74,10 +76,13 @@ class ThirdPartyService:
         if search:
             query = query.where(_matching(search))
 
+        # Counted before slicing: the total is of everything the filters
+        # match, which is what a pager needs.
+        total = await count_of(self._session, query)
         result = await self._session.execute(
             query.order_by(ThirdParty.document_number).offset(skip).limit(limit)
         )
-        return result.scalars().all()
+        return result.scalars().all(), total
 
     # --- writes -----------------------------------------------------------
 

@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { fetchCities } from "@/actions/locations";
-import { NativeSelect } from "@/components/NativeSelect";
+import { SearchableSelect } from "@/components/SearchableSelect";
 import { Label } from "@/components/ui/label";
 import type { City, Department } from "@/types/third-party";
 
@@ -18,9 +18,9 @@ interface Props {
 /**
  * The city a document was issued in.
  *
- * Narrowed by department rather than searched free-text: 1122 municipalities in
- * one dropdown is unusable, and the stored value is only the city, so an edit
- * has to resolve its department to preselect the first select.
+ * Narrowed by department rather than searched free-text: 1,122 municipalities
+ * in one list is a scroll, not a choice, and the stored value is only the city,
+ * so an edit has to resolve its department to preselect the first field.
  */
 export function IssueCityField({
   departments,
@@ -52,10 +52,11 @@ export function IssueCityField({
     <div className="grid gap-3 sm:grid-cols-2">
       <div className="flex flex-col gap-1.5">
         <Label>{t("issueDepartment")}</Label>
-        <NativeSelect
+        <SearchableSelect
           name="issue_department_helper"
           value={String(departmentId)}
           placeholder={t("choose")}
+          searchPlaceholder={t("searchDepartment")}
           options={departments.map((department) => ({
             value: String(department.id),
             label: department.name,
@@ -70,12 +71,13 @@ export function IssueCityField({
 
       <div className="flex flex-col gap-1.5">
         <Label>{t("issueCity")}</Label>
-        <NativeSelect
+        <SearchableSelect
           name="issue_city_id"
           value={String(cityId)}
           required
           disabled={cities.length === 0}
           placeholder={t("choose")}
+          searchPlaceholder={t("searchCity")}
           options={cities.map((city) => ({
             value: String(city.id),
             label: city.name,

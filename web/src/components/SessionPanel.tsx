@@ -1,10 +1,12 @@
 "use client";
 
+import { LogOut } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useFormStatus } from "react-dom";
 
 import { logOut } from "@/actions/auth";
+import { Button } from "@/components/ui/button";
 
 interface Props {
   /** Null when nobody is signed in; reads stay public either way. */
@@ -16,18 +18,31 @@ export function SessionPanel({ email }: Props) {
 
   if (!email) {
     return (
-      <Link
-        href="/login"
-        className="rounded-md bg-primary px-3 py-1.5 text-center text-xs font-medium text-primary-foreground"
+      <Button
+        className="w-full"
+        size="sm"
+        nativeButton={false}
+        render={<Link href="/login" />}
       >
         {t("signIn")}
-      </Link>
+      </Button>
     );
   }
 
   return (
-    <form action={logOut} className="flex flex-col gap-1">
-      <span className="truncate text-xs text-muted-foreground" title={email}>
+    <form action={logOut} className="flex items-center gap-2">
+      {/* Initials rather than a photo: there is nowhere to upload one, and an
+          empty avatar circle looks like something failed to load. */}
+      <span
+        aria-hidden
+        className="grid size-8 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-semibold uppercase text-primary ring-1 ring-primary/15"
+      >
+        {email.slice(0, 2)}
+      </span>
+      <span
+        className="min-w-0 flex-1 truncate text-xs text-muted-foreground"
+        title={email}
+      >
         {email}
       </span>
       <SignOutButton />
@@ -40,12 +55,15 @@ function SignOutButton() {
   const { pending } = useFormStatus();
 
   return (
-    <button
+    <Button
       type="submit"
+      variant="ghost"
+      size="icon-sm"
       disabled={pending}
-      className="rounded-md border border-border px-3 py-1.5 text-xs disabled:opacity-50"
+      title={t("signOut")}
     >
-      {pending ? t("signingOut") : t("signOut")}
-    </button>
+      <LogOut />
+      <span className="sr-only">{pending ? t("signingOut") : t("signOut")}</span>
+    </Button>
   );
 }

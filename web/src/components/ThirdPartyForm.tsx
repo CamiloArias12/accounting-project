@@ -1,5 +1,6 @@
 "use client";
 
+import { Building2, User } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
@@ -12,12 +13,13 @@ import {
   updateThirdParty,
 } from "@/actions/third-parties";
 import { IssueCityField } from "@/components/IssueCityField";
-import { NativeSelect } from "@/components/NativeSelect";
 import { PlaceFields } from "@/components/PlaceFields";
+import { SearchableSelect } from "@/components/SearchableSelect";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 import {
   COMPANY_TYPES,
   DOCUMENT_TYPES,
@@ -96,101 +98,138 @@ export function ThirdPartyForm({
   useAnnounce(lifecycleState);
 
   return (
-    <div className="flex flex-col gap-4">
-      <form action={submit} className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
+      <form action={submit} className="flex flex-col gap-7">
         {isEditing && <input type="hidden" name="id" value={thirdParty.id} />}
         <input type="hidden" name="person_type" value={personType} />
 
-        <header className="flex items-baseline justify-between gap-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            {isEditing ? t("editTitle") : t("createTitle")}
-          </h2>
-          {isEditing && (
-            <span className="font-mono text-xs text-muted-foreground">
-              {thirdParty.formatted_document}
+        <header className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/15">
+              {isLegal ? (
+                <Building2 className="size-5" />
+              ) : (
+                <User className="size-5" />
+              )}
             </span>
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight">
+                {isEditing ? t("editTitle") : t("createTitle")}
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                {t(`personTypes.${personType}`)}
+                {isEditing && ` · ${thirdParty.formatted_document}`}
+              </p>
+            </div>
+          </div>
+          {isDeleted && (
+            <Badge variant="destructive">{t("deletedBadgeShort")}</Badge>
           )}
         </header>
 
         {isDeleted && (
-          <p className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-400">
+          <p className="rounded-lg bg-destructive/10 px-3.5 py-2.5 text-sm text-destructive ring-1 ring-destructive/20">
             {t("deletedNotice")}
           </p>
         )}
 
         {/* A person does not become a company: the choice is made once. */}
         {!isEditing && (
-          <fieldset className="flex flex-wrap gap-4 text-sm">
-            <legend className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">
-              {t("personType")}
-            </legend>
-            {(["Natural person", "Legal entity"] as const).map((value) => (
-              <label key={value} className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  checked={personType === value}
-                  onChange={() => setPersonType(value)}
-                />
-                {t(`personTypes.${value}`)}
-              </label>
-            ))}
-          </fieldset>
+          <Section title={t("personType")}>
+            <div
+              role="radiogroup"
+              aria-label={t("personType")}
+              className="grid gap-2 sm:grid-cols-2"
+            >
+              {(["Natural person", "Legal entity"] as const).map((value) => {
+                const active = personType === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => setPersonType(value)}
+                    className={cn(
+                      "flex items-center gap-3 rounded-xl border p-3 text-left text-sm transition-all outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+                      active
+                        ? "border-primary/40 bg-primary/5 text-foreground shadow-xs"
+                        : "border-border bg-transparent text-muted-foreground hover:border-foreground/20 hover:bg-muted/50",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "grid size-8 shrink-0 place-items-center rounded-lg",
+                        active
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground",
+                      )}
+                    >
+                      {value === "Legal entity" ? (
+                        <Building2 className="size-4" />
+                      ) : (
+                        <User className="size-4" />
+                      )}
+                    </span>
+                    <span className="font-medium">
+                      {t(`personTypes.${value}`)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </Section>
         )}
 
         <Section title={t("identification")}>
           {/* Uneven columns: a document type label is long ("Cédula de
               ciudadanía"), a check digit is one character. */}
           <div className="grid gap-3 sm:grid-cols-[1.5fr_1fr_0.5fr]">
-            {isLegal ? (
-              <p className="flex flex-col gap-1 text-sm">
-                {t("documentType")}
-                <span className="rounded-md border border-border px-3 py-2 text-muted-foreground">
+            <div className="flex flex-col gap-1.5">
+              <Label>{t("documentType")}</Label>
+              {isLegal ? (
+                <div className="flex h-8 items-center rounded-lg border border-dashed border-input px-2.5 text-sm text-muted-foreground">
                   NIT
-                </span>
-              </p>
-            ) : (
-              <label className="flex flex-col gap-1 text-sm">
-                {t("documentType")}
-                <select
+                </div>
+              ) : (
+                <SearchableSelect
                   name="document_type"
                   value={documentType}
-                  onChange={(event) =>
-                    setDocumentType(event.target.value as DocumentType)
-                  }
-                  className=""
-                >
-                  {DOCUMENT_TYPES.map((value) => (
-                    <option key={value} value={value}>
-                      {t(`documentTypes.${value}`)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
+                  onChange={(next) => setDocumentType(next as DocumentType)}
+                  options={DOCUMENT_TYPES.map((value) => ({
+                    value,
+                    label: t(`documentTypes.${value}`),
+                  }))}
+                />
+              )}
+            </div>
 
-            <label className="flex flex-col gap-1 text-sm">
-              {t("documentNumber")}
-              <input
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="document_number">{t("documentNumber")}</Label>
+              <Input
+                id="document_number"
                 name="document_number"
                 defaultValue={thirdParty?.document_number ?? ""}
                 required
-                className="rounded-md border border-border bg-transparent px-3 py-2 font-mono"
+                inputMode="numeric"
+                className="font-mono"
               />
-            </label>
+            </div>
 
             {hasCheckDigit && (
-              <label className="flex flex-col gap-1 text-sm">
-                {t("checkDigit")}
-                <input
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="check_digit">{t("checkDigit")}</Label>
+                <Input
+                  id="check_digit"
                   name="check_digit"
                   type="number"
                   min={0}
                   max={9}
                   defaultValue={thirdParty?.check_digit ?? ""}
-                  className="rounded-md border border-border bg-transparent px-3 py-2 font-mono"
+                  className="font-mono"
                 />
-                <span className="text-xs text-muted-foreground">{t("checkDigitHint")}</span>
-              </label>
+                <Hint>{t("checkDigitHint")}</Hint>
+              </div>
             )}
           </div>
         </Section>
@@ -207,24 +246,19 @@ export function ThirdPartyForm({
         )}
 
         <Section title={t("contact")}>
-          <label className="flex flex-col gap-1 text-sm">
-            {t("tradeName")}
-            <input
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Text
               name="trade_name"
-              defaultValue={thirdParty?.trade_name ?? ""}
-              className=""
+              label={t("tradeName")}
+              value={thirdParty?.trade_name}
             />
-          </label>
-
-          <label className="flex flex-col gap-1 text-sm">
-            {t("address")}
-            <input
+            <Text
               name="address"
-              defaultValue={thirdParty?.address ?? ""}
+              label={t("address")}
+              value={thirdParty?.address}
               required
-              className=""
             />
-          </label>
+          </div>
 
           <PlaceFields
             countries={countries}
@@ -243,49 +277,35 @@ export function ThirdPartyForm({
           />
 
           <div className="grid gap-3 sm:grid-cols-3">
-            <label className="flex flex-col gap-1 text-sm">
-              {t("mobilePhone")}
-              <input
-                name="mobile_phone"
-                defaultValue={thirdParty?.mobile_phone ?? ""}
-                required
-                className=""
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-sm">
-              {t("landline")}
-              <input
-                name="landline"
-                defaultValue={thirdParty?.landline ?? ""}
-                className=""
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-sm">
-              {t("email")}
-              <input
-                name="email"
-                type="email"
-                defaultValue={thirdParty?.email ?? ""}
-                required
-                className=""
-              />
-            </label>
+            <Text
+              name="mobile_phone"
+              label={t("mobilePhone")}
+              value={thirdParty?.mobile_phone}
+              required
+            />
+            <Text
+              name="landline"
+              label={t("landline")}
+              value={thirdParty?.landline}
+            />
+            <Text
+              name="email"
+              label={t("email")}
+              type="email"
+              value={thirdParty?.email}
+              required
+            />
           </div>
 
-          <label className="flex flex-col gap-1 text-sm sm:max-w-xs">
-            {t("taxRegime")}
-            <select
+          <div className="sm:max-w-xs">
+            <Choice
               name="tax_regime"
-              defaultValue={thirdParty?.tax_regime ?? "Not VAT responsible"}
-              className=""
-            >
-              {TAX_REGIMES.map((value) => (
-                <option key={value} value={value}>
-                  {t(`taxRegimes.${value}`)}
-                </option>
-              ))}
-            </select>
-          </label>
+              label={t("taxRegime")}
+              values={TAX_REGIMES}
+              prefix="taxRegimes"
+              value={thirdParty?.tax_regime ?? "Not VAT responsible"}
+            />
+          </div>
         </Section>
 
         <Section title={t("declarations")} hint={t("declarationsHint")}>
@@ -319,23 +339,20 @@ export function ThirdPartyForm({
           defaultChecked={thirdParty?.is_active ?? true}
         />
 
-
-        <div className="flex flex-wrap gap-2">
+        {/* Sticky, because this form is long enough that the save button was
+            a scroll away from whatever field was just filled in. */}
+        <div className="sticky bottom-0 -mx-4 flex flex-wrap gap-2 border-t border-border bg-card/85 px-4 py-3 backdrop-blur-sm sm:-mx-6 sm:px-6">
           <SubmitButton label={t("save")} pendingLabel={t("saving")} />
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-md border border-border px-4 py-2 text-sm"
-          >
+          <Button type="button" variant="outline" onClick={onCancel}>
             {t("cancel")}
-          </button>
+          </Button>
         </div>
       </form>
 
       {isEditing && (
         <form
           action={submitLifecycle}
-          className="flex flex-col gap-2 border-t border-border pt-4"
+          className="flex flex-col gap-2 border-t border-border pt-5"
         >
           <input type="hidden" name="id" value={thirdParty.id} />
           <input
@@ -381,16 +398,15 @@ function NaturalFields({
       </Section>
 
       <Section title={t("document")}>
-        <label className="flex flex-col gap-1 text-sm sm:max-w-xs">
-          {t("issueDate")}
-          <input
+        <div className="sm:max-w-xs">
+          <Text
             name="issue_date"
+            label={t("issueDate")}
             type="date"
-            defaultValue={thirdParty?.issue_date ?? ""}
+            value={thirdParty?.issue_date}
             required
-            className=""
           />
-        </label>
+        </div>
         <IssueCityField
           departments={departments}
           initialCity={preloaded.issueCity}
@@ -399,16 +415,15 @@ function NaturalFields({
       </Section>
 
       <Section title={t("birth")}>
-        <label className="flex flex-col gap-1 text-sm sm:max-w-xs">
-          {t("birthDate")}
-          <input
+        <div className="sm:max-w-xs">
+          <Text
             name="birth_date"
+            label={t("birthDate")}
             type="date"
-            defaultValue={thirdParty?.birth_date ?? ""}
+            value={thirdParty?.birth_date}
             required
-            className=""
           />
-        </label>
+        </div>
         <PlaceFields
           countries={countries}
           names={{
@@ -524,6 +539,13 @@ function LegalFields({ thirdParty }: { thirdParty: ThirdParty | null }) {
   );
 }
 
+/**
+ * One block of the form.
+ *
+ * The heading sits in its own column above `md`, which turns a 40-field wall
+ * into a document with a margin: the eye can find "Contact" without reading
+ * the fields on the way there.
+ */
 function Section({
   title,
   hint,
@@ -534,26 +556,32 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <fieldset className="flex flex-col gap-3">
-      <legend className="text-xs uppercase tracking-wide text-muted-foreground">
-        {title}
-      </legend>
-      {hint && <p className="-mt-1 text-xs text-muted-foreground">{hint}</p>}
-      <Separator className="mb-1" />
-      {children}
+    <fieldset className="grid gap-x-8 gap-y-3 md:grid-cols-[11rem_1fr]">
+      <legend className="sr-only">{title}</legend>
+      <div aria-hidden className="md:pt-0.5">
+        <p className="text-sm font-semibold tracking-tight">{title}</p>
+        {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
+      </div>
+      <div className="flex min-w-0 flex-col gap-3">{children}</div>
     </fieldset>
   );
+}
+
+function Hint({ children }: { children: React.ReactNode }) {
+  return <span className="text-xs text-muted-foreground">{children}</span>;
 }
 
 function Text({
   name,
   label,
   value,
+  type = "text",
   required = false,
 }: {
   name: string;
   label: string;
   value?: string | null;
+  type?: string;
   required?: boolean;
 }) {
   return (
@@ -562,6 +590,7 @@ function Text({
       <Input
         id={name}
         name={name}
+        type={type}
         defaultValue={value ?? ""}
         required={required}
       />
@@ -587,9 +616,9 @@ function Choice({
   return (
     <div className="flex flex-col gap-1.5">
       <Label>{label}</Label>
-      {/* The hidden input is what the server action reads: a shadcn Select is
-          a button and a listbox, and neither of those posts a value. */}
-      <NativeSelect
+      {/* A real `<select>` rides along inside SearchableSelect: the server
+          action reads `FormData`, which a listbox on its own does not fill. */}
+      <SearchableSelect
         name={name}
         defaultValue={value ?? values[0]}
         options={values.map((option) => ({
@@ -611,14 +640,14 @@ function Check({
   defaultChecked: boolean;
 }) {
   return (
-    <Label className="flex items-center gap-2 font-normal">
+    <Label className="flex items-start gap-2.5 rounded-lg px-2 py-1.5 font-normal transition-colors hover:bg-muted/60">
       <input
         type="checkbox"
         name={name}
         defaultChecked={defaultChecked}
-        className="size-4 accent-primary"
+        className="mt-0.5 size-4 shrink-0 rounded accent-primary"
       />
-      {label}
+      <span className="leading-snug">{label}</span>
     </Label>
   );
 }

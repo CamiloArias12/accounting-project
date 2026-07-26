@@ -6,6 +6,7 @@ import { useTransition } from "react";
 
 import { LOCALES, LOCALE_COOKIE, type Locale } from "@/i18n/config";
 import { persistPreference } from "@/lib/preferences";
+import { cn } from "@/lib/utils";
 
 export function LocaleToggle() {
   const t = useTranslations("locale");
@@ -24,9 +25,10 @@ export function LocaleToggle() {
     <div
       role="group"
       aria-label={t("label")}
-      className={`flex rounded-md border border-border p-0.5 ${
-        pending ? "opacity-60" : ""
-      }`}
+      className={cn(
+        "flex gap-0.5 rounded-lg bg-muted p-0.5 ring-1 ring-border/60 transition-opacity",
+        pending && "opacity-60",
+      )}
     >
       {LOCALES.map((locale) => (
         <button
@@ -34,11 +36,12 @@ export function LocaleToggle() {
           type="button"
           onClick={() => choose(locale)}
           aria-pressed={current === locale}
-          className={`flex-1 rounded px-2 py-1 text-xs uppercase transition-colors ${
+          className={cn(
+            "rounded-md px-2.5 py-1.5 text-xs font-medium uppercase tracking-wide transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
             current === locale
-              ? "bg-primary text-primary-foreground"
-              : "text-muted-foreground hover:bg-foreground/5"
-          }`}
+              ? "bg-card text-foreground shadow-xs"
+              : "text-muted-foreground hover:text-foreground",
+          )}
         >
           {locale}
         </button>

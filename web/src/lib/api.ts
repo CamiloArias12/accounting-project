@@ -21,6 +21,7 @@ import type {
 import type {
   AccountLedger,
   Company,
+  Page,
   LedgerReport,
   Period,
   Voucher,
@@ -152,13 +153,13 @@ export const authApi = {
 };
 
 export const accountsApi = {
-  list(params: ListParams = {}): Promise<Account[]> {
+  list(params: ListParams = {}): Promise<Page<Account>> {
     const query = new URLSearchParams();
     for (const [key, value] of Object.entries(params)) {
       if (value !== undefined && value !== "") query.set(key, String(value));
     }
     const suffix = query.size > 0 ? `?${query}` : "";
-    return request<Account[]>(`/accounts${suffix}`);
+    return request<Page<Account>>(`/accounts${suffix}`);
   },
 
   tree(options: TreeOptions = {}): Promise<AccountNode[]> {
@@ -254,8 +255,8 @@ export const locationsApi = {
 };
 
 export const thirdPartiesApi = {
-  list(params: ThirdPartyListParams = {}): Promise<ThirdParty[]> {
-    return request<ThirdParty[]>(`/third-parties${toQuery({ ...params })}`);
+  list(params: ThirdPartyListParams = {}): Promise<Page<ThirdParty>> {
+    return request<Page<ThirdParty>>(`/third-parties${toQuery({ ...params })}`);
   },
 
   get(id: number, includeDeleted = false): Promise<ThirdParty> {
@@ -295,8 +296,8 @@ export const vouchersApi = {
     return request<Company>("/vouchers/company");
   },
 
-  list(params: VoucherListParams = {}): Promise<Voucher[]> {
-    return request<Voucher[]>(`/vouchers${toQuery({ ...params })}`);
+  list(params: VoucherListParams = {}): Promise<Page<Voucher>> {
+    return request<Page<Voucher>>(`/vouchers${toQuery({ ...params })}`);
   },
 
   get(id: number): Promise<Voucher> {

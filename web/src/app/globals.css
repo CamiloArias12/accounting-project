@@ -10,135 +10,158 @@
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 @theme {
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  /* The fallback inside `var()` is not decoration: without it, a font variable
+     that fails to arrive makes this whole declaration invalid and the app
+     renders in the browser's default serif rather than in a sans at all. */
+  --font-sans: var(--font-inter, ui-sans-serif), ui-sans-serif, system-ui,
+    sans-serif;
+
+  /*
+   * Softer, more diffuse shadows than Tailwind's defaults, tinted towards the
+   * slate the palette is built on. A drop shadow made of pure black reads as
+   * dirt on a light surface; tinting it is most of what separates a screen
+   * that looks designed from one that looks assembled.
+   */
+  --shadow-2xs: 0 1px 2px 0 rgb(15 23 42 / 0.03);
+  --shadow-xs: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 1px -1px rgb(15 23 42 / 0.03);
+  --shadow-sm: 0 1px 2px 0 rgb(15 23 42 / 0.05), 0 2px 6px -2px rgb(15 23 42 / 0.06);
+  --shadow-md: 0 4px 12px -2px rgb(15 23 42 / 0.08), 0 2px 4px -2px rgb(15 23 42 / 0.04);
+  --shadow-lg: 0 12px 28px -8px rgb(15 23 42 / 0.14), 0 4px 10px -4px rgb(15 23 42 / 0.06);
+  --shadow-xl: 0 24px 48px -12px rgb(15 23 42 / 0.18), 0 8px 16px -8px rgb(15 23 42 / 0.08);
 }
 
 /*
  * The palette follows the shadcn/ui vocabulary, which is what its components
- * expect. The colours are the ones this app already had; only the names moved:
+ * expect. Two conventions worth knowing before changing anything here:
  *
- *   the blue that was `--accent`     is now `--primary`
- *   the grey text that was `--muted` is now `--muted-foreground`
- *   the panel grey that was `--surface` is now `--card`
+ *   `--primary` is the blue. `--accent` is *not* an accent colour in the
+ *   everyday sense — shadcn means a quiet background for hovers by it, so
+ *   painting the blue there would turn every hover solid blue.
  *
- * `--muted` and `--accent` now mean what shadcn means by them — quiet
- * backgrounds for hovers and disabled states. That is why the rename was
- * needed at all: leaving `--accent` as the blue would have painted every hover
- * solid blue.
+ *   The page is grey and the cards are white, not the other way round. That
+ *   inversion is what lets a card carry an elevation and read as a surface
+ *   lying on the page rather than a rectangle drawn onto it.
  */
-:root {
-  --background: #ffffff;
-  --foreground: #0a0a0a;
+:root,
+:root[data-theme="light"] {
+  --background: #f5f6f9;
+  --foreground: #0c1017;
 
-  --card: #f7f7f8;
-  --card-foreground: #0a0a0a;
+  --card: #ffffff;
+  --card-foreground: #0c1017;
   --popover: #ffffff;
-  --popover-foreground: #0a0a0a;
+  --popover-foreground: #0c1017;
 
   --primary: #2563eb;
   --primary-foreground: #ffffff;
-  --secondary: #f4f4f5;
-  --secondary-foreground: #0a0a0a;
+  --secondary: #eceff4;
+  --secondary-foreground: #0c1017;
 
-  --muted: #f4f4f5;
-  --muted-foreground: #6b7280;
-  --accent: #f4f4f5;
-  --accent-foreground: #0a0a0a;
+  --muted: #f1f3f7;
+  --muted-foreground: #5b6577;
+  --accent: #eef1f6;
+  --accent-foreground: #0c1017;
 
   --destructive: #dc2626;
   --destructive-foreground: #ffffff;
+  --success: #047857;
+  --warning: #b45309;
 
-  --border: #e4e4e7;
-  --input: #e4e4e7;
+  --border: #e3e6ed;
+  --input: #d8dde6;
   --ring: #2563eb;
 
-  /* 0.5rem, not shadcn's 0.625rem: it makes `--radius-md` and `--radius-lg`
-     land on Tailwind's own defaults, so nothing already built changes shape. */
-  --radius: 0.5rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0c1017;
+  --sidebar-border: #e5e8ee;
+  --sidebar-accent: #f1f4f9;
+
+  /* The wash behind the page. Two barely-there tints rather than one, so the
+     background has a direction to it instead of sitting perfectly flat. */
+  --page-glow-a: rgb(37 99 235 / 0.06);
+  --page-glow-b: rgb(99 102 241 / 0.05);
+
+  /* 0.625rem: shadcn's own default. Slightly rounder than the 0.5rem this app
+     started with, which is most of the difference between "utility" and
+     "product" at a glance. */
+  --radius: 0.625rem;
 }
 
 /* No-JS fallback: without the script `data-theme` is never set. */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  :root:not([data-theme="light"]):not([data-theme="dark"]) {
+    --background: #0a0c10;
+    --foreground: #e8eaf0;
 
-    --card: #151518;
-    --card-foreground: #ededed;
-    --popover: #151518;
-    --popover-foreground: #ededed;
+    --card: #111419;
+    --card-foreground: #e8eaf0;
+    --popover: #15181f;
+    --popover-foreground: #e8eaf0;
 
-    --primary: #3b82f6;
+    --primary: #4b82f7;
     --primary-foreground: #ffffff;
-    --secondary: #27272a;
-    --secondary-foreground: #ededed;
+    --secondary: #1b1f27;
+    --secondary-foreground: #e8eaf0;
 
-    --muted: #27272a;
-    --muted-foreground: #9ca3af;
-    --accent: #27272a;
-    --accent-foreground: #ededed;
+    --muted: #191d24;
+    --muted-foreground: #98a1b2;
+    --accent: #1b1f27;
+    --accent-foreground: #e8eaf0;
 
-    --destructive: #ef4444;
+    --destructive: #f05252;
     --destructive-foreground: #ffffff;
+    --success: #34d399;
+    --warning: #fbbf24;
 
-    --border: #27272a;
-    --input: #27272a;
-    --ring: #3b82f6;
+    --border: #232833;
+    --input: #2a303b;
+    --ring: #4b82f7;
+
+    --sidebar: #0d1016;
+    --sidebar-foreground: #e8eaf0;
+    --sidebar-border: #1e232c;
+    --sidebar-accent: #171b22;
+
+    --page-glow-a: rgb(59 130 246 / 0.10);
+    --page-glow-b: rgb(129 140 248 / 0.07);
   }
 }
 
-:root[data-theme="light"] {
-  --background: #ffffff;
-  --foreground: #0a0a0a;
-
-  --card: #f7f7f8;
-  --card-foreground: #0a0a0a;
-  --popover: #ffffff;
-  --popover-foreground: #0a0a0a;
-
-  --primary: #2563eb;
-  --primary-foreground: #ffffff;
-  --secondary: #f4f4f5;
-  --secondary-foreground: #0a0a0a;
-
-  --muted: #f4f4f5;
-  --muted-foreground: #6b7280;
-  --accent: #f4f4f5;
-  --accent-foreground: #0a0a0a;
-
-  --destructive: #dc2626;
-  --destructive-foreground: #ffffff;
-
-  --border: #e4e4e7;
-  --input: #e4e4e7;
-  --ring: #2563eb;
-}
-
 :root[data-theme="dark"] {
-  --background: #0a0a0a;
-  --foreground: #ededed;
+  --background: #0a0c10;
+  --foreground: #e8eaf0;
 
-  --card: #151518;
-  --card-foreground: #ededed;
-  --popover: #151518;
-  --popover-foreground: #ededed;
+  --card: #111419;
+  --card-foreground: #e8eaf0;
+  --popover: #15181f;
+  --popover-foreground: #e8eaf0;
 
-  --primary: #3b82f6;
+  --primary: #4b82f7;
   --primary-foreground: #ffffff;
-  --secondary: #27272a;
-  --secondary-foreground: #ededed;
+  --secondary: #1b1f27;
+  --secondary-foreground: #e8eaf0;
 
-  --muted: #27272a;
-  --muted-foreground: #9ca3af;
-  --accent: #27272a;
-  --accent-foreground: #ededed;
+  --muted: #191d24;
+  --muted-foreground: #98a1b2;
+  --accent: #1b1f27;
+  --accent-foreground: #e8eaf0;
 
-  --destructive: #ef4444;
+  --destructive: #f05252;
   --destructive-foreground: #ffffff;
+  --success: #34d399;
+  --warning: #fbbf24;
 
-  --border: #27272a;
-  --input: #27272a;
-  --ring: #3b82f6;
+  --border: #232833;
+  --input: #2a303b;
+  --ring: #4b82f7;
+
+  --sidebar: #0d1016;
+  --sidebar-foreground: #e8eaf0;
+  --sidebar-border: #1e232c;
+  --sidebar-accent: #171b22;
+
+  --page-glow-a: rgb(59 130 246 / 0.10);
+  --page-glow-b: rgb(129 140 248 / 0.07);
 }
 
 @theme inline {
@@ -158,23 +181,88 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent: var(--sidebar-accent);
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
 }
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
+    /* Fixed, so the glow belongs to the window rather than scrolling away with
+       the first screenful of a long form. */
+    background-attachment: fixed;
+    background-image:
+      radial-gradient(60rem 40rem at 12% -10%, var(--page-glow-a), transparent 60%),
+      radial-gradient(50rem 34rem at 105% 0%, var(--page-glow-b), transparent 55%);
   }
+
   html {
     @apply font-sans;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Headings read as one voice: tight tracking, no per-heading tuning. */
+  h1,
+  h2,
+  h3 {
+    @apply tracking-tight;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklab, var(--primary) 22%, transparent);
+  }
+
+  /* Figures line up in columns without asking each table to remember. */
+  th,
+  td {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer utilities {
+  /*
+   * Slim scrollbars. The default ones are wide enough to change the shape of a
+   * panel when content overflows, which makes a layout feel unstable.
+   */
+  .scrollbar-slim {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--foreground) 18%, transparent)
+      transparent;
+  }
+
+  .scrollbar-slim::-webkit-scrollbar {
+    width: 0.5rem;
+    height: 0.5rem;
+  }
+
+  .scrollbar-slim::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background-color: color-mix(in oklab, var(--foreground) 16%, transparent);
+  }
+
+  .scrollbar-slim::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(in oklab, var(--foreground) 26%, transparent);
+  }
+
+  .scrollbar-slim::-webkit-scrollbar-track {
+    background: transparent;
   }
 }

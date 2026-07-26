@@ -1,9 +1,12 @@
 "use client";
 
+import { Monitor, Moon, Sun } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { applyTheme, persistPreference } from "@/lib/preferences";
+import { cn } from "@/lib/utils";
 import { THEMES, THEME_COOKIE, type Theme } from "@/lib/theme";
 
 interface Props {
@@ -11,10 +14,10 @@ interface Props {
   initialTheme: Theme;
 }
 
-const ICONS: Record<Theme, string> = {
-  light: "☀",
-  dark: "☾",
-  system: "◐",
+const ICONS: Record<Theme, LucideIcon> = {
+  light: Sun,
+  dark: Moon,
+  system: Monitor,
 };
 
 export function ThemeToggle({ initialTheme }: Props) {
@@ -34,25 +37,30 @@ export function ThemeToggle({ initialTheme }: Props) {
     <div
       role="group"
       aria-label={t("label")}
-      className="flex rounded-md border border-border p-0.5"
+      className="flex flex-1 gap-0.5 rounded-lg bg-muted p-0.5 ring-1 ring-border/60"
     >
-      {THEMES.map((option) => (
-        <button
-          key={option}
-          type="button"
-          onClick={() => choose(option)}
-          aria-pressed={theme === option}
-          title={t(option)}
-          className={`flex-1 rounded px-2 py-1 text-xs transition-colors ${
-            theme === option
-              ? "bg-primary text-primary-foreground"
-              : "text-muted-foreground hover:bg-foreground/5"
-          }`}
-        >
-          <span aria-hidden>{ICONS[option]}</span>
-          <span className="sr-only">{t(option)}</span>
-        </button>
-      ))}
+      {THEMES.map((option) => {
+        const Icon = ICONS[option];
+        const active = theme === option;
+        return (
+          <button
+            key={option}
+            type="button"
+            onClick={() => choose(option)}
+            aria-pressed={active}
+            title={t(option)}
+            className={cn(
+              "grid flex-1 place-items-center rounded-md py-1.5 transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+              active
+                ? "bg-card text-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <Icon className="size-3.5" />
+            <span className="sr-only">{t(option)}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }

@@ -32,11 +32,21 @@ export default async function RootLayout({
   return (
     // suppressHydrationWarning: ThemeScript writes `data-theme` before React
     // hydrates, so the server markup deliberately differs on this attribute.
-    <html lang={locale} suppressHydrationWarning>
+    //
+    // The font class belongs on <html>, not <body>. Tailwind resolves
+    // `--font-sans` at `:root`, and a custom property that references one
+    // declared further down the tree computes to nothing — which makes
+    // `font-family: var(--font-sans)` invalid and drops the whole app back to
+    // the browser's default serif.
+    <html
+      lang={locale}
+      className={`${inter.variable} font-sans antialiased`}
+      suppressHydrationWarning
+    >
       <head>
         <ThemeScript />
       </head>
-      <body className={`${inter.variable} font-sans antialiased`}>
+      <body>
         <NextIntlClientProvider>{children}</NextIntlClientProvider>
       </body>
     </html>

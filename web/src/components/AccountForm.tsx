@@ -10,6 +10,11 @@ import {
   createAccount,
   updateAccount,
 } from "@/actions/accounts";
+import { SearchableSelect } from "@/components/SearchableSelect";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { NATURES, type Account } from "@/types/account";
 
 interface Props {
@@ -43,85 +48,82 @@ export function AccountForm({ account, onCancel }: Props) {
   return (
     <div className="flex flex-col gap-4">
       <form action={submit} className="flex flex-col gap-4">
-        <header className="flex items-baseline justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        <header className="flex items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold tracking-tight">
             {isEditing
               ? t("editTitle", { code: account.code })
               : t("createTitle")}
           </h2>
           {isEditing && (
-            <span className="text-xs text-muted-foreground">{tLevel(account.level)}</span>
+            <Badge variant="secondary">{tLevel(account.level)}</Badge>
           )}
         </header>
 
         {isDeleted && (
-          <p className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-400">
+          <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive ring-1 ring-destructive/20">
             {t("deletedNotice")}
           </p>
         )}
 
-        <label className="flex flex-col gap-1 text-sm">
-          {t("code")}
-          <input
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="account-code">{t("code")}</Label>
+          <Input
+            id="account-code"
             name="code"
             defaultValue={account?.code ?? ""}
             readOnly={isEditing}
             required
             inputMode="numeric"
             placeholder={t("codePlaceholder")}
-            className="rounded-md border border-border bg-transparent px-3 py-2 font-mono read-only:opacity-50"
+            className="font-mono read-only:bg-muted/60 read-only:text-muted-foreground"
           />
           {!isEditing && (
-            <span className="text-xs text-muted-foreground">{t("codeHint")}</span>
+            <span className="text-xs leading-snug text-muted-foreground">
+              {t("codeHint")}
+            </span>
           )}
-        </label>
+        </div>
 
-        <label className="flex flex-col gap-1 text-sm">
-          {t("name")}
-          <input
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="account-name">{t("name")}</Label>
+          <Input
+            id="account-name"
             name="name"
             defaultValue={account?.name ?? ""}
             required
             placeholder={t("namePlaceholder")}
-            className="rounded-md border border-border bg-transparent px-3 py-2"
           />
-        </label>
+        </div>
 
-        <label className="flex flex-col gap-1 text-sm">
-          {t("nature")}
-          <select
+        <div className="flex flex-col gap-1.5">
+          <Label>{t("nature")}</Label>
+          <SearchableSelect
             name="nature"
             defaultValue={account?.nature ?? "Debito"}
-            className="rounded-md border border-border bg-transparent px-3 py-2"
-          >
-            {NATURES.map((value) => (
-              <option key={value} value={value}>
-                {tNature(value)}
-              </option>
-            ))}
-          </select>
-        </label>
+            options={NATURES.map((value) => ({
+              value,
+              label: tNature(value),
+            }))}
+          />
+        </div>
 
-        <label className="flex items-center gap-2 text-sm">
+        <Label className="flex items-center gap-2 font-normal">
           <input
             type="checkbox"
             name="is_active"
             defaultChecked={account?.is_active ?? true}
+            className="size-4 rounded accent-primary"
           />
           {t("active")}
-        </label>
+        </Label>
 
         <Feedback state={state} />
 
         <div className="flex flex-wrap gap-2">
           <SubmitButton label={t("save")} pendingLabel={t("saving")} />
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-md border border-border px-4 py-2 text-sm"
-          >
+          <Button type="button" variant="outline" onClick={onCancel}>
             {t("cancel")}
-          </button>
+          </Button>
         </div>
       </form>
 
@@ -137,11 +139,11 @@ export function AccountForm({ account, onCancel }: Props) {
             value={isDeleted ? "restore" : "delete"}
           />
           <Feedback state={lifecycleState} />
-          {isDeleted ? (
-            <RestoreButton label={t("restore")} pendingLabel={t("restoring")} />
-          ) : (
-            <DeleteButton label={t("delete")} pendingLabel={t("deleting")} />
-          )}
+          <LifecycleButton
+            deleted={isDeleted}
+            label={isDeleted ? t("restore") : t("delete")}
+            pendingLabel={isDeleted ? t("restoring") : t("deleting")}
+          />
         </form>
       )}
     </div>
@@ -155,10 +157,10 @@ function Feedback({ state }: { state: FormState }) {
   return (
     <p
       role={isError ? "alert" : "status"}
-      className={`rounded-md px-3 py-2 text-sm ${
+      className={`rounded-lg px-3 py-2 text-sm ring-1 ${
         isError
-          ? "bg-red-500/10 text-red-700 dark:text-red-400"
-          : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+          ? "bg-destructive/10 text-destructive ring-destructive/20"
+          : "bg-success/10 text-success ring-success/20"
       }`}
     >
       {state.message}
@@ -174,38 +176,26 @@ interface ButtonProps {
 function SubmitButton({ label, pendingLabel }: ButtonProps) {
   const { pending } = useFormStatus();
   return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
-    >
+    <Button type="submit" disabled={pending}>
       {pending ? pendingLabel : label}
-    </button>
+    </Button>
   );
 }
 
-function DeleteButton({ label, pendingLabel }: ButtonProps) {
+function LifecycleButton({
+  deleted,
+  label,
+  pendingLabel,
+}: ButtonProps & { deleted: boolean }) {
   const { pending } = useFormStatus();
   return (
-    <button
+    <Button
       type="submit"
+      variant={deleted ? "outline" : "destructive"}
       disabled={pending}
-      className="self-start rounded-md px-4 py-2 text-sm text-red-600 hover:bg-red-500/10 disabled:opacity-50 dark:text-red-400"
+      className="self-start"
     >
       {pending ? pendingLabel : label}
-    </button>
-  );
-}
-
-function RestoreButton({ label, pendingLabel }: ButtonProps) {
-  const { pending } = useFormStatus();
-  return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="self-start rounded-md border border-border px-4 py-2 text-sm disabled:opacity-50"
-    >
-      {pending ? pendingLabel : label}
-    </button>
+    </Button>
   );
 }

@@ -27,7 +27,7 @@ export default async function AppLayout({
   return (
     <>
       <Sidebar initialTheme={theme} userEmail={email} />
-      <div className="lg:pl-60">{children}</div>
+      <div className="lg:pl-64">{children}</div>
       {/* One mount for the whole signed-in shell: an action's outcome shows up
           wherever the user happens to be looking, not buried under the form
           that produced it. */}

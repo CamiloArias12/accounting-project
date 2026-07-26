@@ -1,5 +1,6 @@
 "use client";
 
+import { ReceiptText } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useActionState, useEffect } from "react";
 import { useFormStatus } from "react-dom";
@@ -76,27 +77,35 @@ export function VoucherForm({
 
   return (
     <div className="flex flex-col gap-5">
-      <header className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            {isEditing
-              ? voucher.number !== null
-                ? t("editTitleNumbered", { number: voucher.number })
-                : t("editTitle")
-              : t("createTitle")}
-          </h2>
-          {/* The company is configuration, not a field: there is nothing to
-              choose, so it is printed rather than asked for. */}
-          <p className="text-xs text-muted-foreground">
-            {company.legal_name} · {company.nit}
-          </p>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span
+            aria-hidden
+            className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/15"
+          >
+            <ReceiptText className="size-5" />
+          </span>
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight">
+              {isEditing
+                ? voucher.number !== null
+                  ? t("editTitleNumbered", { number: voucher.number })
+                  : t("editTitle")
+                : t("createTitle")}
+            </h2>
+            {/* The company is configuration, not a field: there is nothing to
+                choose, so it is printed rather than asked for. */}
+            <p className="text-xs text-muted-foreground">
+              {company.legal_name} · {company.nit}
+            </p>
+          </div>
         </div>
         {isEditing && (
           <div className="flex flex-col items-end gap-1">
             <Badge variant={readOnly ? "default" : "secondary"}>
               {t(`statuses.${voucher.status}`)}
             </Badge>
-            <span className="text-xs tabular-nums text-muted-foreground">
+            <span className="text-sm font-medium tabular-nums">
               {formatMoney(voucher.total_debit)}
             </span>
           </div>

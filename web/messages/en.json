@@ -9,7 +9,10 @@
     "thirdParties": "Third parties",
     "vouchers": "Vouchers",
     "ledger": "Ledger",
-    "periods": "Periods"
+    "periods": "Periods",
+    "groupGeneral": "General",
+    "groupRecords": "Master data",
+    "groupAccounting": "Accounting"
   },
   "overview": {
     "title": "Overview",
@@ -20,7 +23,12 @@
     "thirdPartiesCard": "Third parties",
     "thirdPartiesCardHint": "Register customers, suppliers and anyone else the books point at.",
     "vouchersCard": "Vouchers",
-    "vouchersCardHint": "Write, post and reverse accounting vouchers."
+    "vouchersCardHint": "Write, post and reverse accounting vouchers.",
+    "eyebrow": "Home",
+    "ledgerCard": "Ledger",
+    "ledgerCardHint": "Read balances and movement account by account.",
+    "periodsCard": "Periods",
+    "periodsCardHint": "Open and close the accounting months."
   },
   "accounts": {
     "title": "Chart of accounts",
@@ -34,7 +42,9 @@
     "empty": "No accounts yet. Import the spreadsheet or create one.",
     "expand": "Expand",
     "collapse": "Collapse",
-    "deletedBadge": "deleted"
+    "deletedBadge": "deleted",
+    "eyebrow": "Master data",
+    "matches": "{count, plural, =0 {no matches} one {# match} other {# matches}}"
   },
   "form": {
     "editTitle": "Edit {code}",
@@ -76,7 +86,8 @@
     "password": "Password",
     "signIn": "Sign in",
     "signingIn": "Signing in…",
-    "missingFields": "Email and password are required"
+    "missingFields": "Email and password are required",
+    "emailPlaceholder": "you@company.com"
   },
   "session": {
     "signIn": "Sign in",
@@ -137,7 +148,8 @@
       "Legal entity": "Legal entity"
     },
     "columnState": "State",
-    "backToList": "Back to third parties"
+    "backToList": "Back to third parties",
+    "eyebrow": "Master data"
   },
   "thirdPartyForm": {
     "createTitle": "New third party",
@@ -253,7 +265,11 @@
       "Trade association": "Trade association",
       "Consortium": "Consortium",
       "Temporary joint venture": "Temporary joint venture"
-    }
+    },
+    "deletedBadgeShort": "Deleted",
+    "searchCountry": "Search a country…",
+    "searchDepartment": "Search a department…",
+    "searchCity": "Search a city…"
   },
   "thirdPartyErrors": {
     "missingId": "The third party id is missing",
@@ -283,7 +299,8 @@
     "columnDescription": "Description",
     "columnTotal": "Total",
     "columnStatus": "Status",
-    "backToList": "Back to vouchers"
+    "backToList": "Back to vouchers",
+    "eyebrow": "Accounting"
   },
   "voucherForm": {
     "createTitle": "New voucher",
@@ -375,7 +392,8 @@
       "12": "December"
     },
     "previousYear": "Previous year",
-    "nextYear": "Next year"
+    "nextYear": "Next year",
+    "eyebrow": "Accounting"
   },
   "periodSuccess": {
     "closed": "Period {period} closed",
@@ -397,6 +415,18 @@
     "description": "Description",
     "running": "Balance",
     "backToReport": "Back to the report",
-    "empty": "No movement in this range."
+    "empty": "No movement in this range.",
+    "eyebrow": "Accounting"
+  },
+  "select": {
+    "placeholder": "Choose…",
+    "search": "Search…",
+    "empty": "No matches",
+    "more": "{count, plural, one {# more result. Narrow the search.} other {# more results. Narrow the search.}}"
+  },
+  "pagination": {
+    "showing": "{first}–{last} of {total}",
+    "previous": "Previous",
+    "next": "Next"
   }
 }

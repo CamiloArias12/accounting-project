@@ -334,13 +334,13 @@ async def test_filtering_by_status_and_period(auth_client: AsyncClient) -> None:
     await auth_client.post(f"{BASE}/{other['id']}/post")
 
     drafts = await auth_client.get(BASE, params={"status": "Draft"})
-    assert [v["id"] for v in drafts.json()] == [draft["id"]]
+    assert [v["id"] for v in drafts.json()["items"]] == [draft["id"]]
 
     july = await auth_client.get(BASE, params={"period_year": 2026, "period_month": 7})
-    assert len(july.json()) == 2
+    assert july.json()["total"] == 2
 
     june = await auth_client.get(BASE, params={"period_month": 6})
-    assert june.json() == []
+    assert june.json()["items"] == []
 
 
 async def test_the_issuing_company_comes_from_configuration(

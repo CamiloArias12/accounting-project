@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, LoaderCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -42,7 +42,8 @@ interface Props {
  *
  * Not a `<select>`: the chart of accounts has 2,449 rows and the third party
  * master grows without limit, so the list has to be narrowed before it reaches
- * the browser.
+ * the browser. Where the list is finite and already in hand, SearchableSelect
+ * is the one to reach for — it posts its own value and needs no round trip.
  *
  * Built on Command, which brings what the hand-rolled version was missing:
  * arrow keys, Enter to choose, Escape to close, focus returned to the trigger,
@@ -91,12 +92,12 @@ export function AsyncCombobox({
             aria-expanded={open}
             disabled={disabled}
             className={cn(
-              "w-full justify-between font-normal",
+              "w-full justify-between gap-2 font-normal",
               !label && "text-muted-foreground",
             )}
           >
             <span className="truncate">{label || placeholder}</span>
-            <ChevronsUpDown className="opacity-50" />
+            <ChevronsUpDown className="shrink-0 opacity-50" />
           </Button>
         }
       />
@@ -110,8 +111,16 @@ export function AsyncCombobox({
             value={query}
             onValueChange={setQuery}
           />
-          <CommandList>
-            <CommandEmpty>{loading ? "…" : emptyLabel}</CommandEmpty>
+          <CommandList className="scrollbar-slim">
+            <CommandEmpty>
+              {loading ? (
+                <span className="flex items-center justify-center gap-2 text-muted-foreground">
+                  <LoaderCircle className="size-4 animate-spin" />
+                </span>
+              ) : (
+                emptyLabel
+              )}
+            </CommandEmpty>
             <CommandGroup>
               {options.map((option) => (
                 <CommandItem
@@ -124,13 +133,14 @@ export function AsyncCombobox({
                 >
                   <Check
                     className={cn(
+                      "text-primary",
                       option.value === value ? "opacity-100" : "opacity-0",
                     )}
                   />
-                  <span className="flex flex-col">
-                    <span>{option.label}</span>
+                  <span className="flex min-w-0 flex-col">
+                    <span className="truncate">{option.label}</span>
                     {option.hint && (
-                      <span className="text-xs text-muted-foreground">
+                      <span className="truncate text-xs text-muted-foreground">
                         {option.hint}
                       </span>
                     )}
