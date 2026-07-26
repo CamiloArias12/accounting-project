@@ -11,6 +11,7 @@ from collections.abc import Sequence
 
 from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app.modules.accounts.cache import AccountTreeCache
 from app.modules.accounts.errors import (
@@ -56,6 +57,7 @@ class AccountService:
         parent_code: str | None = None,
         search: str | None = None,
         only_active: bool | None = None,
+        only_postable: bool = False,
         include_deleted: bool = False,
         skip: int = 0,
         limit: int = 100,
@@ -66,6 +68,16 @@ class AccountService:
             query = query.where(Account.level == level)
         if parent_code is not None:
             query = query.where(Account.parent_code == parent_code)
+        if only_postable:
+            # Leaves, whatever their level: a six-digit subaccount with nothing
+            # under it takes entries, and a heading never does because its
+            # balance is already the sum of its children.
+            child = aliased(Account)
+            query = query.where(
+                ~select(child.code)
+                .where(child.parent_code == Account.code, child.deleted_at.is_(None))
+                .exists()
+            )
         if only_active is not None:
             query = query.where(Account.is_active.is_(only_active))
         if search:

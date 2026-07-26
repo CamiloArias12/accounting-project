@@ -125,3 +125,14 @@ async def test_update_changes_name_but_not_code(auth_client: AsyncClient) -> Non
 
 async def test_get_missing_account_returns_404(auth_client: AsyncClient) -> None:
     assert (await auth_client.get("/api/v1/accounts/9999")).status_code == 404
+
+
+async def test_only_postable_returns_the_leaves(auth_client: AsyncClient) -> None:
+    """A heading never takes entries: its balance is the sum of its children."""
+    await seed_branch(auth_client)
+
+    postable = await auth_client.get("/api/v1/accounts", params={"only_postable": True})
+
+    # 1 > 11 > 1105 > 110505: only the deepest one takes entries, even though it
+    # is a six-digit subaccount rather than an auxiliary.
+    assert [a["code"] for a in postable.json()] == ["110505"]

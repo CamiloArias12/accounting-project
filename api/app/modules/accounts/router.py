@@ -62,6 +62,9 @@ async def list_accounts(
     parent_code: Annotated[str | None, Query()] = None,
     search: Annotated[str | None, Query(description="Match code or name")] = None,
     only_active: Annotated[bool | None, Query()] = None,
+    only_postable: Annotated[
+        bool, Query(description="Only accounts entries may be posted to")
+    ] = False,
     include_deleted: IncludeDeleted = False,
     skip: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=500)] = 100,
@@ -72,6 +75,7 @@ async def list_accounts(
             parent_code=parent_code,
             search=search,
             only_active=only_active,
+            only_postable=only_postable,
             include_deleted=include_deleted,
             skip=skip,
             limit=limit,
