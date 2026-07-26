@@ -49,6 +49,13 @@ services:
       context: ./api
       target: prod
     restart: unless-stopped
+    # Todo lo del .env llega a la API. Enumerar variable por variable aquí
+    # significa que cada ajuste nuevo de Settings se olvida en producción y
+    # aparece como un error de arranque: así pasó con JWT_SECRET. Lo de abajo
+    # pisa lo del fichero, porque el host de Postgres o Redis dentro de la red
+    # de Compose no es el que valga en la máquina.
+    env_file:
+      - .env
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
