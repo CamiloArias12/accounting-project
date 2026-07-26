@@ -21,6 +21,17 @@ class Settings(BaseSettings):
     # CORS: allowed origins
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
 
+    # The company whose books these are.
+    #
+    # Configuration, not a table: this deployment keeps one set of books, so the
+    # company is the same on every voucher and storing it per row would be a
+    # column with one value in it. A voucher shows it; nothing selects it.
+    COMPANY_NIT: str = "900000000-0"
+    COMPANY_LEGAL_NAME: str = "Mi Empresa S.A.S."
+    COMPANY_ADDRESS: str | None = None
+    COMPANY_PHONE: str | None = None
+    COMPANY_EMAIL: str | None = None
+
     # Postgres
     POSTGRES_HOST: str = "localhost"
     POSTGRES_PORT: int = 5432

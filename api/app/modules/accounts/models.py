@@ -47,6 +47,14 @@ class Account(Base, TimestampMixin):
     #: Whether the account may be posted to. Unrelated to whether it exists.
     is_active: Mapped[bool] = mapped_column(default=True)
 
+    #: Whether every entry on this account must name a third party.
+    #:
+    #: Receivables and payables are meaningless without one — a balance of
+    #: 5.000.000 owed by nobody in particular cannot be collected. Elsewhere,
+    #: cash for instance, a third party is noise. Making it a property of the
+    #: account is what turns "when applicable" into something enforceable.
+    requires_third_party: Mapped[bool] = mapped_column(default=False)
+
     #: Soft delete marker. Rows are never removed: accounting records must stay
     #: auditable, and a deleted code must not be reused by a different account.
     deleted_at: Mapped[datetime | None] = mapped_column(default=None, index=True)
@@ -60,7 +68,13 @@ class Account(Base, TimestampMixin):
 
     @classmethod
     def open(
-        cls, *, code: str, name: str, nature: Nature, is_active: bool = True
+        cls,
+        *,
+        code: str,
+        name: str,
+        nature: Nature,
+        is_active: bool = True,
+        requires_third_party: bool = False,
     ) -> Account:
         """Build an account, deriving level and parent from its code."""
         normalized = validate_code(code)
@@ -69,6 +83,7 @@ class Account(Base, TimestampMixin):
             name=name,
             nature=nature,
             is_active=is_active,
+            requires_third_party=requires_third_party,
             level=level_of(normalized),
             parent_code=parent_code_of(normalized),
         )

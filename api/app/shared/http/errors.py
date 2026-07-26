@@ -31,6 +31,12 @@ from app.modules.locations.errors import (
     DepartmentNotFound,
     InconsistentPlace,
 )
+from app.modules.periods.errors import (
+    PeriodAlreadyClosed,
+    PeriodAlreadyOpen,
+    PeriodClosed,
+)
+from app.modules.periods.period import InvalidPeriod
 from app.modules.third_parties.documents import InvalidDocument
 from app.modules.third_parties.errors import (
     IncompleteThirdParty,
@@ -38,6 +44,18 @@ from app.modules.third_parties.errors import (
     ThirdPartyNotDeleted,
     ThirdPartyNotFound,
 )
+from app.modules.vouchers.errors import (
+    AccountNotPostable,
+    ThirdPartyRequired,
+    UnknownThirdParty,
+    VoucherAlreadyPosted,
+    VoucherAlreadyReversed,
+    VoucherIsReversal,
+    VoucherNotEditable,
+    VoucherNotFound,
+    VoucherNotPosted,
+)
+from app.modules.vouchers.posting import PostingError
 
 Handler = Callable[[Request, Exception], Awaitable[JSONResponse]]
 
@@ -58,6 +76,24 @@ _STATUS_BY_ERROR: dict[type[Exception], int] = {
     # Not a Pydantic error: the check digit and the format of a document depend
     # on its type, which only the domain knows.
     InvalidDocument: status.HTTP_422_UNPROCESSABLE_CONTENT,
+    # vouchers
+    VoucherNotFound: status.HTTP_404_NOT_FOUND,
+    VoucherNotEditable: status.HTTP_409_CONFLICT,
+    VoucherAlreadyPosted: status.HTTP_409_CONFLICT,
+    VoucherNotPosted: status.HTTP_409_CONFLICT,
+    VoucherAlreadyReversed: status.HTTP_409_CONFLICT,
+    VoucherIsReversal: status.HTTP_409_CONFLICT,
+    AccountNotPostable: status.HTTP_422_UNPROCESSABLE_CONTENT,
+    ThirdPartyRequired: status.HTTP_422_UNPROCESSABLE_CONTENT,
+    UnknownThirdParty: status.HTTP_422_UNPROCESSABLE_CONTENT,
+    # Not a Pydantic error: whether an entry balances is a property of the
+    # whole voucher, which no field validator can see.
+    PostingError: status.HTTP_422_UNPROCESSABLE_CONTENT,
+    # accounting periods
+    PeriodClosed: status.HTTP_409_CONFLICT,
+    PeriodAlreadyClosed: status.HTTP_409_CONFLICT,
+    PeriodAlreadyOpen: status.HTTP_409_CONFLICT,
+    InvalidPeriod: status.HTTP_422_UNPROCESSABLE_CONTENT,
     # locations
     CountryNotFound: status.HTTP_404_NOT_FOUND,
     DepartmentNotFound: status.HTTP_404_NOT_FOUND,

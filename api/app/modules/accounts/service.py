@@ -144,6 +144,7 @@ class AccountService:
                 name=payload.name,
                 nature=payload.nature,
                 is_active=payload.is_active,
+                requires_third_party=payload.requires_third_party,
             )
             self._session.add(account)
         else:
@@ -151,6 +152,7 @@ class AccountService:
             account.name = payload.name
             account.nature = payload.nature
             account.is_active = payload.is_active
+            account.requires_third_party = payload.requires_third_party
             account.restore()
 
         return await self._commit(account)

@@ -19,6 +19,10 @@ class AccountCreate(BaseModel):
     name: str = Field(min_length=1, max_length=255, examples=["CAJA GENERAL"])
     nature: Nature = Field(examples=[Nature.DEBIT])
     is_active: bool = True
+    requires_third_party: bool = Field(
+        default=False,
+        description="Whether every entry on this account must name a third party",
+    )
 
     @field_validator("code")
     @classmethod
@@ -35,6 +39,7 @@ class AccountUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     nature: Nature | None = None
     is_active: bool | None = None
+    requires_third_party: bool | None = None
 
 
 class AccountRead(BaseModel):
@@ -46,6 +51,7 @@ class AccountRead(BaseModel):
     level: AccountLevel
     parent_code: str | None
     is_active: bool
+    requires_third_party: bool
     deleted_at: datetime | None
     created_at: datetime
     updated_at: datetime
