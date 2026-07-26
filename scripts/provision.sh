@@ -61,8 +61,13 @@ if [ ! -f "$APP_DIR/.env" ]; then
 # volumen conserva la que se usó al inicializarse.
 ENVIRONMENT=production
 
-WEB_PORT=3000
-API_PORT=8000
+# Puertos corridos: el servidor es compartido y 3000/8000 pueden estar en uso
+# por el otro proyecto. La API escucha solo en loopback — la web la alcanza por
+# la red interna de Compose, nadie más necesita llegarle.
+WEB_PORT=${WEB_PORT:-3001}
+WEB_BIND=0.0.0.0
+API_PORT=${API_PORT:-8001}
+API_BIND=127.0.0.1
 
 POSTGRES_USER=accounting
 POSTGRES_PASSWORD=$(openssl rand -hex 24)
@@ -74,7 +79,7 @@ DB_POOL_SIZE=10
 DB_MAX_OVERFLOW=5
 CACHE_TTL_SECONDS=300
 
-CORS_ORIGINS=["http://${DEPLOY_HOST:-localhost}:3000"]
+CORS_ORIGINS=["http://${DEPLOY_HOST:-localhost}:${WEB_PORT:-3001}"]
 EOF
   chmod 600 "$APP_DIR/.env"
 else
@@ -83,12 +88,12 @@ fi
 
 # --- Firewall ----------------------------------------------------------------
 
-# Solo si ufw ya está activo. No se activa aquí: encender un firewall por
-# sorpresa en un servidor remoto es la forma clásica de perder el acceso SSH.
+# Solo el puerto de la web, y solo si ufw ya está activo. No se activa aquí:
+# encender un firewall por sorpresa en un servidor remoto es la forma clásica
+# de perder el acceso SSH. La API no se abre: escucha en loopback.
 if command -v ufw >/dev/null 2>&1 && ufw status | grep -q "Status: active"; then
-  log "Abriendo los puertos de la app en ufw"
-  ufw allow 3000/tcp >/dev/null
-  ufw allow 8000/tcp >/dev/null
+  log "Abriendo el puerto de la web en ufw"
+  ufw allow "${WEB_PORT:-3001}/tcp" >/dev/null
 fi
 
 log "Servidor listo"

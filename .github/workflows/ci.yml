@@ -50,9 +50,45 @@ jobs:
         # ve aquí y no en el servidor.
         run: docker build --target prod -t accounting-web:prod ./web
 
+  images:
+    name: Publicar imágenes en GHCR
+    needs: [api, web]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        component: [api, web]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Login en GHCR
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" \
+            | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Construir y publicar ${{ matrix.component }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ./${{ matrix.component }}
+          target: prod
+          push: true
+          # El servidor despliega por SHA; `latest` queda para un deploy manual.
+          tags: |
+            ghcr.io/camiloarias12/accounting-${{ matrix.component }}:${{ github.sha }}
+            ghcr.io/camiloarias12/accounting-${{ matrix.component }}:latest
+          # Caché en el propio registro: el runner es efímero y sin esto cada
+          # push reconstruye node_modules y el venv desde cero.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   deploy:
     name: Desplegar en producción
-    needs: [api, web]
+    needs: [api, web, images]
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     # Dos deploys simultáneos dejarían el servidor a medio construir.
@@ -109,6 +145,17 @@ jobs:
           ssh -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" \
             "DEPLOY_HOST=$DEPLOY_HOST bash -s" < scripts/provision.sh
 
+      - name: Login del servidor en GHCR
+        if: steps.check.outputs.configured == 'true'
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER || 'root' }}
+        run: |
+          # Por stdin: pasado como argumento, el token quedaría visible en un
+          # `ps` del servidor mientras dura el comando.
+          echo "${{ secrets.GITHUB_TOKEN }}" | ssh -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" \
+            "docker login ghcr.io -u '${{ github.actor }}' --password-stdin"
+
       - name: Desplegar
         if: steps.check.outputs.configured == 'true'
         env:
@@ -118,4 +165,14 @@ jobs:
           # El script vive en el repo, versionado, y se ejecuta por stdin: el
           # servidor no necesita tener una copia previa ni mantenerla al día.
           ssh -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" \
-            "DEPLOY_SHA=${{ github.sha }} bash -s" < scripts/deploy.sh
+            "DEPLOY_SHA=${{ github.sha }} IMAGE_TAG=${{ github.sha }} bash -s" < scripts/deploy.sh
+
+      - name: Cerrar sesión del registro
+        # Siempre, incluso si el deploy falló: no dejamos credenciales en
+        # ~/.docker/config.json de una máquina compartida.
+        if: always() && steps.check.outputs.configured == 'true'
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER || 'root' }}
+        run: |
+          ssh -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" "docker logout ghcr.io" || true

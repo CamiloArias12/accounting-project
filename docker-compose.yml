@@ -61,7 +61,9 @@ services:
       DEBUG: "false"
       CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost:3000"]}
     ports:
-      - "${API_PORT:-8000}:8000"
+      # El bind es variable: en un servidor compartido la API se publica solo
+      # en loopback y la web la alcanza por la red interna de Compose.
+      - "${API_BIND:-0.0.0.0}:${API_PORT:-8000}:8000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -91,7 +93,7 @@ services:
       # cambiarla no obliga a reconstruir la imagen.
       API_URL: http://api:8000
     ports:
-      - "${WEB_PORT:-3000}:3000"
+      - "${WEB_BIND:-0.0.0.0}:${WEB_PORT:-3000}:3000"
     depends_on:
       api:
         condition: service_healthy

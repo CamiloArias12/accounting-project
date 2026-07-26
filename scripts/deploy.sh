@@ -1,67 +1,113 @@
 #!/usr/bin/env bash
 #
-# Despliegue en el servidor de producción. Lo ejecuta el workflow de CI por
-# stdin (`ssh host bash -s < scripts/deploy.sh`), así que aquí dentro no hay
-# nada del repo todavía: lo primero que hace es traerlo.
+# Despliegue en el servidor. Lo ejecuta el workflow por stdin
+# (`ssh host bash -s < scripts/deploy.sh`), así que aquí no hay nada del repo
+# todavía: lo primero es traerlo.
 #
-# Variable de entrada: DEPLOY_SHA — el commit exacto a desplegar. Desplegar por
-# SHA y no por `origin/main` evita que un push que llegue entre el checkout de
-# CI y este momento se cuele sin haber pasado los checks.
+# Entradas:
+#   DEPLOY_SHA  commit exacto a desplegar (obligatorio)
+#   IMAGE_TAG   etiqueta de las imágenes en ghcr.io (por defecto, el SHA)
+#
+# El servidor es COMPARTIDO: jorgedarek-app corre en producción en la misma
+# máquina. De ahí las comprobaciones previas y que no se construya nada aquí.
 
 set -euo pipefail
 
 APP_DIR="${APP_DIR:-/opt/accounting-project}"
 REPO_URL="${REPO_URL:-https://github.com/CamiloArias12/accounting-project.git}"
-COMPOSE=(docker compose -f docker-compose.yml)
+COMPOSE=(docker compose -f docker-compose.yml -f docker-compose.server.yml)
+PROJECT=accounting
 
-log() { printf '\n\033[1;34m==>\033[0m %s\n' "$1"; }
+log()  { printf '\n\033[1;34m==>\033[0m %s\n' "$1"; }
+fail() { printf '\n\033[1;31mABORTADO:\033[0m %s\n' "$1" >&2; exit 1; }
 
-if [ -z "${DEPLOY_SHA:-}" ]; then
-  echo "Falta DEPLOY_SHA: no sé qué commit desplegar." >&2
-  exit 1
+[ -n "${DEPLOY_SHA:-}" ] || fail "Falta DEPLOY_SHA: no sé qué commit desplegar."
+export IMAGE_TAG="${IMAGE_TAG:-$DEPLOY_SHA}"
+
+# --- Comprobaciones previas --------------------------------------------------
+#
+# Nada de esto es paranoia de más: en esta máquina hay una base de datos de
+# producción de otro proyecto con dos meses de uptime.
+
+log "Comprobando que no piso nada ajeno"
+
+# 1. Ningún contenedor con nuestros nombres puede pertenecer a otro proyecto.
+for nombre in accounting-postgres accounting-redis accounting-api accounting-web; do
+  duenio="$(docker inspect "$nombre" \
+    --format '{{index .Config.Labels "com.docker.compose.project"}}' 2>/dev/null || true)"
+  if [ -n "$duenio" ] && [ "$duenio" != "$PROJECT" ]; then
+    fail "El contenedor $nombre pertenece al proyecto '$duenio'. Parando antes de tocarlo."
+  fi
+done
+
+# 2. Los puertos que vamos a publicar tienen que estar libres, o ya ser
+#    nuestros (un redeploy normal).
+if [ -f "$APP_DIR/.env" ]; then
+  # shellcheck disable=SC1091
+  set -a; . "$APP_DIR/.env"; set +a
 fi
+for puerto in "${WEB_PORT:-3000}" "${API_PORT:-8000}"; do
+  en_uso="$(ss -tlnp 2>/dev/null | grep -E "[:.]${puerto} " || true)"
+  if [ -n "$en_uso" ] && ! docker ps --filter "label=com.docker.compose.project=$PROJECT" \
+       --format '{{.Ports}}' | grep -q ":${puerto}->"; then
+    fail "El puerto $puerto ya está ocupado por otro proceso: $en_uso"
+  fi
+done
+
+# 3. Disco. Sin margen, un `docker pull` a medias deja el disco lleno y el
+#    Postgres del vecino sin poder escribir.
+libre_mb="$(df -Pm / | awk 'NR==2 {print $4}')"
+[ "$libre_mb" -ge 2048 ] || fail "Solo quedan ${libre_mb} MB libres en /. Se necesitan 2 GB."
+
+# --- Código ------------------------------------------------------------------
 
 log "Sincronizando el código en $APP_DIR"
-if [ ! -d "$APP_DIR/.git" ]; then
-  git clone "$REPO_URL" "$APP_DIR"
-fi
+[ -d "$APP_DIR/.git" ] || git clone "$REPO_URL" "$APP_DIR"
 cd "$APP_DIR"
 git fetch --prune origin
-# reset --hard, no merge: el servidor es un reflejo del repo, nunca origen de
+# reset --hard, no merge: el servidor refleja el repo, nunca es origen de
 # cambios. Si alguien editó a mano, se pierde, y eso es lo correcto.
 git reset --hard "$DEPLOY_SHA"
 git clean -fd
 
-# Red de seguridad: provision.sh ya lo generó. Si falta, algo salió mal antes
-# y es mejor parar que arrancar Postgres con credenciales a medias.
-if [ ! -f .env ]; then
-  echo "Falta $APP_DIR/.env — provision.sh debería haberlo creado." >&2
-  exit 1
-fi
+[ -f .env ] || fail "Falta $APP_DIR/.env — provision.sh debería haberlo creado."
 
-log "Construyendo las imágenes de producción"
-"${COMPOSE[@]}" build
+# --- Imágenes ----------------------------------------------------------------
+
+log "Obteniendo las imágenes ($IMAGE_TAG)"
+# No se construye en el servidor: 3.7 GB de RAM compartidos con producción
+# ajena. `pull_policy: missing` en el override evita bajar lo que ya está.
+"${COMPOSE[@]}" pull --quiet api web 2>/dev/null || {
+  # Si el registro no las tiene (o son privadas), sirve una imagen cargada a
+  # mano con `docker load`. Si tampoco está, no hay nada que desplegar.
+  for img in api web; do
+    docker image inspect "ghcr.io/camiloarias12/accounting-$img:$IMAGE_TAG" >/dev/null 2>&1 \
+      || fail "No encuentro la imagen de $img con tag $IMAGE_TAG, ni en el registro ni local."
+  done
+  log "Registro inaccesible; uso las imágenes que ya están en el servidor"
+}
+
+# --- Migraciones y arranque --------------------------------------------------
 
 log "Aplicando migraciones"
-# Antes de levantar el código nuevo, y con la imagen nueva: si la migración
-# falla, los contenedores viejos siguen sirviendo con el esquema viejo.
-# `run` respeta depends_on, así que espera a que Postgres esté healthy.
+# Con la imagen nueva y antes de cambiar los contenedores: si la migración
+# falla, los viejos siguen sirviendo con el esquema viejo. `run` respeta
+# depends_on, así que espera a que Postgres esté healthy.
 "${COMPOSE[@]}" up -d postgres redis
-"${COMPOSE[@]}" run --rm api alembic upgrade head
+"${COMPOSE[@]}" run --rm --no-build api alembic upgrade head
 
 log "Levantando los servicios"
-"${COMPOSE[@]}" up -d --remove-orphans
+"${COMPOSE[@]}" up -d --no-build --remove-orphans
 
 log "Verificando que la API responda"
-# El healthcheck de compose ya lo comprueba, pero desde fuera confirma también
-# que el puerto está publicado.
-api_port="$(grep -E '^API_PORT=' .env | cut -d= -f2)"
+api_port="${API_PORT:-8000}"
 for _ in $(seq 1 30); do
-  if curl -fsS "http://localhost:${api_port:-8000}/api/v1/health" >/dev/null; then
+  if curl -fsS "http://127.0.0.1:${api_port}/api/v1/health" >/dev/null 2>&1; then
     log "Despliegue correcto: $(git rev-parse --short HEAD)"
     "${COMPOSE[@]}" ps
-    # Las imágenes viejas se acumulan y llenan el disco del VPS.
-    docker image prune -f >/dev/null
+    # Solo nuestras imágenes sueltas: un prune global se llevaría las de
+    # jorgedarek-app que sirven para hacerle rollback.
+    docker image prune -f --filter "label=com.docker.compose.project=$PROJECT" >/dev/null 2>&1 || true
     exit 0
   fi
   sleep 2
