@@ -135,7 +135,9 @@
     "personTypes": {
       "Natural person": "Persona natural",
       "Legal entity": "Persona jurídica"
-    }
+    },
+    "columnState": "Estado",
+    "backToList": "Volver a terceros"
   },
   "thirdPartyForm": {
     "createTitle": "Nuevo tercero",
@@ -275,7 +277,13 @@
     "statuses": {
       "Draft": "Borrador",
       "Posted": "Contabilizado"
-    }
+    },
+    "columnNumber": "Número",
+    "columnDate": "Fecha",
+    "columnDescription": "Descripción",
+    "columnTotal": "Total",
+    "columnStatus": "Estado",
+    "backToList": "Volver a comprobantes"
   },
   "voucherForm": {
     "createTitle": "Nuevo comprobante",
@@ -365,7 +373,9 @@
       "10": "Octubre",
       "11": "Noviembre",
       "12": "Diciembre"
-    }
+    },
+    "previousYear": "Año anterior",
+    "nextYear": "Año siguiente"
   },
   "periodSuccess": {
     "closed": "Período {period} cerrado",

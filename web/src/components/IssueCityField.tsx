@@ -4,6 +4,8 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { fetchCities } from "@/actions/locations";
+import { NativeSelect } from "@/components/NativeSelect";
+import { Label } from "@/components/ui/label";
 import type { City, Department } from "@/types/third-party";
 
 interface Props {
@@ -48,48 +50,39 @@ export function IssueCityField({
 
   return (
     <div className="grid gap-3 sm:grid-cols-2">
-      <label className="flex flex-col gap-1 text-sm">
-        {t("issueDepartment")}
-        <select
-          value={departmentId}
-          onChange={(event) => {
-            setDepartmentId(
-              event.target.value === "" ? "" : Number(event.target.value),
-            );
+      <div className="flex flex-col gap-1.5">
+        <Label>{t("issueDepartment")}</Label>
+        <NativeSelect
+          name="issue_department_helper"
+          value={String(departmentId)}
+          placeholder={t("choose")}
+          options={departments.map((department) => ({
+            value: String(department.id),
+            label: department.name,
+          }))}
+          onChange={(next) => {
+            setDepartmentId(next === "" ? "" : Number(next));
             setCities([]);
             setCityId("");
           }}
-          className="rounded-md border border-border bg-transparent px-3 py-2"
-        >
-          <option value="">{t("choose")}</option>
-          {departments.map((department) => (
-            <option key={department.id} value={department.id}>
-              {department.name}
-            </option>
-          ))}
-        </select>
-      </label>
+        />
+      </div>
 
-      <label className="flex flex-col gap-1 text-sm">
-        {t("issueCity")}
-        <select
+      <div className="flex flex-col gap-1.5">
+        <Label>{t("issueCity")}</Label>
+        <NativeSelect
           name="issue_city_id"
-          value={cityId}
+          value={String(cityId)}
           required
           disabled={cities.length === 0}
-          onChange={(event) =>
-            setCityId(event.target.value === "" ? "" : Number(event.target.value))
-          }
-          className="rounded-md border border-border bg-transparent px-3 py-2 disabled:opacity-50"
-        >
-          <option value="">{t("choose")}</option>
-          {cities.map((city) => (
-            <option key={city.id} value={city.id}>
-              {city.name}
-            </option>
-          ))}
-        </select>
-      </label>
+          placeholder={t("choose")}
+          options={cities.map((city) => ({
+            value: String(city.id),
+            label: city.name,
+          }))}
+          onChange={(next) => setCityId(next === "" ? "" : Number(next))}
+        />
+      </div>
     </div>
   );
 }

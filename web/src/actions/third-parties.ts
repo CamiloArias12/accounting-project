@@ -33,12 +33,21 @@ export async function createThirdParty(
 ): Promise<FormState> {
   const t = await getTranslations();
 
+  let createdId: number | null = null;
+
   try {
     const payload = buildCreate(formData);
-    return await run(async () => {
+    const state = await run(async () => {
       const created = await thirdPartiesApi.create(payload);
+      createdId = created.id;
       return t("thirdPartySuccess.created", { name: created.full_name });
     });
+
+    // A new third party has its own page from here on. `redirect` throws by
+    // design, so it stays outside the try/catch inside `run`.
+    if (createdId !== null) redirect(`${PATH}/${createdId}`);
+
+    return state;
   } catch (caught) {
     // Thrown by the builders below when a required field is missing; the API's
     // own errors are handled inside `run`.
@@ -97,7 +106,7 @@ export async function changeThirdPartyState(
   // mid-flight. Switching to the deleted view keeps it on screen, now offering
   // Restore. `redirect` throws by design, so it stays outside try/catch.
   if (!restoring && state.status === "success") {
-    redirect(`${PATH}?deleted=1&selected=${id}`);
+    redirect(`${PATH}?deleted=1`);
   }
 
   return state;

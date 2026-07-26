@@ -135,7 +135,9 @@
     "personTypes": {
       "Natural person": "Natural person",
       "Legal entity": "Legal entity"
-    }
+    },
+    "columnState": "State",
+    "backToList": "Back to third parties"
   },
   "thirdPartyForm": {
     "createTitle": "New third party",
@@ -275,7 +277,13 @@
     "statuses": {
       "Draft": "Draft",
       "Posted": "Posted"
-    }
+    },
+    "columnNumber": "Number",
+    "columnDate": "Date",
+    "columnDescription": "Description",
+    "columnTotal": "Total",
+    "columnStatus": "Status",
+    "backToList": "Back to vouchers"
   },
   "voucherForm": {
     "createTitle": "New voucher",
@@ -365,7 +373,9 @@
       "10": "October",
       "11": "November",
       "12": "December"
-    }
+    },
+    "previousYear": "Previous year",
+    "nextYear": "Next year"
   },
   "periodSuccess": {
     "closed": "Period {period} closed",

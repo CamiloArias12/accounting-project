@@ -1,8 +1,9 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { toast } from "sonner";
 
 import { IDLE, type FormState } from "@/actions/state";
 import {
@@ -11,7 +12,12 @@ import {
   updateThirdParty,
 } from "@/actions/third-parties";
 import { IssueCityField } from "@/components/IssueCityField";
+import { NativeSelect } from "@/components/NativeSelect";
 import { PlaceFields } from "@/components/PlaceFields";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import {
   COMPANY_TYPES,
   DOCUMENT_TYPES,
@@ -86,6 +92,9 @@ export function ThirdPartyForm({
     IDLE,
   );
 
+  useAnnounce(state);
+  useAnnounce(lifecycleState);
+
   return (
     <div className="flex flex-col gap-4">
       <form action={submit} className="flex flex-col gap-5">
@@ -148,7 +157,7 @@ export function ThirdPartyForm({
                   onChange={(event) =>
                     setDocumentType(event.target.value as DocumentType)
                   }
-                  className="rounded-md border border-border bg-transparent px-3 py-2"
+                  className=""
                 >
                   {DOCUMENT_TYPES.map((value) => (
                     <option key={value} value={value}>
@@ -203,7 +212,7 @@ export function ThirdPartyForm({
             <input
               name="trade_name"
               defaultValue={thirdParty?.trade_name ?? ""}
-              className="rounded-md border border-border bg-transparent px-3 py-2"
+              className=""
             />
           </label>
 
@@ -213,7 +222,7 @@ export function ThirdPartyForm({
               name="address"
               defaultValue={thirdParty?.address ?? ""}
               required
-              className="rounded-md border border-border bg-transparent px-3 py-2"
+              className=""
             />
           </label>
 
@@ -240,7 +249,7 @@ export function ThirdPartyForm({
                 name="mobile_phone"
                 defaultValue={thirdParty?.mobile_phone ?? ""}
                 required
-                className="rounded-md border border-border bg-transparent px-3 py-2"
+                className=""
               />
             </label>
             <label className="flex flex-col gap-1 text-sm">
@@ -248,7 +257,7 @@ export function ThirdPartyForm({
               <input
                 name="landline"
                 defaultValue={thirdParty?.landline ?? ""}
-                className="rounded-md border border-border bg-transparent px-3 py-2"
+                className=""
               />
             </label>
             <label className="flex flex-col gap-1 text-sm">
@@ -258,7 +267,7 @@ export function ThirdPartyForm({
                 type="email"
                 defaultValue={thirdParty?.email ?? ""}
                 required
-                className="rounded-md border border-border bg-transparent px-3 py-2"
+                className=""
               />
             </label>
           </div>
@@ -268,7 +277,7 @@ export function ThirdPartyForm({
             <select
               name="tax_regime"
               defaultValue={thirdParty?.tax_regime ?? "Not VAT responsible"}
-              className="rounded-md border border-border bg-transparent px-3 py-2"
+              className=""
             >
               {TAX_REGIMES.map((value) => (
                 <option key={value} value={value}>
@@ -310,7 +319,6 @@ export function ThirdPartyForm({
           defaultChecked={thirdParty?.is_active ?? true}
         />
 
-        <Feedback state={state} />
 
         <div className="flex flex-wrap gap-2">
           <SubmitButton label={t("save")} pendingLabel={t("saving")} />
@@ -335,7 +343,6 @@ export function ThirdPartyForm({
             name="intent"
             value={isDeleted ? "restore" : "delete"}
           />
-          <Feedback state={lifecycleState} />
           <LifecycleButton
             deleted={isDeleted}
             label={isDeleted ? t("restore") : t("delete")}
@@ -381,7 +388,7 @@ function NaturalFields({
             type="date"
             defaultValue={thirdParty?.issue_date ?? ""}
             required
-            className="rounded-md border border-border bg-transparent px-3 py-2"
+            className=""
           />
         </label>
         <IssueCityField
@@ -399,7 +406,7 @@ function NaturalFields({
             type="date"
             defaultValue={thirdParty?.birth_date ?? ""}
             required
-            className="rounded-md border border-border bg-transparent px-3 py-2"
+            className=""
           />
         </label>
         <PlaceFields
@@ -527,11 +534,12 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <fieldset className="flex flex-col gap-3 border-t border-border pt-4">
+    <fieldset className="flex flex-col gap-3">
       <legend className="text-xs uppercase tracking-wide text-muted-foreground">
         {title}
       </legend>
       {hint && <p className="-mt-1 text-xs text-muted-foreground">{hint}</p>}
+      <Separator className="mb-1" />
       {children}
     </fieldset>
   );
@@ -549,15 +557,15 @@ function Text({
   required?: boolean;
 }) {
   return (
-    <label className="flex flex-col gap-1 text-sm">
-      {label}
-      <input
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor={name}>{label}</Label>
+      <Input
+        id={name}
         name={name}
         defaultValue={value ?? ""}
         required={required}
-        className="rounded-md border border-border bg-transparent px-3 py-2"
       />
-    </label>
+    </div>
   );
 }
 
@@ -577,20 +585,19 @@ function Choice({
   const t = useTranslations("thirdPartyForm");
 
   return (
-    <label className="flex flex-col gap-1 text-sm">
-      {label}
-      <select
+    <div className="flex flex-col gap-1.5">
+      <Label>{label}</Label>
+      {/* The hidden input is what the server action reads: a shadcn Select is
+          a button and a listbox, and neither of those posts a value. */}
+      <NativeSelect
         name={name}
         defaultValue={value ?? values[0]}
-        className="rounded-md border border-border bg-transparent px-3 py-2"
-      >
-        {values.map((option) => (
-          <option key={option} value={option}>
-            {t(`${prefix}.${option}`)}
-          </option>
-        ))}
-      </select>
-    </label>
+        options={values.map((option) => ({
+          value: option,
+          label: t(`${prefix}.${option}`),
+        }))}
+      />
+    </div>
   );
 }
 
@@ -604,29 +611,27 @@ function Check({
   defaultChecked: boolean;
 }) {
   return (
-    <label className="flex items-center gap-2 text-sm">
-      <input type="checkbox" name={name} defaultChecked={defaultChecked} />
+    <Label className="flex items-center gap-2 font-normal">
+      <input
+        type="checkbox"
+        name={name}
+        defaultChecked={defaultChecked}
+        className="size-4 accent-primary"
+      />
       {label}
-    </label>
+    </Label>
   );
 }
 
-function Feedback({ state }: { state: FormState }) {
-  if (state.status === "idle") return null;
-
-  const isError = state.status === "error";
-  return (
-    <p
-      role={isError ? "alert" : "status"}
-      className={`rounded-md px-3 py-2 text-sm ${
-        isError
-          ? "bg-red-500/10 text-red-700 dark:text-red-400"
-          : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-      }`}
-    >
-      {state.message}
-    </p>
-  );
+/**
+ * Surfaces an action's outcome as a toast rather than a paragraph under the
+ * form, which on a form this long meant scrolling to find out what happened.
+ */
+function useAnnounce(state: FormState) {
+  useEffect(() => {
+    if (state.status === "success") toast.success(state.message);
+    if (state.status === "error") toast.error(state.message);
+  }, [state]);
 }
 
 function SubmitButton({
@@ -638,13 +643,9 @@ function SubmitButton({
 }) {
   const { pending } = useFormStatus();
   return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
-    >
+    <Button type="submit" disabled={pending}>
       {pending ? pendingLabel : label}
-    </button>
+    </Button>
   );
 }
 
@@ -659,16 +660,13 @@ function LifecycleButton({
 }) {
   const { pending } = useFormStatus();
   return (
-    <button
+    <Button
       type="submit"
+      variant={deleted ? "outline" : "destructive"}
       disabled={pending}
-      className={
-        deleted
-          ? "self-start rounded-md border border-border px-4 py-2 text-sm disabled:opacity-50"
-          : "self-start rounded-md px-4 py-2 text-sm text-red-600 hover:bg-red-500/10 disabled:opacity-50 dark:text-red-400"
-      }
+      className="self-start"
     >
       {pending ? pendingLabel : label}
-    </button>
+    </Button>
   );
 }

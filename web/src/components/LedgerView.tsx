@@ -3,6 +3,18 @@
 import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { formatMoney } from "@/lib/money";
 import type { AccountLedger, LedgerReport } from "@/types/voucher";
 
@@ -51,32 +63,28 @@ export function LedgerView({
       )}
 
       <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border p-3">
-        <label className="flex flex-col gap-1 text-sm">
-          {t("from")}
-          <input
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="ledger-from">{t("from")}</Label>
+          <Input
+            id="ledger-from"
             type="date"
             defaultValue={dateFrom}
             onChange={(event) => go({ date_from: event.target.value })}
-            className="rounded-md border border-border bg-transparent px-3 py-1.5"
           />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          {t("to")}
-          <input
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="ledger-to">{t("to")}</Label>
+          <Input
+            id="ledger-to"
             type="date"
             defaultValue={dateTo}
             onChange={(event) => go({ date_to: event.target.value })}
-            className="rounded-md border border-border bg-transparent px-3 py-1.5"
           />
-        </label>
+        </div>
         {detail && (
-          <button
-            type="button"
-            onClick={() => go({ account: "" })}
-            className="rounded-md border border-border px-3 py-1.5 text-sm"
-          >
+          <Button variant="outline" onClick={() => go({ account: "" })}>
             {t("backToReport")}
-          </button>
+          </Button>
         )}
       </div>
 
@@ -108,41 +116,41 @@ function Report({
 
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
-      <table className="w-full min-w-[44rem] text-sm">
-        <thead className="bg-card text-xs uppercase tracking-wide text-muted-foreground">
-          <tr>
-            <th className="px-3 py-2 text-left font-medium">{t("account")}</th>
-            <th className="px-3 py-2 text-right font-medium">{t("opening")}</th>
-            <th className="px-3 py-2 text-right font-medium">{t("debit")}</th>
-            <th className="px-3 py-2 text-right font-medium">{t("credit")}</th>
-            <th className="px-3 py-2 text-right font-medium">{t("closing")}</th>
-          </tr>
-        </thead>
-        <tbody>
+      <Table className="min-w-[44rem]">
+        <TableHeader>
+          <TableRow>
+            <TableHead>{t("account")}</TableHead>
+            <TableHead className="text-right">{t("opening")}</TableHead>
+            <TableHead className="text-right">{t("debit")}</TableHead>
+            <TableHead className="text-right">{t("credit")}</TableHead>
+            <TableHead className="text-right">{t("closing")}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {report.accounts.map((account) => (
-            <tr
+            <TableRow
               key={account.code}
               onClick={() => onOpen(account.code)}
               className="cursor-pointer border-t border-border hover:bg-foreground/5"
             >
-              <td className="px-3 py-2">
+              <TableCell className="">
                 <span className="font-mono text-xs">{account.code}</span>
                 <span className="ml-2">{account.name}</span>
-              </td>
+              </TableCell>
               <Money value={account.opening_balance} />
               <Money value={account.debit} />
               <Money value={account.credit} />
               <Money value={account.closing_balance} strong />
-            </tr>
+            </TableRow>
           ))}
-        </tbody>
-        <tfoot>
-          <tr className="border-t-2 border-border font-medium">
-            <td className="px-3 py-2">{t("totals")}</td>
-            <td />
+        </TableBody>
+        <TableFooter>
+          <TableRow className="border-t-2 border-border font-medium">
+            <TableCell className="">{t("totals")}</TableCell>
+            <TableCell />
             <Money value={report.totals.debit} />
             <Money value={report.totals.credit} />
-            <td className="px-3 py-2 text-right">
+            <TableCell className=" text-right">
               {/* The one check that covers every voucher behind it: if each
                   entry balanced, the books as a whole add up to nothing. */}
               <span
@@ -156,10 +164,10 @@ function Report({
                   ? `✓ ${formatMoney(report.totals.balance)}`
                   : formatMoney(report.totals.balance)}
               </span>
-            </td>
-          </tr>
-        </tfoot>
-      </table>
+            </TableCell>
+          </TableRow>
+        </TableFooter>
+      </Table>
     </div>
   );
 }
@@ -180,49 +188,49 @@ function AccountDetail({ detail }: { detail: AccountLedger }) {
       </header>
 
       <div className="overflow-x-auto rounded-lg border border-border">
-        <table className="w-full min-w-[48rem] text-sm">
-          <thead className="bg-card text-xs uppercase tracking-wide text-muted-foreground">
-            <tr>
-              <th className="px-3 py-2 text-left font-medium">{t("voucher")}</th>
-              <th className="px-3 py-2 text-left font-medium">{t("date")}</th>
-              <th className="px-3 py-2 text-left font-medium">
+        <Table className="min-w-[48rem]">
+          <TableHeader>
+            <TableRow>
+              <TableHead>{t("voucher")}</TableHead>
+              <TableHead>{t("date")}</TableHead>
+              <TableHead>
                 {t("description")}
-              </th>
-              <th className="px-3 py-2 text-right font-medium">{t("debit")}</th>
-              <th className="px-3 py-2 text-right font-medium">{t("credit")}</th>
-              <th className="px-3 py-2 text-right font-medium">
+              </TableHead>
+              <TableHead className="text-right">{t("debit")}</TableHead>
+              <TableHead className="text-right">{t("credit")}</TableHead>
+              <TableHead className="text-right">
                 {t("running")}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {detail.entries.length === 0 && (
-              <tr>
-                <td colSpan={6} className="p-6 text-center text-sm text-muted-foreground">
+              <TableRow>
+                <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
                   {t("empty")}
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             )}
             {detail.entries.map((entry, index) => (
-              <tr
+              <TableRow
                 key={`${entry.voucher_id}-${index}`}
                 className="border-t border-border"
               >
-                <td className="px-3 py-2 font-mono text-xs">
+                <TableCell className=" font-mono text-xs">
                   #{entry.voucher_number}
                   {entry.reverses_voucher_id !== null && (
                     <span className="ml-1 text-muted-foreground">↩</span>
                   )}
-                </td>
-                <td className="px-3 py-2">{entry.date}</td>
-                <td className="px-3 py-2">{entry.description}</td>
+                </TableCell>
+                <TableCell className="">{entry.date}</TableCell>
+                <TableCell className="">{entry.description}</TableCell>
                 <Money value={entry.debit} />
                 <Money value={entry.credit} />
                 <Money value={entry.running_balance} strong />
-              </tr>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
     </section>
   );
@@ -230,12 +238,10 @@ function AccountDetail({ detail }: { detail: AccountLedger }) {
 
 function Money({ value, strong = false }: { value: string; strong?: boolean }) {
   return (
-    <td
-      className={`px-3 py-2 text-right tabular-nums ${
-        strong ? "font-medium" : ""
-      }`}
+    <TableCell
+      className={`text-right tabular-nums ${strong ? "font-medium" : ""}`}
     >
       {formatMoney(value)}
-    </td>
+    </TableCell>
   );
 }

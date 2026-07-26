@@ -35,16 +35,23 @@ export async function saveVoucher(
     lines,
   };
 
-  return run(async () => {
-    const saved =
-      id === null
-        ? await vouchersApi.create(payload)
-        : await vouchersApi.update(id, payload);
+  let created: number | null = null;
 
-    return id === null
-      ? t("voucherSuccess.created")
-      : t("voucherSuccess.updated", { id: saved.id });
+  const state = await run(async () => {
+    if (id === null) {
+      const draft = await vouchersApi.create(payload);
+      created = draft.id;
+      return t("voucherSuccess.created");
+    }
+    await vouchersApi.update(id, payload);
+    return t("voucherSuccess.updated", { id });
   });
+
+  // A new draft has its own page from here on; an edit stays where it is.
+  // `redirect` throws by design, so it lives outside the try/catch in `run`.
+  if (created !== null) redirect(`${PATH}/${created}`);
+
+  return state;
 }
 
 /**
@@ -63,6 +70,7 @@ export async function postOrReverseVoucher(
   if (id === null) return failure(t("voucherErrors.missingId"));
 
   const reversing = formData.get("intent") === "reverse";
+  let reversalId: number | null = null;
 
   const state = await run(async () => {
     if (!reversing) {
@@ -76,14 +84,13 @@ export async function postOrReverseVoucher(
       // is data the user will read back, not a label.
       description: readText(formData, "description") || null,
     });
+    reversalId = reversal.id;
     return t("voucherSuccess.reversed", { number: reversal.number ?? "" });
   });
 
   // The reversal is a new voucher, and it is the one worth looking at: it is
   // what now stands in the books.
-  if (reversing && state.status === "success") {
-    redirect(PATH);
-  }
+  if (reversalId !== null) redirect(`${PATH}/${reversalId}`);
 
   return state;
 }

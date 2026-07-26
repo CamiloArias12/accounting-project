@@ -1,12 +1,18 @@
 "use client";
 
+import { ChevronLeft, ChevronRight } from "lucide-react";
+
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useActionState } from "react";
+import { toast } from "sonner";
+import { useActionState, useEffect } from "react";
 import { useFormStatus } from "react-dom";
 
 import { IDLE, type FormState } from "@/actions/state";
 import { changePeriodState } from "@/actions/vouchers";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import type { Period } from "@/types/voucher";
 
 interface Props {
@@ -23,6 +29,11 @@ export function PeriodsGrid({ year, periods, loadError }: Props) {
     IDLE,
   );
 
+  useEffect(() => {
+    if (state.status === "success") toast.success(state.message);
+    if (state.status === "error") toast.error(state.message);
+  }, [state]);
+
   return (
     <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 p-6 pt-16 lg:pt-6">
       <header className="flex flex-wrap items-baseline justify-between gap-3">
@@ -31,21 +42,23 @@ export function PeriodsGrid({ year, periods, loadError }: Props) {
           <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label={t("previousYear")}
             onClick={() => router.push(`/periods?year=${year - 1}`)}
-            className="rounded-md border border-border px-3 py-1.5 text-sm"
           >
-            ←
-          </button>
+            <ChevronLeft />
+          </Button>
           <span className="text-lg font-semibold tabular-nums">{year}</span>
-          <button
-            type="button"
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label={t("nextYear")}
             onClick={() => router.push(`/periods?year=${year + 1}`)}
-            className="rounded-md border border-border px-3 py-1.5 text-sm"
           >
-            →
-          </button>
+            <ChevronRight />
+          </Button>
         </div>
       </header>
 
@@ -58,30 +71,13 @@ export function PeriodsGrid({ year, periods, loadError }: Props) {
         </p>
       )}
 
-      {state.status !== "idle" && (
-        <p
-          role={state.status === "error" ? "alert" : "status"}
-          className={`rounded-md px-3 py-2 text-sm ${
-            state.status === "error"
-              ? "bg-red-500/10 text-red-700 dark:text-red-400"
-              : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-          }`}
-        >
-          {state.message}
-        </p>
-      )}
-
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {periods.map((period) => {
           const closed = period.status === "Closed";
           return (
-            <form
-              key={period.month}
-              action={submit}
-              className={`flex items-center justify-between gap-3 rounded-lg border p-4 ${
-                closed ? "border-border bg-card" : "border-border"
-              }`}
-            >
+            <form key={period.month} action={submit}>
+              <Card>
+                <CardContent className="flex items-center justify-between gap-3">
               <input type="hidden" name="year" value={period.year} />
               <input type="hidden" name="month" value={period.month} />
               <input
@@ -90,26 +86,22 @@ export function PeriodsGrid({ year, periods, loadError }: Props) {
                 value={closed ? "reopen" : "close"}
               />
 
-              <div>
-                <p className="text-sm font-medium">
-                  {t(`months.${period.month}`)}
-                </p>
-                <p
-                  className={`text-xs ${
-                    closed
-                      ? "text-muted-foreground"
-                      : "text-emerald-700 dark:text-emerald-400"
-                  }`}
-                >
-                  {t(`statuses.${period.status}`)}
-                </p>
-              </div>
+                <div className="flex flex-col items-start gap-1">
+                  <p className="text-sm font-medium">
+                    {t(`months.${period.month}`)}
+                  </p>
+                  <Badge variant={closed ? "secondary" : "outline"}>
+                    {t(`statuses.${period.status}`)}
+                  </Badge>
+                </div>
 
-              <Action
-                label={closed ? t("reopen") : t("close")}
-                pendingLabel={closed ? t("reopening") : t("closing")}
-                closed={closed}
-              />
+                <Action
+                  label={closed ? t("reopen") : t("close")}
+                  pendingLabel={closed ? t("reopening") : t("closing")}
+                  closed={closed}
+                />
+                </CardContent>
+              </Card>
             </form>
           );
         })}
@@ -132,16 +124,13 @@ function Action({
   const { pending } = useFormStatus();
 
   return (
-    <button
+    <Button
       type="submit"
+      variant={closed ? "outline" : "default"}
+      size="sm"
       disabled={pending}
-      className={`rounded-md px-3 py-1.5 text-sm disabled:opacity-50 ${
-        closed
-          ? "border border-border"
-          : "bg-primary text-primary-foreground font-medium"
-      }`}
     >
       {pending ? pendingLabel : label}
-    </button>
+    </Button>
   );
 }
