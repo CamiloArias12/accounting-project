@@ -425,7 +425,9 @@
     "thirdPartySearch": "Buscar por nombre o documento...",
     "noMatches": "Sin coincidencias",
     "anyDate": "Cualquier fecha",
-    "downloadBook": "Descargar libro auxiliar"
+    "downloadBook": "Descargar libro auxiliar",
+    "chartTitle": "Evolución del saldo",
+    "chartSummary": "Saldo de la cuenta entre {from} y {to}: de {opening} a {closing}. La tabla siguiente trae cada movimiento."
   },
   "select": {
     "placeholder": "Selecciona…",

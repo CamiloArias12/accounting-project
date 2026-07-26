@@ -425,7 +425,9 @@
     "thirdPartySearch": "Search by name or document...",
     "noMatches": "No matches",
     "anyDate": "Any date",
-    "downloadBook": "Download the auxiliary book"
+    "downloadBook": "Download the auxiliary book",
+    "chartTitle": "Balance over time",
+    "chartSummary": "The account's balance between {from} and {to}: from {opening} to {closing}. The table below carries every movement."
   },
   "select": {
     "placeholder": "Choose…",

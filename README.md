@@ -175,6 +175,41 @@ value typed in by hand outranks the source and is never overwritten by a fetch.
 A threshold of zero needs no UVT at all, which is what keeps the report usable
 for a year nobody has published one for yet.
 
+## Optional extensions, and why these
+
+The brief lists a handful of extras and asks which were chosen and why. Five of
+them are here:
+
+- **Export of the ledger to a spreadsheet.** The auxiliary book, at
+  `/ledger/export`. An accountant filters, totals and pastes a book into a
+  working paper, so it has to leave the app as a file — and openpyxl was
+  already a dependency for the chart import, so it cost no new code in the
+  supply chain.
+- **A chart of an account's balance over time.** On the ledger's account
+  detail. Drawn from the same entries the table below it shows rather than from
+  a second endpoint: a chart that disagrees with the figures printed under it is
+  worse than no chart.
+- **JWT authentication.** The app sits behind a login; the token lives in an
+  httpOnly cookie the browser's JavaScript cannot read, and only the server
+  attaches it to API calls.
+- **One command brings the whole system up.** `docker compose up -d --build`.
+- **CI in GitHub Actions**, and a deployment that follows it — see below.
+
+The chart is hand-drawn SVG rather than a charting library. One line chart does
+not justify recharts and its d3 dependencies in the bundle, and everything a
+library would provide here — a path, an axis, a hover label — is the component
+itself. If a second or third chart appears, that trade flips.
+
+It is scaled to the data rather than anchored to zero. Forcing zero into the
+axis is a bar chart's rule, where the bar's length *is* the value; a cash
+account sitting at 3.500.000 would otherwise spend the whole chart as a flat
+line at the bottom with its actual movement invisible. The axis labels carry the
+magnitude, and the zero line is drawn whenever it falls in view.
+
+The line steps rather than slopes, because that is what a balance does: it holds
+its value until the next movement changes it. Interpolating between two entries
+would draw a diagonal through days on which nothing happened.
+
 ## Limitations
 
 Known, and deliberate for a five-day exercise:

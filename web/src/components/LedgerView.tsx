@@ -7,6 +7,7 @@ import { useCallback } from "react";
 
 import { searchAccounts, searchThirdParties } from "@/actions/lookups";
 import { AsyncCombobox, type Option } from "@/components/AsyncCombobox";
+import { BalanceChart } from "@/components/BalanceChart";
 import { DateField } from "@/components/DateField";
 import { LoadError, PageHeader, PageShell } from "@/components/PageHeader";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -268,6 +269,8 @@ function AccountDetail({ detail }: { detail: AccountLedger }) {
           <Figure label={t("closing")} value={detail.closing_balance} strong />
         </dl>
       </header>
+
+      <BalanceChart detail={detail} />
 
       <TableCard minWidth="56rem">
         <TableHeader>
