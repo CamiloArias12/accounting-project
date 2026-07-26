@@ -77,6 +77,61 @@ Differences from development:
 Migrations do not run on startup — trigger them explicitly, so a multi-replica
 deploy never races itself.
 
+## Live instance
+
+<http://46.224.38.172:3001> — sign in with `demo@accounting-project.dev` /
+`demo-accounting-2026`. The Colombian PUC is already loaded: 2.446 accounts
+across the five levels, so the tree, the search and the account picker have
+something real in them.
+
+It is a demonstration box, not a service with an uptime guarantee, and it shares
+the host with an unrelated production application. That is why the app sits on
+port 3001 and the API listens on loopback only: the web reaches it over the
+Compose network, and nothing else needs to.
+
+## Continuous integration and deployment
+
+`.github/workflows/ci.yml` runs on every push and pull request: ruff, mypy and
+pytest for the API, ESLint, `tsc` and a production build for the web. Every
+check runs inside this repository's own images, so the Dockerfiles are exercised
+by the same job that lints the code.
+
+On `main`, once the checks pass, the images are published to GHCR and the server
+is updated:
+
+```
+push a main → checks → imágenes a ghcr.io → aprovisionar → desplegar → verificar
+```
+
+Two scripts carry the deployment, both idempotent:
+
+- [`scripts/provision.sh`](./scripts/provision.sh) — installs Docker if it is
+  missing and generates the server's `.env` with random credentials, once. It is
+  never regenerated: the Postgres password is baked into the volume the first
+  time it initialises, and rotating `JWT_SECRET` would sign everyone out on
+  every push.
+- [`scripts/deploy.sh`](./scripts/deploy.sh) — fetches the exact commit,
+  migrates with the new image *before* swapping the containers, brings the stack
+  up and waits for the health endpoint. It refuses to run if a container of ours
+  belongs to another Compose project, if a port is taken by a foreign process,
+  or if there is under 2 GB of free disk.
+
+Nothing is built on the server. It has 3.7 GB of RAM shared with somebody else's
+production database, and a `next build` there could invoke the OOM killer or
+fill the disk. The images arrive from the registry, already built.
+
+One step cannot be automated, because until it exists GitHub has no way in:
+installing the deploy key. [`scripts/setup-github-deploy.sh`](./scripts/setup-github-deploy.sh)
+does it in one command — generates the key, installs it, and uploads
+`SSH_PRIVATE_KEY`, `DEPLOY_HOST` and `SSH_KNOWN_HOSTS` to the repository:
+
+```bash
+./scripts/setup-github-deploy.sh <ip-del-servidor>
+```
+
+Without those secrets the deploy job exits green and says so: the pipeline is
+not broken, it is unconfigured.
+
 ## Commands
 
 Everything runs inside the containers:
