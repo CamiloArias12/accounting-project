@@ -38,19 +38,24 @@ venv/
 env/
 ENV/
 
-# Distribución / empaquetado
+# Distribución / empaquetado.
+#
+# Anclados a `api/`, que es donde vive el proyecto Python. Sin anclar, estos
+# patrones coinciden a cualquier profundidad: `lib/` se tragaba `web/src/lib/`
+# entera, así que api.ts, session.ts y compañía nunca llegaron al repositorio y
+# el front no compila desde un clon limpio.
 .Python
-build/
-develop-eggs/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
+api/build/
+api/develop-eggs/
+api/downloads/
+api/eggs/
+api/.eggs/
+api/lib/
+api/lib64/
+api/parts/
+api/sdist/
+api/var/
+api/wheels/
 *.egg-info/
 .installed.cfg
 *.egg
