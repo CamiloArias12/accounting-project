@@ -102,9 +102,12 @@ log "Aplicando migraciones"
 # falla, los viejos siguen sirviendo con el esquema viejo. `run` respeta
 # depends_on, así que espera a que Postgres esté healthy.
 "${COMPOSE[@]}" up -d postgres redis
-# `run` no tiene --no-build (solo `up`); con la imagen ya presente
-# y pull_policy: missing, no construye nada igualmente.
-"${COMPOSE[@]}" run --rm api alembic upgrade head
+# `-T` y `< /dev/null` no son adorno: el script llega por stdin (`ssh bash -s`)
+# y `compose run` hereda ese stdin y se lo traga entero. Sin esto, alembic
+# termina, bash se queda sin script que leer y el deploy sale con 0 dejando la
+# API y la web sin arrancar. `run` tampoco acepta --no-build; con la imagen ya
+# presente y pull_policy: missing no construye igualmente.
+"${COMPOSE[@]}" run --rm -T api alembic upgrade head < /dev/null
 
 log "Levantando los servicios"
 "${COMPOSE[@]}" up -d --no-build --remove-orphans
