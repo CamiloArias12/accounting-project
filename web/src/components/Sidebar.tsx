@@ -12,7 +12,7 @@ import type { Theme } from "@/lib/theme";
 
 interface NavItem {
   href: string;
-  labelKey: "overview" | "accounts" | "thirdParties";
+  labelKey: "overview" | "accounts" | "thirdParties" | "vouchers" | "ledger" | "periods";
   icon: string;
 }
 
@@ -20,6 +20,9 @@ const NAV: NavItem[] = [
   { href: "/", labelKey: "overview", icon: "▤" },
   { href: "/accounts", labelKey: "accounts", icon: "▦" },
   { href: "/third-parties", labelKey: "thirdParties", icon: "◍" },
+  { href: "/vouchers", labelKey: "vouchers", icon: "▧" },
+  { href: "/ledger", labelKey: "ledger", icon: "▤" },
+  { href: "/periods", labelKey: "periods", icon: "◷" },
 ];
 
 interface Props {

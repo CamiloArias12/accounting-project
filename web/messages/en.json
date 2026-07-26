@@ -6,7 +6,10 @@
     "accounts": "Chart of accounts",
     "menu": "Open menu",
     "close": "Close menu",
-    "thirdParties": "Third parties"
+    "thirdParties": "Third parties",
+    "vouchers": "Vouchers",
+    "ledger": "Ledger",
+    "periods": "Periods"
   },
   "overview": {
     "title": "Overview",
@@ -15,7 +18,9 @@
     "accountsCardHint": "Browse, create and import the PUC accounts.",
     "open": "Open",
     "thirdPartiesCard": "Third parties",
-    "thirdPartiesCardHint": "Register customers, suppliers and anyone else the books point at."
+    "thirdPartiesCardHint": "Register customers, suppliers and anyone else the books point at.",
+    "vouchersCard": "Vouchers",
+    "vouchersCardHint": "Write, post and reverse accounting vouchers."
   },
   "accounts": {
     "title": "Chart of accounts",
@@ -257,5 +262,120 @@
     "updated": "Third party {name} updated",
     "deleted": "Third party {name} deleted",
     "restored": "Third party {name} restored"
+  },
+  "vouchers": {
+    "title": "Vouchers",
+    "count": "{count, plural, =0 {No vouchers} one {# voucher} other {# vouchers}}",
+    "newVoucher": "New voucher",
+    "searchPlaceholder": "Search the description…",
+    "allStatuses": "All statuses",
+    "empty": "No vouchers yet.",
+    "isReversed": "reversed",
+    "isReversal": "reversal",
+    "statuses": {
+      "Draft": "Draft",
+      "Posted": "Posted"
+    }
+  },
+  "voucherForm": {
+    "createTitle": "New voucher",
+    "editTitle": "Draft",
+    "editTitleNumbered": "Voucher #{number}",
+    "date": "Date",
+    "period": "Period",
+    "fromDate": "YYYY",
+    "periodHint": "Left empty, it follows the date.",
+    "description": "Description",
+    "account": "Account",
+    "accountPlaceholder": "Code or name…",
+    "thirdParty": "Third party",
+    "thirdPartyPlaceholder": "Document or name…",
+    "needsThirdParty": "needs a third party",
+    "debit": "Debit",
+    "credit": "Credit",
+    "lineNote": "Note",
+    "addLine": "Add line",
+    "removeLine": "Remove line",
+    "totals": "Totals",
+    "balanced": "Balanced",
+    "offBy": "Off by {amount}",
+    "save": "Save",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "post": "Post",
+    "posting": "Posting…",
+    "discard": "Discard",
+    "discarding": "Discarding…",
+    "reverse": "Reverse",
+    "reversing": "Reversing…",
+    "reversalDate": "Reversal date",
+    "postedNotice": "Posted, so it can no longer be changed. Reverse it to correct it.",
+    "isReversedNotice": "This voucher was reversed; its effect is cancelled.",
+    "isReversalNotice": "This voucher reverses #{number}.",
+    "reversalOf": "Reversal of voucher #{number}"
+  },
+  "voucherErrors": {
+    "missingId": "The voucher id is missing",
+    "missingPeriod": "The period is missing",
+    "dateRequired": "The date is required",
+    "descriptionRequired": "The description is required",
+    "twoLines": "A voucher needs at least two lines: every movement has a counterpart",
+    "linesUnreadable": "The lines could not be read"
+  },
+  "voucherSuccess": {
+    "created": "Draft created",
+    "updated": "Voucher {id} updated",
+    "posted": "Posted as number {number}",
+    "reversed": "Reversal created as number {number}",
+    "discarded": "Draft discarded"
+  },
+  "periods": {
+    "title": "Accounting periods",
+    "subtitle": "Closing a month stops anything being posted into it",
+    "close": "Close",
+    "closing": "Closing…",
+    "reopen": "Reopen",
+    "reopening": "Reopening…",
+    "hint": "A month nobody closed is open. Drafts may still be written against a closed period, only not posted.",
+    "statuses": {
+      "Open": "Open",
+      "Closed": "Closed"
+    },
+    "months": {
+      "1": "January",
+      "2": "February",
+      "3": "March",
+      "4": "April",
+      "5": "May",
+      "6": "June",
+      "7": "July",
+      "8": "August",
+      "9": "September",
+      "10": "October",
+      "11": "November",
+      "12": "December"
+    }
+  },
+  "periodSuccess": {
+    "closed": "Period {period} closed",
+    "reopened": "Period {period} reopened"
+  },
+  "ledger": {
+    "title": "Ledger",
+    "subtitle": "Posted vouchers only",
+    "from": "From",
+    "to": "To",
+    "account": "Account",
+    "opening": "Opening",
+    "closing": "Closing",
+    "debit": "Debit",
+    "credit": "Credit",
+    "totals": "Totals",
+    "voucher": "Voucher",
+    "date": "Date",
+    "description": "Description",
+    "running": "Balance",
+    "backToReport": "Back to the report",
+    "empty": "No movement in this range."
   }
 }

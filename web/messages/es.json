@@ -6,7 +6,10 @@
     "accounts": "Plan de cuentas",
     "menu": "Abrir menú",
     "close": "Cerrar menú",
-    "thirdParties": "Terceros"
+    "thirdParties": "Terceros",
+    "vouchers": "Comprobantes",
+    "ledger": "Libro mayor",
+    "periods": "Períodos"
   },
   "overview": {
     "title": "Resumen",
@@ -15,7 +18,9 @@
     "accountsCardHint": "Consulta, crea e importa las cuentas del PUC.",
     "open": "Abrir",
     "thirdPartiesCard": "Terceros",
-    "thirdPartiesCardHint": "Registra clientes, proveedores y demás terceros."
+    "thirdPartiesCardHint": "Registra clientes, proveedores y demás terceros.",
+    "vouchersCard": "Comprobantes",
+    "vouchersCardHint": "Registra, contabiliza y revierte comprobantes."
   },
   "accounts": {
     "title": "Plan de cuentas",
@@ -257,5 +262,120 @@
     "updated": "Tercero {name} actualizado",
     "deleted": "Tercero {name} eliminado",
     "restored": "Tercero {name} restaurado"
+  },
+  "vouchers": {
+    "title": "Comprobantes",
+    "count": "{count, plural, =0 {Sin comprobantes} one {# comprobante} other {# comprobantes}}",
+    "newVoucher": "Nuevo comprobante",
+    "searchPlaceholder": "Buscar por descripción…",
+    "allStatuses": "Todos los estados",
+    "empty": "Todavía no hay comprobantes.",
+    "isReversed": "revertido",
+    "isReversal": "reversión",
+    "statuses": {
+      "Draft": "Borrador",
+      "Posted": "Contabilizado"
+    }
+  },
+  "voucherForm": {
+    "createTitle": "Nuevo comprobante",
+    "editTitle": "Borrador",
+    "editTitleNumbered": "Comprobante #{number}",
+    "date": "Fecha",
+    "period": "Período",
+    "fromDate": "AAAA",
+    "periodHint": "Si lo dejas vacío se toma el de la fecha.",
+    "description": "Descripción",
+    "account": "Cuenta",
+    "accountPlaceholder": "Código o nombre…",
+    "thirdParty": "Tercero",
+    "thirdPartyPlaceholder": "Documento o nombre…",
+    "needsThirdParty": "requiere tercero",
+    "debit": "Débito",
+    "credit": "Crédito",
+    "lineNote": "Detalle",
+    "addLine": "Agregar línea",
+    "removeLine": "Quitar línea",
+    "totals": "Totales",
+    "balanced": "Cuadra",
+    "offBy": "Descuadrado por {amount}",
+    "save": "Guardar",
+    "saving": "Guardando…",
+    "cancel": "Cancelar",
+    "post": "Contabilizar",
+    "posting": "Contabilizando…",
+    "discard": "Descartar",
+    "discarding": "Descartando…",
+    "reverse": "Revertir",
+    "reversing": "Revirtiendo…",
+    "reversalDate": "Fecha de la reversión",
+    "postedNotice": "Contabilizado: ya no se puede modificar. Para corregirlo, revértelo.",
+    "isReversedNotice": "Este comprobante fue revertido; su efecto está anulado.",
+    "isReversalNotice": "Este comprobante revierte al #{number}.",
+    "reversalOf": "Reversión del comprobante #{number}"
+  },
+  "voucherErrors": {
+    "missingId": "Falta el identificador del comprobante",
+    "missingPeriod": "Falta el período",
+    "dateRequired": "La fecha es obligatoria",
+    "descriptionRequired": "La descripción es obligatoria",
+    "twoLines": "Un comprobante necesita al menos dos líneas: todo movimiento tiene contrapartida",
+    "linesUnreadable": "No se pudieron leer las líneas"
+  },
+  "voucherSuccess": {
+    "created": "Borrador creado",
+    "updated": "Comprobante {id} actualizado",
+    "posted": "Contabilizado con el número {number}",
+    "reversed": "Reversión creada con el número {number}",
+    "discarded": "Borrador descartado"
+  },
+  "periods": {
+    "title": "Períodos contables",
+    "subtitle": "Cerrar un mes impide contabilizar en él",
+    "close": "Cerrar",
+    "closing": "Cerrando…",
+    "reopen": "Reabrir",
+    "reopening": "Reabriendo…",
+    "hint": "Un mes sin cerrar está abierto. Los borradores se pueden seguir escribiendo contra un período cerrado, pero no contabilizar.",
+    "statuses": {
+      "Open": "Abierto",
+      "Closed": "Cerrado"
+    },
+    "months": {
+      "1": "Enero",
+      "2": "Febrero",
+      "3": "Marzo",
+      "4": "Abril",
+      "5": "Mayo",
+      "6": "Junio",
+      "7": "Julio",
+      "8": "Agosto",
+      "9": "Septiembre",
+      "10": "Octubre",
+      "11": "Noviembre",
+      "12": "Diciembre"
+    }
+  },
+  "periodSuccess": {
+    "closed": "Período {period} cerrado",
+    "reopened": "Período {period} reabierto"
+  },
+  "ledger": {
+    "title": "Libro mayor",
+    "subtitle": "Solo comprobantes contabilizados",
+    "from": "Desde",
+    "to": "Hasta",
+    "account": "Cuenta",
+    "opening": "Saldo inicial",
+    "closing": "Saldo final",
+    "debit": "Débito",
+    "credit": "Crédito",
+    "totals": "Totales",
+    "voucher": "Comprobante",
+    "date": "Fecha",
+    "description": "Descripción",
+    "running": "Saldo",
+    "backToReport": "Volver al resumen",
+    "empty": "Sin movimientos en el rango."
   }
 }

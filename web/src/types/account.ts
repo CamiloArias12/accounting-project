@@ -34,6 +34,8 @@ export interface Account {
   level: AccountLevel;
   parent_code: string | null;
   is_active: boolean;
+  /** Whether every entry on this account must name a third party. */
+  requires_third_party: boolean;
   deleted_at: string | null;
   created_at: string;
   updated_at: string;
@@ -48,12 +50,14 @@ export interface AccountCreate {
   name: string;
   nature: Nature;
   is_active?: boolean;
+  requires_third_party?: boolean;
 }
 
 export interface AccountUpdate {
   name?: string;
   nature?: Nature;
   is_active?: boolean;
+  requires_third_party?: boolean;
 }
 
 export interface RowError {

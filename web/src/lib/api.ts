@@ -18,6 +18,17 @@ import type {
   ThirdPartyListParams,
   ThirdPartyUpdate,
 } from "@/types/third-party";
+import type {
+  AccountLedger,
+  Company,
+  LedgerReport,
+  Period,
+  Voucher,
+  VoucherCreate,
+  VoucherListParams,
+  VoucherReverse,
+  VoucherUpdate,
+} from "@/types/voucher";
 
 // Resolved on the server, so it points at the service inside the Compose
 // network. Not being NEXT_PUBLIC_* it never reaches the browser nor gets baked
@@ -97,6 +108,8 @@ export interface ListParams {
   parent_code?: string;
   search?: string;
   only_active?: boolean;
+  /** Only accounts entries may be posted to: the leaves of the chart. */
+  only_postable?: boolean;
   include_deleted?: boolean;
   skip?: number;
   limit?: number;
@@ -273,5 +286,87 @@ export const thirdPartiesApi = {
     return request<ThirdParty>(`/third-parties/${id}/restore`, {
       method: "POST",
     });
+  },
+};
+
+export const vouchersApi = {
+  /** The company the books belong to. Configuration, not a record. */
+  company(): Promise<Company> {
+    return request<Company>("/vouchers/company");
+  },
+
+  list(params: VoucherListParams = {}): Promise<Voucher[]> {
+    return request<Voucher[]>(`/vouchers${toQuery({ ...params })}`);
+  },
+
+  get(id: number): Promise<Voucher> {
+    return request<Voucher>(`/vouchers/${id}`);
+  },
+
+  create(payload: VoucherCreate): Promise<Voucher> {
+    return request<Voucher>("/vouchers", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  update(id: number, payload: VoucherUpdate): Promise<Voucher> {
+    return request<Voucher>(`/vouchers/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  /** Takes the next consecutive number and makes the voucher read-only. */
+  post(id: number): Promise<Voucher> {
+    return request<Voucher>(`/vouchers/${id}/post`, { method: "POST" });
+  },
+
+  /** Writes and posts the entry that cancels this one. */
+  reverse(id: number, payload: VoucherReverse = {}): Promise<Voucher> {
+    return request<Voucher>(`/vouchers/${id}/reverse`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  /** Discards a draft. A posted voucher cannot be deleted. */
+  remove(id: number): Promise<void> {
+    return request<void>(`/vouchers/${id}`, { method: "DELETE" });
+  },
+};
+
+export const periodsApi = {
+  year(year: number): Promise<Period[]> {
+    return request<Period[]>(`/periods/${year}`);
+  },
+
+  close(year: number, month: number): Promise<Period> {
+    return request<Period>(`/periods/${year}/${month}/close`, {
+      method: "POST",
+    });
+  },
+
+  reopen(year: number, month: number): Promise<Period> {
+    return request<Period>(`/periods/${year}/${month}/reopen`, {
+      method: "POST",
+    });
+  },
+};
+
+export interface LedgerParams {
+  date_from?: string;
+  date_to?: string;
+  account_code?: string;
+  third_party_id?: number;
+}
+
+export const ledgerApi = {
+  report(params: LedgerParams = {}): Promise<LedgerReport> {
+    return request<LedgerReport>(`/ledger${toQuery({ ...params })}`);
+  },
+
+  account(code: string, params: LedgerParams = {}): Promise<AccountLedger> {
+    return request<AccountLedger>(`/ledger/${code}${toQuery({ ...params })}`);
   },
 };
