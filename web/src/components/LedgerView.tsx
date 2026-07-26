@@ -194,59 +194,68 @@ function Report({
   }
 
   return (
-    <TableCard minWidth="44rem">
-      <TableHeader>
-        <TableRow className="bg-muted/50 hover:bg-muted/50">
-          <TableHead className="pl-4">{t("account")}</TableHead>
-          <TableHead className="text-right">{t("opening")}</TableHead>
-          <TableHead className="text-right">{t("debit")}</TableHead>
-          <TableHead className="text-right">{t("credit")}</TableHead>
-          <TableHead className="pr-4 text-right">{t("closing")}</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {report.accounts.map((account) => (
-          <TableRow
-            key={account.code}
-            onClick={() => onOpen(account.code)}
-            className="cursor-pointer"
-          >
-            <TableCell className="pl-4">
-              <span className="font-mono text-xs text-muted-foreground">
-                {account.code}
-              </span>
-              <span className="ml-2 font-medium">{account.name}</span>
-            </TableCell>
-            <Money value={account.opening_balance} />
-            <Money value={account.debit} />
-            <Money value={account.credit} />
-            <Money value={account.closing_balance} strong className="pr-4" />
+    <div className="flex flex-col gap-2">
+      {/* The chart and the movements live one click inside a row, and nothing
+          on this screen said so — which reads as a missing feature rather than
+          as a table you are meant to open. */}
+      <p className="text-xs text-muted-foreground">{t("openAnAccount")}</p>
+
+      <TableCard minWidth="44rem">
+        <TableHeader>
+          <TableRow className="bg-muted/50 hover:bg-muted/50">
+            <TableHead className="pl-4">{t("account")}</TableHead>
+            <TableHead className="text-right">{t("opening")}</TableHead>
+            <TableHead className="text-right">{t("debit")}</TableHead>
+            <TableHead className="text-right">{t("credit")}</TableHead>
+            <TableHead className="pr-4 text-right">{t("closing")}</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-      <TableFooter>
-        <TableRow className="hover:bg-transparent">
-          <TableCell className="pl-4 font-medium">{t("totals")}</TableCell>
-          <TableCell />
-          <Money value={report.totals.debit} strong />
-          <Money value={report.totals.credit} strong />
-          <TableCell className="pr-4 text-right">
-            {/* The one check that covers every voucher behind it: if each
-                entry balanced, the books as a whole add up to nothing. */}
-            <span
-              className={cn(
-                "font-medium tabular-nums",
-                report.totals.is_balanced ? "text-success" : "text-destructive",
-              )}
+        </TableHeader>
+        <TableBody>
+          {report.accounts.map((account) => (
+            <TableRow
+              key={account.code}
+              onClick={() => onOpen(account.code)}
+              className="cursor-pointer"
             >
-              {report.totals.is_balanced
-                ? `✓ ${formatMoney(report.totals.balance)}`
-                : formatMoney(report.totals.balance)}
-            </span>
-          </TableCell>
-        </TableRow>
-      </TableFooter>
-    </TableCard>
+              <TableCell className="pl-4">
+                <span className="font-mono text-xs text-muted-foreground">
+                  {account.code}
+                </span>
+                <span className="ml-2 font-medium">{account.name}</span>
+              </TableCell>
+              <Money value={account.opening_balance} />
+              <Money value={account.debit} />
+              <Money value={account.credit} />
+              <Money value={account.closing_balance} strong className="pr-4" />
+            </TableRow>
+          ))}
+        </TableBody>
+        <TableFooter>
+          <TableRow className="hover:bg-transparent">
+            <TableCell className="pl-4 font-medium">{t("totals")}</TableCell>
+            <TableCell />
+            <Money value={report.totals.debit} strong />
+            <Money value={report.totals.credit} strong />
+            <TableCell className="pr-4 text-right">
+              {/* The one check that covers every voucher behind it: if each
+                entry balanced, the books as a whole add up to nothing. */}
+              <span
+                className={cn(
+                  "font-medium tabular-nums",
+                  report.totals.is_balanced
+                    ? "text-success"
+                    : "text-destructive",
+                )}
+              >
+                {report.totals.is_balanced
+                  ? `✓ ${formatMoney(report.totals.balance)}`
+                  : formatMoney(report.totals.balance)}
+              </span>
+            </TableCell>
+          </TableRow>
+        </TableFooter>
+      </TableCard>
+    </div>
   );
 }
 

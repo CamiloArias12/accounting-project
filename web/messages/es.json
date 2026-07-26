@@ -427,7 +427,9 @@
     "anyDate": "Cualquier fecha",
     "downloadBook": "Descargar libro auxiliar",
     "chartTitle": "Evolución del saldo",
-    "chartSummary": "Saldo de la cuenta entre {from} y {to}: de {opening} a {closing}. La tabla siguiente trae cada movimiento."
+    "chartSummary": "Saldo de la cuenta entre {from} y {to}: de {opening} a {closing}. La tabla siguiente trae cada movimiento.",
+    "openAnAccount": "Abre una cuenta para ver sus movimientos y la evolución de su saldo.",
+    "chartTooFewPoints": "La cuenta tiene movimiento en un solo día: no hay evolución que dibujar."
   },
   "select": {
     "placeholder": "Selecciona…",

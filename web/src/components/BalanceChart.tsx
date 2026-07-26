@@ -42,9 +42,19 @@ export function BalanceChart({ detail }: Props) {
 
   const series = toSeries(detail);
 
-  // Two points make a line; one makes a dot that says nothing a figure in the
-  // header does not already say.
-  if (series.length < 2) return null;
+  // Two points make a line; one makes a dot that says nothing the figure in the
+  // header does not already say. Said out loud rather than rendering nothing:
+  // a panel that silently disappears reads as a broken feature, not as an
+  // account with one movement in it.
+  if (series.length < 2) {
+    return (
+      <Frame title={t("chartTitle")}>
+        <p className="py-10 text-center text-sm text-muted-foreground">
+          {t("chartTooFewPoints")}
+        </p>
+      </Frame>
+    );
+  }
 
   const balances = series.map((point) => point.balance);
   const { scaleX, scaleY, ticks, zeroY } = scales(series, balances);
@@ -70,9 +80,7 @@ export function BalanceChart({ detail }: Props) {
   const area = `${line} L ${points[points.length - 1].x} ${floor} L ${points[0].x} ${floor} Z`;
 
   return (
-    <section className="flex flex-col gap-3 rounded-xl bg-card p-4 shadow-xs ring-1 ring-border">
-      <h3 className="text-sm font-medium">{t("chartTitle")}</h3>
-
+    <Frame title={t("chartTitle")}>
       <svg
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         className="h-56 w-full"
@@ -168,6 +176,22 @@ export function BalanceChart({ detail }: Props) {
           {series[series.length - 1].date}
         </text>
       </svg>
+    </Frame>
+  );
+}
+
+/** The card the chart sits in, shared with the state where there is no line. */
+function Frame({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="flex flex-col gap-3 rounded-xl bg-card p-4 shadow-xs ring-1 ring-border">
+      <h3 className="text-sm font-medium">{title}</h3>
+      {children}
     </section>
   );
 }
