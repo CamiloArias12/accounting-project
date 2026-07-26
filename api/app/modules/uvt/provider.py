@@ -14,8 +14,11 @@ from __future__ import annotations
 
 import asyncio
 import random
+import re
 from decimal import Decimal
 from typing import Final, Protocol
+
+import httpx
 
 #: Values published by the DIAN. They are hardcoded rather than guessed for
 #: years that have not been published: inventing a UVT would silently move
@@ -143,3 +146,98 @@ async def fetch_with_retry(
     raise UvtSourceUnavailable(
         f"gave up after {attempts} attempts: {last}", attempts=attempts
     ) from last
+
+
+#: Where the real provider reads from, and why it is not the DIAN.
+#:
+#: The DIAN publishes the UVT as a resolution — a PDF in the normograma — and
+#: has no page that states the current value in a stable, parseable place;
+#: `dian.gov.co/dian/cifras/Paginas/UVT.aspx` is a 404. Datos Abiertos carries
+#: no UVT dataset either: a catalogue search returns nothing on the subject.
+#:
+#: What is left is a published table on a public site. It is a real HTTP call
+#: against a real page, which is the point; it is also somebody else's markup,
+#: which is why the parser is deliberate about what it accepts and the whole
+#: thing degrades to a recorded failure rather than a wrong number.
+DEFAULT_SOURCE_URL: Final = "https://www.gerencie.com/uvt.html"
+
+#: A year followed, within a short distance, by a figure in thousands. The
+#: distance is bounded on purpose: letting it run would happily pair a year in
+#: one paragraph with an amount three paragraphs down.
+_YEAR_AND_VALUE: Final = re.compile(r"(20[0-9]{2})\D{1,40}?(\d{2}\.\d{3})")
+
+#: The UVT has never been below this and will not be for a long time. A page
+#: that yields something smaller has been misparsed, and a misparsed threshold
+#: is worse than no threshold.
+_PLAUSIBLE_MINIMUM: Final = Decimal("20000")
+
+
+class HttpUvtProvider:
+    """Reads the UVT off a published table.
+
+    Everything that can go wrong with somebody else's page is treated as the
+    source being unavailable rather than as an answer: a timeout, a 500, a
+    redesign that breaks the parse. The one thing that is not a failure is a
+    page that simply has no row for the year — that is `UvtNotPublished`, and
+    retrying it would be pointless.
+    """
+
+    def __init__(
+        self,
+        *,
+        url: str = DEFAULT_SOURCE_URL,
+        timeout_seconds: float = 10.0,
+    ) -> None:
+        self._url = url
+        self._timeout = timeout_seconds
+
+    @property
+    def name(self) -> str:
+        return "http"
+
+    async def fetch(self, year: int) -> Decimal:
+        try:
+            async with httpx.AsyncClient(
+                timeout=self._timeout, follow_redirects=True
+            ) as client:
+                response = await client.get(
+                    self._url,
+                    # Some public sites answer 403 to a bare client. Saying who
+                    # we are is politer than pretending to be a browser.
+                    headers={"User-Agent": "accounting-project/1.0 (+uvt-sync)"},
+                )
+                response.raise_for_status()
+        except httpx.HTTPError as exc:
+            raise UvtSourceUnavailable(f"{type(exc).__name__}: {exc}") from exc
+
+        table = parse_uvt_table(response.text)
+        value = table.get(year)
+        if value is None:
+            raise UvtNotPublished(year)
+
+        return value
+
+
+def parse_uvt_table(html: str) -> dict[int, Decimal]:
+    """Pull the year/value pairs out of a page.
+
+    Separated from the fetching so it can be tested against a fixture instead
+    of against the internet — which is what makes the parsing verifiable at all
+    once the page inevitably changes.
+
+    Colombian thousands separators are dots, so `52.374` is fifty-two thousand
+    and not fifty-two point three.
+    """
+    found: dict[int, Decimal] = {}
+
+    for raw_year, raw_value in _YEAR_AND_VALUE.findall(html):
+        year = int(raw_year)
+        value = Decimal(raw_value.replace(".", ""))
+
+        if value < _PLAUSIBLE_MINIMUM:
+            continue
+        # First occurrence wins: these pages tend to state the current year up
+        # top and repeat it further down, and the table is the authority.
+        found.setdefault(year, value)
+
+    return found

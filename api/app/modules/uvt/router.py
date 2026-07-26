@@ -8,6 +8,7 @@ from app.modules.uvt.models import UvtFetchRun, UvtValue
 from app.modules.uvt.provider import (
     MAX_YEAR,
     MIN_YEAR,
+    HttpUvtProvider,
     SimulatedUvtProvider,
     UvtProvider,
 )
@@ -34,18 +35,25 @@ Year = Annotated[int, Path(ge=MIN_YEAR, le=MAX_YEAR)]
 
 
 def get_provider() -> UvtProvider:
-    """The source the refresh talks to.
+    """The source the refresh talks to, chosen by configuration.
 
-    Simulated, and documented as such: no public endpoint publishes the UVT in
-    a machine-readable form, and scraping the DIAN's page would make the tests
-    depend on a site that changes. What the exercise is about — the retry, the
-    fact that a repeated run does not duplicate, the record of each attempt —
-    lives on this side of the interface, and swapping in an HTTP provider means
-    writing one class.
+    `http` by default, reading a published table over the network. The DIAN
+    itself publishes the UVT only as a resolution — a PDF in the normograma —
+    and Datos Abiertos carries no dataset for it, so there is no official
+    machine-readable endpoint to point at; see `provider.DEFAULT_SOURCE_URL`.
+
+    `simulated` answers from a hardcoded table and is what the tests use, so a
+    suite never depends on somebody else's uptime.
     """
-    return SimulatedUvtProvider(
-        failure_rate=settings.UVT_SOURCE_FAILURE_RATE,
-        latency_seconds=settings.UVT_SOURCE_LATENCY_SECONDS,
+    if settings.UVT_SOURCE == "simulated":
+        return SimulatedUvtProvider(
+            failure_rate=settings.UVT_SOURCE_FAILURE_RATE,
+            latency_seconds=settings.UVT_SOURCE_LATENCY_SECONDS,
+        )
+
+    return HttpUvtProvider(
+        url=settings.UVT_SOURCE_URL,
+        timeout_seconds=settings.UVT_SOURCE_TIMEOUT_SECONDS,
     )
 
 

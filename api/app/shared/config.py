@@ -34,8 +34,15 @@ class Settings(BaseSettings):
     COMPANY_PHONE: str | None = None
     COMPANY_EMAIL: str | None = None
 
-    # The simulated UVT source. The failure rate is there so the retry and the
-    # run log are exercised in a real deployment, not only in tests.
+    # Where the UVT comes from. `http` reads a published table; `simulated`
+    # answers from a hardcoded one and is what the tests use, so they never
+    # depend on somebody else's uptime.
+    UVT_SOURCE: Literal["http", "simulated"] = "http"
+    UVT_SOURCE_URL: str = "https://www.gerencie.com/uvt.html"
+    UVT_SOURCE_TIMEOUT_SECONDS: float = 10.0
+
+    # Only for the simulated source: a failure rate makes the retry and the run
+    # log visible in a deployment, not only in tests.
     UVT_SOURCE_FAILURE_RATE: float = 0.0
     UVT_SOURCE_LATENCY_SECONDS: float = 0.0
 

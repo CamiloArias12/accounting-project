@@ -7,10 +7,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.modules.uvt.models import RunStatus, UvtSource
 from app.modules.uvt.provider import (
     PUBLISHED,
+    HttpUvtProvider,
     SimulatedUvtProvider,
     UvtNotPublished,
     UvtSourceUnavailable,
     fetch_with_retry,
+    parse_uvt_table,
 )
 from app.modules.uvt.service import UvtService
 
@@ -187,3 +189,48 @@ async def test_a_failed_run_records_the_attempts_it_spent(
 
     assert run.status is RunStatus.FAILED
     assert run.attempts == 3
+
+
+# --- the real source ----------------------------------------------------------
+
+#: A slice of the published table, kept here so the parser is tested against a
+#: fixture rather than against the internet. When the page changes, this is the
+#: thing to update, and the failure will say so.
+PAGE = """
+<h2>Valor de la UVT</h2>
+<table>
+  <tr><td>2026</td><td>52.374</td></tr>
+  <tr><td>2025</td><td>49.799</td></tr>
+  <tr><td>2024</td><td>47.065</td></tr>
+</table>
+<p>La UVT para 2026 quedó en 52.374 pesos.</p>
+"""
+
+
+def test_the_parser_reads_the_published_table() -> None:
+    table = parse_uvt_table(PAGE)
+
+    # Colombian thousands separators are dots: 52.374 is fifty-two thousand.
+    assert table[2026] == Decimal("52374")
+    assert table[2025] == Decimal("49799")
+    assert table[2024] == Decimal("47065")
+
+
+def test_the_parser_ignores_figures_that_cannot_be_a_uvt() -> None:
+    # A misparsed threshold is worse than no threshold, so anything below the
+    # plausible floor is dropped rather than believed.
+    assert parse_uvt_table("<td>2025</td><td>12.500</td>") == {}
+
+
+def test_the_parser_keeps_the_first_reading_of_a_year() -> None:
+    # These pages state the current year up top and repeat it further down.
+    doubled = "<td>2025</td><td>49.799</td> ... 2025 vale 49.799"
+    assert parse_uvt_table(doubled) == {2025: Decimal("49799")}
+
+
+async def test_a_source_that_will_not_answer_is_a_failure_not_a_value() -> None:
+    # Port 9 discards whatever it is sent, so the client gets nothing back.
+    provider = HttpUvtProvider(url="http://127.0.0.1:9/uvt", timeout_seconds=0.3)
+
+    with pytest.raises(UvtSourceUnavailable):
+        await provider.fetch(2025)
