@@ -18,7 +18,7 @@ export function SessionPanel({ email }: Props) {
     return (
       <Link
         href="/login"
-        className="rounded-md bg-accent px-3 py-1.5 text-center text-xs font-medium text-accent-foreground"
+        className="rounded-md bg-primary px-3 py-1.5 text-center text-xs font-medium text-primary-foreground"
       >
         {t("signIn")}
       </Link>
@@ -27,7 +27,7 @@ export function SessionPanel({ email }: Props) {
 
   return (
     <form action={logOut} className="flex flex-col gap-1">
-      <span className="truncate text-xs text-muted" title={email}>
+      <span className="truncate text-xs text-muted-foreground" title={email}>
         {email}
       </span>
       <SignOutButton />

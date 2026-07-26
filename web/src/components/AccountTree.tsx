@@ -25,7 +25,7 @@ export function AccountTree({
   const t = useTranslations("accounts");
 
   if (nodes.length === 0) {
-    return <p className="p-6 text-sm text-muted">{t("empty")}</p>;
+    return <p className="p-6 text-sm text-muted-foreground">{t("empty")}</p>;
   }
 
   return (
@@ -74,7 +74,7 @@ function TreeItem({
       <div
         className={`flex items-center gap-1 rounded-md pr-2 text-sm transition-colors ${
           isSelected
-            ? "bg-accent/15 text-blue-700 dark:text-blue-300"
+            ? "bg-primary/15 text-blue-700 dark:text-blue-300"
             : "hover:bg-foreground/5"
         }`}
         style={{ paddingLeft: `${depth * 1.1 + 0.5}rem` }}
@@ -82,7 +82,7 @@ function TreeItem({
         <button
           type="button"
           onClick={() => setExpanded((value) => !value)}
-          className={`grid size-5 shrink-0 place-items-center rounded text-xs text-muted ${
+          className={`grid size-5 shrink-0 place-items-center rounded text-xs text-muted-foreground ${
             hasChildren
               ? "hover:bg-foreground/10"
               : "invisible"

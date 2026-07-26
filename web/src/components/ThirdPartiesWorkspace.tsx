@@ -77,7 +77,7 @@ export function ThirdPartiesWorkspace({
       <header className="flex flex-wrap items-baseline justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
-          <p className="text-sm text-muted">
+          <p className="text-sm text-muted-foreground">
             {t("count", { count: thirdParties.length })}
             {showDeleted && ` · ${t("includingDeleted")}`}
           </p>
@@ -89,7 +89,7 @@ export function ThirdPartiesWorkspace({
             onClick={() =>
               router.push(`/third-parties?${withParam("selected", "")}`)
             }
-            className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground"
+            className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground"
           >
             {t("newThirdParty")}
           </button>

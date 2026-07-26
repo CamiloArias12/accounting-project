@@ -28,7 +28,7 @@ export function PeriodsGrid({ year, periods, loadError }: Props) {
       <header className="flex flex-wrap items-baseline justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
-          <p className="text-sm text-muted">{t("subtitle")}</p>
+          <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -79,7 +79,7 @@ export function PeriodsGrid({ year, periods, loadError }: Props) {
               key={period.month}
               action={submit}
               className={`flex items-center justify-between gap-3 rounded-lg border p-4 ${
-                closed ? "border-border bg-surface" : "border-border"
+                closed ? "border-border bg-card" : "border-border"
               }`}
             >
               <input type="hidden" name="year" value={period.year} />
@@ -97,7 +97,7 @@ export function PeriodsGrid({ year, periods, loadError }: Props) {
                 <p
                   className={`text-xs ${
                     closed
-                      ? "text-muted"
+                      ? "text-muted-foreground"
                       : "text-emerald-700 dark:text-emerald-400"
                   }`}
                 >
@@ -115,7 +115,7 @@ export function PeriodsGrid({ year, periods, loadError }: Props) {
         })}
       </div>
 
-      <p className="text-xs text-muted">{t("hint")}</p>
+      <p className="text-xs text-muted-foreground">{t("hint")}</p>
     </main>
   );
 }
@@ -138,7 +138,7 @@ function Action({
       className={`rounded-md px-3 py-1.5 text-sm disabled:opacity-50 ${
         closed
           ? "border border-border"
-          : "bg-accent text-accent-foreground font-medium"
+          : "bg-primary text-primary-foreground font-medium"
       }`}
     >
       {pending ? pendingLabel : label}

@@ -98,7 +98,7 @@ export function SearchSelect({
         <ul
           id={listId}
           role="listbox"
-          className="absolute z-20 mt-1 max-h-60 w-full min-w-64 overflow-y-auto rounded-md border border-border bg-surface shadow-lg"
+          className="absolute z-20 mt-1 max-h-60 w-full min-w-64 overflow-y-auto rounded-md border border-border bg-card shadow-lg"
         >
           {options.map((option) => (
             <li key={option.value}>
@@ -111,7 +111,7 @@ export function SearchSelect({
               >
                 <span>{option.label}</span>
                 {option.hint && (
-                  <span className="text-xs text-muted">{option.hint}</span>
+                  <span className="text-xs text-muted-foreground">{option.hint}</span>
                 )}
               </button>
             </li>

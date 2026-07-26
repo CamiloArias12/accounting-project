@@ -93,11 +93,11 @@ export function ThirdPartyForm({
         <input type="hidden" name="person_type" value={personType} />
 
         <header className="flex items-baseline justify-between gap-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             {isEditing ? t("editTitle") : t("createTitle")}
           </h2>
           {isEditing && (
-            <span className="font-mono text-xs text-muted">
+            <span className="font-mono text-xs text-muted-foreground">
               {thirdParty.formatted_document}
             </span>
           )}
@@ -112,7 +112,7 @@ export function ThirdPartyForm({
         {/* A person does not become a company: the choice is made once. */}
         {!isEditing && (
           <fieldset className="flex flex-wrap gap-4 text-sm">
-            <legend className="mb-1 text-xs uppercase tracking-wide text-muted">
+            <legend className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">
               {t("personType")}
             </legend>
             {(["Natural person", "Legal entity"] as const).map((value) => (
@@ -135,7 +135,7 @@ export function ThirdPartyForm({
             {isLegal ? (
               <p className="flex flex-col gap-1 text-sm">
                 {t("documentType")}
-                <span className="rounded-md border border-border px-3 py-2 text-muted">
+                <span className="rounded-md border border-border px-3 py-2 text-muted-foreground">
                   NIT
                 </span>
               </p>
@@ -180,7 +180,7 @@ export function ThirdPartyForm({
                   defaultValue={thirdParty?.check_digit ?? ""}
                   className="rounded-md border border-border bg-transparent px-3 py-2 font-mono"
                 />
-                <span className="text-xs text-muted">{t("checkDigitHint")}</span>
+                <span className="text-xs text-muted-foreground">{t("checkDigitHint")}</span>
               </label>
             )}
           </div>
@@ -528,10 +528,10 @@ function Section({
 }) {
   return (
     <fieldset className="flex flex-col gap-3 border-t border-border pt-4">
-      <legend className="text-xs uppercase tracking-wide text-muted">
+      <legend className="text-xs uppercase tracking-wide text-muted-foreground">
         {title}
       </legend>
-      {hint && <p className="-mt-1 text-xs text-muted">{hint}</p>}
+      {hint && <p className="-mt-1 text-xs text-muted-foreground">{hint}</p>}
       {children}
     </fieldset>
   );
@@ -641,7 +641,7 @@ function SubmitButton({
     <button
       type="submit"
       disabled={pending}
-      className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground disabled:opacity-50"
+      className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
     >
       {pending ? pendingLabel : label}
     </button>

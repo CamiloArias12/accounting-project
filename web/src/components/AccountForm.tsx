@@ -44,13 +44,13 @@ export function AccountForm({ account, onCancel }: Props) {
     <div className="flex flex-col gap-4">
       <form action={submit} className="flex flex-col gap-4">
         <header className="flex items-baseline justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             {isEditing
               ? t("editTitle", { code: account.code })
               : t("createTitle")}
           </h2>
           {isEditing && (
-            <span className="text-xs text-muted">{tLevel(account.level)}</span>
+            <span className="text-xs text-muted-foreground">{tLevel(account.level)}</span>
           )}
         </header>
 
@@ -72,7 +72,7 @@ export function AccountForm({ account, onCancel }: Props) {
             className="rounded-md border border-border bg-transparent px-3 py-2 font-mono read-only:opacity-50"
           />
           {!isEditing && (
-            <span className="text-xs text-muted">{t("codeHint")}</span>
+            <span className="text-xs text-muted-foreground">{t("codeHint")}</span>
           )}
         </label>
 
@@ -177,7 +177,7 @@ function SubmitButton({ label, pendingLabel }: ButtonProps) {
     <button
       type="submit"
       disabled={pending}
-      className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground disabled:opacity-50"
+      className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
     >
       {pending ? pendingLabel : label}
     </button>

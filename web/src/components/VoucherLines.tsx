@@ -117,7 +117,7 @@ export function VoucherLines({ initial, readOnly, labels }: Props) {
 
       <div className="overflow-x-auto">
         <table className="w-full min-w-[52rem] text-sm">
-          <thead className="text-xs uppercase tracking-wide text-muted">
+          <thead className="text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
               <th className="w-[26%] px-2 py-1 text-left font-medium">
                 {t("account")}
@@ -209,7 +209,7 @@ export function VoucherLines({ initial, readOnly, labels }: Props) {
                           current.filter((row) => row.key !== line.key),
                         )
                       }
-                      className="rounded px-2 py-1 text-muted hover:bg-foreground/5"
+                      className="rounded px-2 py-1 text-muted-foreground hover:bg-foreground/5"
                     >
                       ×
                     </button>

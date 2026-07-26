@@ -54,14 +54,14 @@ export function VouchersWorkspace({
       <header className="flex flex-wrap items-baseline justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
-          <p className="text-sm text-muted">
+          <p className="text-sm text-muted-foreground">
             {t("count", { count: vouchers.length })}
           </p>
         </div>
         <button
           type="button"
           onClick={() => go("selected", "")}
-          className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground"
+          className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground"
         >
           {t("newVoucher")}
         </button>
@@ -105,7 +105,7 @@ export function VouchersWorkspace({
 
           <ul className="max-h-[70vh] divide-y divide-border overflow-y-auto">
             {vouchers.length === 0 && (
-              <li className="p-6 text-center text-sm text-muted">{t("empty")}</li>
+              <li className="p-6 text-center text-sm text-muted-foreground">{t("empty")}</li>
             )}
             {vouchers.map((voucher) => (
               <li key={voucher.id}>
@@ -115,7 +115,7 @@ export function VouchersWorkspace({
                   aria-current={voucher.id === selected?.id ? "true" : undefined}
                   className={`flex w-full flex-col gap-0.5 px-3 py-2 text-left text-sm transition-colors ${
                     voucher.id === selected?.id
-                      ? "bg-accent/10"
+                      ? "bg-primary/10"
                       : "hover:bg-foreground/5"
                   }`}
                 >
@@ -131,12 +131,12 @@ export function VouchersWorkspace({
                   </span>
                   <span className="flex items-baseline justify-between gap-2">
                     <span className="truncate">{voucher.description}</span>
-                    <span className="shrink-0 text-xs text-muted">
+                    <span className="shrink-0 text-xs text-muted-foreground">
                       {voucher.date}
                     </span>
                   </span>
                   {(voucher.is_reversed || voucher.is_reversal) && (
-                    <span className="text-[10px] uppercase text-muted">
+                    <span className="text-[10px] uppercase text-muted-foreground">
                       {voucher.is_reversal ? t("isReversal") : t("isReversed")}
                     </span>
                   )}

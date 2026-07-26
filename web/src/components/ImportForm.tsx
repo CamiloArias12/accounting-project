@@ -18,10 +18,10 @@ export function ImportForm() {
   return (
     <form action={submit} className="flex flex-col gap-4">
       <header>
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           {t("title")}
         </h2>
-        <p className="mt-1 text-xs text-muted">{t("hint")}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{t("hint")}</p>
       </header>
 
       <input
@@ -72,7 +72,7 @@ function ImportButton({
     <button
       type="submit"
       disabled={pending}
-      className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground disabled:opacity-50"
+      className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
     >
       {pending ? pendingLabel : label}
     </button>
@@ -122,7 +122,7 @@ function ImportSummary({ result }: { result: ImportResult }) {
 function Stat({ label, value }: { label: string; value: number }) {
   return (
     <div>
-      <dt className="text-xs uppercase tracking-wide text-muted">{label}</dt>
+      <dt className="text-xs uppercase tracking-wide text-muted-foreground">{label}</dt>
       <dd className="text-lg font-semibold tabular-nums">{value}</dd>
     </div>
   );

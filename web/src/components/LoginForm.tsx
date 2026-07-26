@@ -15,11 +15,11 @@ export function LoginForm() {
     <main className="flex min-h-screen items-center justify-center p-6">
       <form
         action={submit}
-        className="flex w-full max-w-sm flex-col gap-4 rounded-lg border border-border bg-surface p-6"
+        className="flex w-full max-w-sm flex-col gap-4 rounded-lg border border-border bg-card p-6"
       >
         <header>
           <h1 className="text-lg font-semibold tracking-tight">{t("title")}</h1>
-          <p className="text-sm text-muted">{t("subtitle")}</p>
+          <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
         </header>
 
         <label className="flex flex-col gap-1 text-sm">
@@ -67,7 +67,7 @@ function SubmitButton() {
     <button
       type="submit"
       disabled={pending}
-      className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground disabled:opacity-50"
+      className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
     >
       {pending ? t("signingIn") : t("signIn")}
     </button>

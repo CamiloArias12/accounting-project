@@ -14,12 +14,12 @@ export function ThirdPartyList({ thirdParties, selectedId, onSelect }: Props) {
   const t = useTranslations("thirdParties");
 
   if (thirdParties.length === 0) {
-    return <p className="p-6 text-center text-sm text-muted">{t("empty")}</p>;
+    return <p className="p-6 text-center text-sm text-muted-foreground">{t("empty")}</p>;
   }
 
   return (
     <table className="w-full text-left text-sm">
-      <thead className="sticky top-0 bg-surface text-xs uppercase tracking-wide text-muted">
+      <thead className="sticky top-0 bg-card text-xs uppercase tracking-wide text-muted-foreground">
         <tr>
           <th className="px-3 py-2 font-medium">{t("columnDocument")}</th>
           <th className="px-3 py-2 font-medium">{t("columnName")}</th>
@@ -39,7 +39,7 @@ export function ThirdPartyList({ thirdParties, selectedId, onSelect }: Props) {
               onClick={() => onSelect(thirdParty)}
               aria-selected={selected}
               className={`cursor-pointer border-t border-border transition-colors ${
-                selected ? "bg-accent/10" : "hover:bg-foreground/5"
+                selected ? "bg-primary/10" : "hover:bg-foreground/5"
               }`}
             >
               <td className="px-3 py-2 font-mono text-xs">
@@ -55,12 +55,12 @@ export function ThirdPartyList({ thirdParties, selectedId, onSelect }: Props) {
                   </span>
                 )}
                 {!thirdParty.is_active && !deleted && (
-                  <span className="ml-2 rounded bg-foreground/10 px-1.5 py-0.5 text-[10px] uppercase text-muted">
+                  <span className="ml-2 rounded bg-foreground/10 px-1.5 py-0.5 text-[10px] uppercase text-muted-foreground">
                     {t("inactiveBadge")}
                   </span>
                 )}
               </td>
-              <td className="hidden px-3 py-2 text-muted sm:table-cell">
+              <td className="hidden px-3 py-2 text-muted-foreground sm:table-cell">
                 {t(`personTypes.${thirdParty.person_type}`)}
               </td>
             </tr>

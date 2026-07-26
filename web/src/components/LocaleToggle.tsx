@@ -36,8 +36,8 @@ export function LocaleToggle() {
           aria-pressed={current === locale}
           className={`flex-1 rounded px-2 py-1 text-xs uppercase transition-colors ${
             current === locale
-              ? "bg-accent text-accent-foreground"
-              : "text-muted hover:bg-foreground/5"
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:bg-foreground/5"
           }`}
         >
           {locale}

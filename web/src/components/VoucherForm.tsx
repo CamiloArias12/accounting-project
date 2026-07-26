@@ -56,7 +56,7 @@ export function VoucherForm({
     <div className="flex flex-col gap-5">
       <header className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border pb-3">
         <div>
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             {isEditing
               ? voucher.number !== null
                 ? t("editTitleNumbered", { number: voucher.number })
@@ -65,7 +65,7 @@ export function VoucherForm({
           </h2>
           {/* The company is configuration, not a field: there is nothing to
               choose, so it is printed rather than asked for. */}
-          <p className="text-xs text-muted">
+          <p className="text-xs text-muted-foreground">
             {company.legal_name} · {company.nit}
           </p>
         </div>
@@ -110,7 +110,7 @@ export function VoucherForm({
                 className="w-16 rounded-md border border-border bg-transparent px-2 py-2 read-only:opacity-60"
               />
             </div>
-            <span className="text-xs text-muted">{t("periodHint")}</span>
+            <span className="text-xs text-muted-foreground">{t("periodHint")}</span>
           </label>
 
           <label className="flex flex-col gap-1 text-sm">
@@ -176,7 +176,7 @@ export function VoucherForm({
                   name="description"
                   value={t("reversalOf", { number: voucher.number ?? "" })}
                 />
-                <label className="flex flex-col gap-1 text-xs text-muted">
+                <label className="flex flex-col gap-1 text-xs text-muted-foreground">
                   {t("reversalDate")}
                   <input
                     name="date"
@@ -190,7 +190,7 @@ export function VoucherForm({
           </div>
 
           {readOnly && (
-            <p className="text-xs text-muted">
+            <p className="text-xs text-muted-foreground">
               {voucher.is_reversal
                 ? t("isReversalNotice", {
                     number: voucher.reverses_voucher_id ?? "",
@@ -212,14 +212,14 @@ function StatusBadge({ voucher }: { voucher: Voucher }) {
   const tone =
     voucher.status === "Posted"
       ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-      : "bg-foreground/10 text-muted";
+      : "bg-foreground/10 text-muted-foreground";
 
   return (
     <div className="flex flex-col items-end gap-1">
       <span className={`rounded px-2 py-0.5 text-xs uppercase ${tone}`}>
         {t(`statuses.${voucher.status}`)}
       </span>
-      <span className="text-xs tabular-nums text-muted">
+      <span className="text-xs tabular-nums text-muted-foreground">
         {formatMoney(voucher.total_debit)}
       </span>
     </div>
@@ -258,7 +258,7 @@ function Submit({
   const { pending } = useFormStatus();
 
   const tone = primary
-    ? "bg-accent text-accent-foreground"
+    ? "bg-primary text-primary-foreground"
     : danger
       ? "text-red-600 hover:bg-red-500/10 dark:text-red-400"
       : "border border-border";

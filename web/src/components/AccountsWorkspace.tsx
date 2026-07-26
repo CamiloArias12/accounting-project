@@ -43,7 +43,7 @@ export function AccountsWorkspace({ tree, loadError, showDeleted }: Props) {
           <h1 className="text-2xl font-semibold tracking-tight">
             {t("title")}
           </h1>
-          <p className="text-sm text-muted">
+          <p className="text-sm text-muted-foreground">
             {t("count", { count: total })}
             {showDeleted && ` · ${t("includingDeleted")}`}
           </p>
@@ -56,7 +56,7 @@ export function AccountsWorkspace({ tree, loadError, showDeleted }: Props) {
               setSelectedCode(null);
               setPanel("form");
             }}
-            className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground"
+            className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground"
           >
             {t("newAccount")}
           </button>

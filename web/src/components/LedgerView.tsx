@@ -38,7 +38,7 @@ export function LedgerView({
     <main className="mx-auto flex min-h-screen max-w-7xl flex-col gap-6 p-6 pt-16 lg:pt-6">
       <header>
         <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
-        <p className="text-sm text-muted">{t("subtitle")}</p>
+        <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
       </header>
 
       {loadError && (
@@ -100,7 +100,7 @@ function Report({
 
   if (report.accounts.length === 0) {
     return (
-      <p className="rounded-lg border border-border p-6 text-center text-sm text-muted">
+      <p className="rounded-lg border border-border p-6 text-center text-sm text-muted-foreground">
         {t("empty")}
       </p>
     );
@@ -109,7 +109,7 @@ function Report({
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
       <table className="w-full min-w-[44rem] text-sm">
-        <thead className="bg-surface text-xs uppercase tracking-wide text-muted">
+        <thead className="bg-card text-xs uppercase tracking-wide text-muted-foreground">
           <tr>
             <th className="px-3 py-2 text-left font-medium">{t("account")}</th>
             <th className="px-3 py-2 text-right font-medium">{t("opening")}</th>
@@ -173,7 +173,7 @@ function AccountDetail({ detail }: { detail: AccountLedger }) {
         <h2 className="text-lg font-semibold">
           <span className="font-mono text-sm">{detail.code}</span> {detail.name}
         </h2>
-        <p className="text-sm text-muted">
+        <p className="text-sm text-muted-foreground">
           {t("opening")}: {formatMoney(detail.opening_balance)} ·{" "}
           {t("closing")}: {formatMoney(detail.closing_balance)}
         </p>
@@ -181,7 +181,7 @@ function AccountDetail({ detail }: { detail: AccountLedger }) {
 
       <div className="overflow-x-auto rounded-lg border border-border">
         <table className="w-full min-w-[48rem] text-sm">
-          <thead className="bg-surface text-xs uppercase tracking-wide text-muted">
+          <thead className="bg-card text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
               <th className="px-3 py-2 text-left font-medium">{t("voucher")}</th>
               <th className="px-3 py-2 text-left font-medium">{t("date")}</th>
@@ -198,7 +198,7 @@ function AccountDetail({ detail }: { detail: AccountLedger }) {
           <tbody>
             {detail.entries.length === 0 && (
               <tr>
-                <td colSpan={6} className="p-6 text-center text-sm text-muted">
+                <td colSpan={6} className="p-6 text-center text-sm text-muted-foreground">
                   {t("empty")}
                 </td>
               </tr>
@@ -211,7 +211,7 @@ function AccountDetail({ detail }: { detail: AccountLedger }) {
                 <td className="px-3 py-2 font-mono text-xs">
                   #{entry.voucher_number}
                   {entry.reverses_voucher_id !== null && (
-                    <span className="ml-1 text-muted">↩</span>
+                    <span className="ml-1 text-muted-foreground">↩</span>
                   )}
                 </td>
                 <td className="px-3 py-2">{entry.date}</td>
