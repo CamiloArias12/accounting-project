@@ -62,7 +62,12 @@ libre_mb="$(df -Pm / | awk 'NR==2 {print $4}')"
 # --- Código ------------------------------------------------------------------
 
 log "Sincronizando el código en $APP_DIR"
-[ -d "$APP_DIR/.git" ] || git clone "$REPO_URL" "$APP_DIR"
+# `git clone` no sirve: provision.sh ya dejó el .env ahí dentro y clone exige
+# un directorio vacío. init + fetch da el mismo resultado sin esa condición.
+if [ ! -d "$APP_DIR/.git" ]; then
+  git init -q "$APP_DIR"
+  git -C "$APP_DIR" remote add origin "$REPO_URL"
+fi
 cd "$APP_DIR"
 git fetch --prune origin
 # reset --hard, no merge: el servidor refleja el repo, nunca es origen de
