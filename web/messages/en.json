@@ -312,7 +312,18 @@
     "postedNotice": "Posted, so it can no longer be changed. Reverse it to correct it.",
     "isReversedNotice": "This voucher was reversed; its effect is cancelled.",
     "isReversalNotice": "This voucher reverses #{number}.",
-    "reversalOf": "Reversal of voucher #{number}"
+    "reversalOf": "Reversal of voucher #{number}",
+    "pickDate": "Pick a date",
+    "accountSearch": "Account code or name…",
+    "thirdPartySearch": "Third party document or name…",
+    "noMatches": "No matches",
+    "reverseTitle": "Reverse voucher #{number}?",
+    "reverseExplanation": "A new voucher is written with the columns swapped and posted. The original is left untouched: both appear in the ledger and cancel each other out. This cannot be undone.",
+    "reversalDateHint": "The original's, if left empty",
+    "statuses": {
+      "Draft": "Draft",
+      "Posted": "Posted"
+    }
   },
   "voucherErrors": {
     "missingId": "The voucher id is missing",

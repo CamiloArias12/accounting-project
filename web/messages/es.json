@@ -312,7 +312,18 @@
     "postedNotice": "Contabilizado: ya no se puede modificar. Para corregirlo, revértelo.",
     "isReversedNotice": "Este comprobante fue revertido; su efecto está anulado.",
     "isReversalNotice": "Este comprobante revierte al #{number}.",
-    "reversalOf": "Reversión del comprobante #{number}"
+    "reversalOf": "Reversión del comprobante #{number}",
+    "pickDate": "Elige una fecha",
+    "accountSearch": "Código o nombre de la cuenta…",
+    "thirdPartySearch": "Documento o nombre del tercero…",
+    "noMatches": "Sin coincidencias",
+    "reverseTitle": "¿Revertir el comprobante #{number}?",
+    "reverseExplanation": "Se crea un comprobante nuevo con las columnas intercambiadas y se contabiliza. El original queda intacto: los dos aparecen en el libro mayor y se anulan entre sí. Esto no se puede deshacer.",
+    "reversalDateHint": "La del original si la dejas vacía",
+    "statuses": {
+      "Draft": "Borrador",
+      "Posted": "Contabilizado"
+    }
   },
   "voucherErrors": {
     "missingId": "Falta el identificador del comprobante",

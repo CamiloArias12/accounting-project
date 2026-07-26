@@ -1,10 +1,22 @@
 "use client";
 
+import { Plus, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
 
 import { searchAccounts, searchThirdParties } from "@/actions/lookups";
-import { SearchSelect, type Option } from "@/components/SearchSelect";
+import { AsyncCombobox, type Option } from "@/components/AsyncCombobox";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { formatMoney, fromCents, sumCents, toCents } from "@/lib/money";
 import type { VoucherLine } from "@/types/voucher";
 
@@ -116,35 +128,30 @@ export function VoucherLines({ initial, readOnly, labels }: Props) {
       <input type="hidden" name="lines" value={JSON.stringify(payload)} />
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[52rem] text-sm">
-          <thead className="text-xs uppercase tracking-wide text-muted-foreground">
-            <tr>
-              <th className="w-[26%] px-2 py-1 text-left font-medium">
-                {t("account")}
-              </th>
-              <th className="w-[22%] px-2 py-1 text-left font-medium">
-                {t("thirdParty")}
-              </th>
-              <th className="w-[16%] px-2 py-1 text-right font-medium">
-                {t("debit")}
-              </th>
-              <th className="w-[16%] px-2 py-1 text-right font-medium">
+        <Table className="min-w-[54rem]">
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[26%]">{t("account")}</TableHead>
+              <TableHead className="w-[22%]">{t("thirdParty")}</TableHead>
+              <TableHead className="w-[15%] text-right">{t("debit")}</TableHead>
+              <TableHead className="w-[15%] text-right">
                 {t("credit")}
-              </th>
-              <th className="px-2 py-1 text-left font-medium">{t("lineNote")}</th>
-              <th className="w-8" />
-            </tr>
-          </thead>
-          <tbody>
+              </TableHead>
+              <TableHead>{t("lineNote")}</TableHead>
+              <TableHead className="w-10" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {lines.map((line) => (
-              <tr key={line.key} className="border-t border-border align-top">
-                <td className="px-2 py-1.5">
-                  <SearchSelect
+              <TableRow key={line.key}>
+                <TableCell>
+                  <AsyncCombobox
                     value={line.account_code}
                     selectedLabel={line.account_label}
                     placeholder={t("accountPlaceholder")}
+                    searchPlaceholder={t("accountSearch")}
+                    emptyLabel={t("noMatches")}
                     disabled={readOnly}
-                    required
                     search={accountOptions}
                     onChange={(option) =>
                       update(line.key, {
@@ -153,12 +160,16 @@ export function VoucherLines({ initial, readOnly, labels }: Props) {
                       })
                     }
                   />
-                </td>
-                <td className="px-2 py-1.5">
-                  <SearchSelect
-                    value={line.third_party_id ? String(line.third_party_id) : ""}
+                </TableCell>
+                <TableCell>
+                  <AsyncCombobox
+                    value={
+                      line.third_party_id ? String(line.third_party_id) : ""
+                    }
                     selectedLabel={line.third_party_label}
                     placeholder={t("thirdPartyPlaceholder")}
+                    searchPlaceholder={t("thirdPartySearch")}
+                    emptyLabel={t("noMatches")}
                     disabled={readOnly}
                     search={thirdPartyOptions}
                     onChange={(option) =>
@@ -168,83 +179,96 @@ export function VoucherLines({ initial, readOnly, labels }: Props) {
                       })
                     }
                   />
-                </td>
-                <td className="px-2 py-1.5">
-                  <Amount
+                </TableCell>
+                <TableCell>
+                  <Input
                     value={line.debit}
                     readOnly={readOnly}
-                    onChange={(value) =>
-                      // One column or the other, never both: the server
-                      // refuses a line that carries two.
-                      update(line.key, { debit: value, credit: "" })
+                    inputMode="decimal"
+                    placeholder="0.00"
+                    className="text-right tabular-nums"
+                    onChange={(event) =>
+                      // One column or the other, never both: the server refuses
+                      // a line that carries two.
+                      update(line.key, {
+                        debit: event.target.value,
+                        credit: "",
+                      })
                     }
                   />
-                </td>
-                <td className="px-2 py-1.5">
-                  <Amount
+                </TableCell>
+                <TableCell>
+                  <Input
                     value={line.credit}
                     readOnly={readOnly}
-                    onChange={(value) =>
-                      update(line.key, { credit: value, debit: "" })
+                    inputMode="decimal"
+                    placeholder="0.00"
+                    className="text-right tabular-nums"
+                    onChange={(event) =>
+                      update(line.key, {
+                        credit: event.target.value,
+                        debit: "",
+                      })
                     }
                   />
-                </td>
-                <td className="px-2 py-1.5">
-                  <input
+                </TableCell>
+                <TableCell>
+                  <Input
                     value={line.description}
                     readOnly={readOnly}
                     onChange={(event) =>
                       update(line.key, { description: event.target.value })
                     }
-                    className="w-full rounded-md border border-border bg-transparent px-2 py-1.5 text-sm read-only:opacity-60"
                   />
-                </td>
-                <td className="px-1 py-1.5">
+                </TableCell>
+                <TableCell>
                   {!readOnly && lines.length > 2 && (
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="icon-xs"
                       aria-label={t("removeLine")}
                       onClick={() =>
                         setLines((current) =>
                           current.filter((row) => row.key !== line.key),
                         )
                       }
-                      className="rounded px-2 py-1 text-muted-foreground hover:bg-foreground/5"
                     >
-                      ×
-                    </button>
+                      <X />
+                    </Button>
                   )}
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-          <tfoot>
-            <tr className="border-t-2 border-border font-medium">
-              <td className="px-2 py-2" colSpan={2}>
-                {t("totals")}
-              </td>
-              <td className="px-2 py-2 text-right tabular-nums">
+          </TableBody>
+          <TableFooter>
+            <TableRow>
+              <TableCell colSpan={2}>{t("totals")}</TableCell>
+              <TableCell className="text-right tabular-nums">
                 {formatMoney(totals.debit)}
-              </td>
-              <td className="px-2 py-2 text-right tabular-nums">
+              </TableCell>
+              <TableCell className="text-right tabular-nums">
                 {formatMoney(totals.credit)}
-              </td>
-              <td className="px-2 py-2" colSpan={2}>
+              </TableCell>
+              <TableCell colSpan={2}>
                 <Difference cents={totals.difference} />
-              </td>
-            </tr>
-          </tfoot>
-        </table>
+              </TableCell>
+            </TableRow>
+          </TableFooter>
+        </Table>
       </div>
 
       {!readOnly && (
-        <button
+        <Button
           type="button"
+          variant="outline"
+          size="sm"
+          className="self-start"
           onClick={() => setLines((current) => [...current, blank()])}
-          className="self-start rounded-md border border-border px-3 py-1.5 text-sm"
         >
+          <Plus />
           {t("addLine")}
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -262,29 +286,8 @@ function Difference({ cents }: { cents: number }) {
   }
 
   return (
-    <span className="text-sm text-red-700 dark:text-red-400">
+    <span className="text-sm text-destructive">
       {t("offBy", { amount: formatMoney(Math.abs(cents)) })}
     </span>
-  );
-}
-
-function Amount({
-  value,
-  readOnly,
-  onChange,
-}: {
-  value: string;
-  readOnly: boolean;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <input
-      value={value}
-      readOnly={readOnly}
-      inputMode="decimal"
-      placeholder="0.00"
-      onChange={(event) => onChange(event.target.value)}
-      className="w-full rounded-md border border-border bg-transparent px-2 py-1.5 text-right text-sm tabular-nums read-only:opacity-60"
-    />
   );
 }

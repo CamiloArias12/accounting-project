@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { Sidebar } from "@/components/Sidebar";
+import { Toaster } from "@/components/ui/sonner";
 import { ApiError, authApi } from "@/lib/api";
 import { readToken } from "@/lib/session";
 import { DEFAULT_THEME, THEME_COOKIE, isTheme } from "@/lib/theme";
@@ -27,6 +28,10 @@ export default async function AppLayout({
     <>
       <Sidebar initialTheme={theme} userEmail={email} />
       <div className="lg:pl-60">{children}</div>
+      {/* One mount for the whole signed-in shell: an action's outcome shows up
+          wherever the user happens to be looking, not buried under the form
+          that produced it. */}
+      <Toaster position="bottom-right" />
     </>
   );
 }

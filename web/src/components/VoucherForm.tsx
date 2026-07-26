@@ -1,8 +1,9 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import { useFormStatus } from "react-dom";
+import { toast } from "sonner";
 
 import { IDLE, type FormState } from "@/actions/state";
 import {
@@ -10,7 +11,24 @@ import {
   postOrReverseVoucher,
   saveVoucher,
 } from "@/actions/vouchers";
+import { DateField } from "@/components/DateField";
 import { VoucherLines } from "@/components/VoucherLines";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { formatMoney } from "@/lib/money";
 import type { Company, Voucher } from "@/types/voucher";
 
@@ -52,9 +70,13 @@ export function VoucherForm({
     IDLE,
   );
 
+  useAnnounce(state);
+  useAnnounce(lifecycle);
+  useAnnounce(discard);
+
   return (
     <div className="flex flex-col gap-5">
-      <header className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border pb-3">
+      <header className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             {isEditing
@@ -69,37 +91,47 @@ export function VoucherForm({
             {company.legal_name} · {company.nit}
           </p>
         </div>
-        {isEditing && <StatusBadge voucher={voucher} />}
+        {isEditing && (
+          <div className="flex flex-col items-end gap-1">
+            <Badge variant={readOnly ? "default" : "secondary"}>
+              {t(`statuses.${voucher.status}`)}
+            </Badge>
+            <span className="text-xs tabular-nums text-muted-foreground">
+              {formatMoney(voucher.total_debit)}
+            </span>
+          </div>
+        )}
       </header>
+
+      <Separator />
 
       <form action={submit} className="flex flex-col gap-4">
         {isEditing && <input type="hidden" name="id" value={voucher.id} />}
 
         <div className="grid gap-3 sm:grid-cols-[1fr_1fr_2fr]">
-          <label className="flex flex-col gap-1 text-sm">
-            {t("date")}
-            <input
+          <div className="flex flex-col gap-1.5">
+            <Label>{t("date")}</Label>
+            <DateField
               name="date"
-              type="date"
               defaultValue={voucher?.date ?? today}
+              placeholder={t("pickDate")}
               readOnly={readOnly}
               required
-              className="rounded-md border border-border bg-transparent px-3 py-2 read-only:opacity-60"
             />
-          </label>
+          </div>
 
-          <label className="flex flex-col gap-1 text-sm">
-            {t("period")}
+          <div className="flex flex-col gap-1.5">
+            <Label>{t("period")}</Label>
             <div className="flex gap-1">
-              <input
+              <Input
                 name="period_year"
                 type="number"
                 defaultValue={voucher?.period_year ?? ""}
                 placeholder={t("fromDate")}
                 readOnly={readOnly}
-                className="w-20 rounded-md border border-border bg-transparent px-2 py-2 read-only:opacity-60"
+                className="w-20"
               />
-              <input
+              <Input
                 name="period_month"
                 type="number"
                 min={1}
@@ -107,22 +139,24 @@ export function VoucherForm({
                 defaultValue={voucher?.period_month ?? ""}
                 placeholder="MM"
                 readOnly={readOnly}
-                className="w-16 rounded-md border border-border bg-transparent px-2 py-2 read-only:opacity-60"
+                className="w-16"
               />
             </div>
-            <span className="text-xs text-muted-foreground">{t("periodHint")}</span>
-          </label>
+            <span className="text-xs text-muted-foreground">
+              {t("periodHint")}
+            </span>
+          </div>
 
-          <label className="flex flex-col gap-1 text-sm">
-            {t("description")}
-            <input
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="voucher-description">{t("description")}</Label>
+            <Input
+              id="voucher-description"
               name="description"
               defaultValue={voucher?.description ?? ""}
               readOnly={readOnly}
               required
-              className="rounded-md border border-border bg-transparent px-3 py-2 read-only:opacity-60"
             />
-          </label>
+          </div>
         </div>
 
         <VoucherLines
@@ -131,61 +165,40 @@ export function VoucherForm({
           labels={thirdPartyLabels}
         />
 
-        <Feedback state={state} />
-
         {!readOnly && (
           <div className="flex flex-wrap gap-2">
-            <Submit label={t("save")} pendingLabel={t("saving")} primary />
-            <button
-              type="button"
-              onClick={onCancel}
-              className="rounded-md border border-border px-4 py-2 text-sm"
-            >
+            <Submit label={t("save")} pendingLabel={t("saving")} />
+            <Button type="button" variant="outline" onClick={onCancel}>
               {t("cancel")}
-            </button>
+            </Button>
           </div>
         )}
       </form>
 
       {isEditing && (
-        <div className="flex flex-col gap-3 border-t border-border pt-4">
-          <Feedback state={lifecycle} />
-          <Feedback state={discard} />
-
+        <>
+          <Separator />
           <div className="flex flex-wrap items-center gap-2">
             {!readOnly && (
               <>
                 <form action={submitLifecycle}>
                   <input type="hidden" name="id" value={voucher.id} />
                   <input type="hidden" name="intent" value="post" />
-                  <Submit label={t("post")} pendingLabel={t("posting")} primary />
+                  <Submit label={t("post")} pendingLabel={t("posting")} />
                 </form>
                 <form action={submitDiscard}>
                   <input type="hidden" name="id" value={voucher.id} />
-                  <Submit label={t("discard")} pendingLabel={t("discarding")} danger />
+                  <Submit
+                    label={t("discard")}
+                    pendingLabel={t("discarding")}
+                    variant="destructive"
+                  />
                 </form>
               </>
             )}
 
             {readOnly && !voucher.is_reversed && !voucher.is_reversal && (
-              <form action={submitLifecycle} className="flex items-end gap-2">
-                <input type="hidden" name="id" value={voucher.id} />
-                <input type="hidden" name="intent" value="reverse" />
-                <input
-                  type="hidden"
-                  name="description"
-                  value={t("reversalOf", { number: voucher.number ?? "" })}
-                />
-                <label className="flex flex-col gap-1 text-xs text-muted-foreground">
-                  {t("reversalDate")}
-                  <input
-                    name="date"
-                    type="date"
-                    className="rounded-md border border-border bg-transparent px-2 py-1.5 text-sm"
-                  />
-                </label>
-                <Submit label={t("reverse")} pendingLabel={t("reversing")} danger />
-              </form>
+              <ReverseDialog voucher={voucher} action={submitLifecycle} />
             )}
           </div>
 
@@ -200,76 +213,91 @@ export function VoucherForm({
                   : t("postedNotice")}
             </p>
           )}
-        </div>
+        </>
       )}
     </div>
   );
 }
 
-function StatusBadge({ voucher }: { voucher: Voucher }) {
-  const t = useTranslations("vouchers");
-
-  const tone =
-    voucher.status === "Posted"
-      ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-      : "bg-foreground/10 text-muted-foreground";
+/**
+ * Reversing writes into the books, and there is no undoing it: the correction
+ * would itself need correcting. That is worth one confirmation.
+ */
+function ReverseDialog({
+  voucher,
+  action,
+}: {
+  voucher: Voucher;
+  action: (formData: FormData) => void;
+}) {
+  const t = useTranslations("voucherForm");
 
   return (
-    <div className="flex flex-col items-end gap-1">
-      <span className={`rounded px-2 py-0.5 text-xs uppercase ${tone}`}>
-        {t(`statuses.${voucher.status}`)}
-      </span>
-      <span className="text-xs tabular-nums text-muted-foreground">
-        {formatMoney(voucher.total_debit)}
-      </span>
-    </div>
+    <AlertDialog>
+      <AlertDialogTrigger
+        render={<Button variant="destructive">{t("reverse")}</Button>}
+      />
+      <AlertDialogContent>
+        <form action={action}>
+          <input type="hidden" name="id" value={voucher.id} />
+          <input type="hidden" name="intent" value="reverse" />
+          <input
+            type="hidden"
+            name="description"
+            value={t("reversalOf", { number: voucher.number ?? "" })}
+          />
+
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("reverseTitle", { number: voucher.number ?? "" })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("reverseExplanation")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="my-4 flex flex-col gap-1.5">
+            <Label>{t("reversalDate")}</Label>
+            <DateField name="date" placeholder={t("reversalDateHint")} />
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+            <AlertDialogAction type="submit">{t("reverse")}</AlertDialogAction>
+          </AlertDialogFooter>
+        </form>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 
-function Feedback({ state }: { state: FormState }) {
-  if (state.status === "idle") return null;
-
-  const isError = state.status === "error";
-  return (
-    <p
-      role={isError ? "alert" : "status"}
-      className={`rounded-md px-3 py-2 text-sm ${
-        isError
-          ? "bg-red-500/10 text-red-700 dark:text-red-400"
-          : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-      }`}
-    >
-      {state.message}
-    </p>
-  );
+/**
+ * Surfaces an action's outcome as a toast.
+ *
+ * The messages used to sit inline under whichever form produced them, which
+ * meant scrolling to find out whether a posting went through.
+ */
+function useAnnounce(state: FormState) {
+  useEffect(() => {
+    if (state.status === "success") toast.success(state.message);
+    if (state.status === "error") toast.error(state.message);
+  }, [state]);
 }
 
 function Submit({
   label,
   pendingLabel,
-  primary = false,
-  danger = false,
+  variant = "default",
 }: {
   label: string;
   pendingLabel: string;
-  primary?: boolean;
-  danger?: boolean;
+  variant?: "default" | "destructive" | "outline";
 }) {
   const { pending } = useFormStatus();
 
-  const tone = primary
-    ? "bg-primary text-primary-foreground"
-    : danger
-      ? "text-red-600 hover:bg-red-500/10 dark:text-red-400"
-      : "border border-border";
-
   return (
-    <button
-      type="submit"
-      disabled={pending}
-      className={`rounded-md px-4 py-2 text-sm font-medium disabled:opacity-50 ${tone}`}
-    >
+    <Button type="submit" variant={variant} disabled={pending}>
       {pending ? pendingLabel : label}
-    </button>
+    </Button>
   );
 }
