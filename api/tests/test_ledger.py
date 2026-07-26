@@ -177,6 +177,38 @@ async def test_the_ledger_can_be_read_for_one_third_party(
     assert somebody_else.json()["closing_balance"] == "0"
 
 
+async def test_the_detail_names_the_third_party(
+    auth_client: AsyncClient, session: AsyncSession
+) -> None:
+    """An id in a ledger column is not something a person reads."""
+    await seed_chart(auth_client)
+    supplier = await a_third_party(auth_client, session)
+
+    await a_posted_voucher(
+        auth_client,
+        **sale(
+            lines=[
+                {"account_code": "110505", "debit": "150000.00"},
+                {
+                    "account_code": "220505",
+                    "credit": "150000.00",
+                    "third_party_id": supplier,
+                },
+            ]
+        ),
+    )
+
+    named = (await auth_client.get(f"{BASE}/220505")).json()["entries"][0]
+    assert named["third_party_id"] == supplier
+    assert named["third_party_name"]
+
+    # The lines that name nobody keep their place: an inner join would drop
+    # them from the account's own ledger.
+    anonymous = (await auth_client.get(f"{BASE}/110505")).json()["entries"][0]
+    assert anonymous["third_party_id"] is None
+    assert anonymous["third_party_name"] is None
+
+
 async def test_an_unknown_account_is_refused(auth_client: AsyncClient) -> None:
     assert (await auth_client.get(f"{BASE}/999999")).status_code == 422
 

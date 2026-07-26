@@ -20,6 +20,13 @@ interface Props {
   placeholder: string;
   required?: boolean;
   readOnly?: boolean;
+  /**
+   * Notified with the ISO value when a day is picked.
+   *
+   * For the fields that filter rather than submit: a ledger range applies as
+   * soon as it is chosen, so there is no form to carry the hidden input.
+   */
+  onChange?: (value: string) => void;
 }
 
 /**
@@ -38,6 +45,7 @@ export function DateField({
   placeholder,
   required = false,
   readOnly = false,
+  onChange,
 }: Props) {
   const locale = useLocale();
   const [value, setValue] = useState(defaultValue);
@@ -71,7 +79,11 @@ export function DateField({
             selected={selected}
             defaultMonth={selected}
             onSelect={(day) => {
-              if (day) setValue(toIso(day));
+              if (day) {
+                const iso = toIso(day);
+                setValue(iso);
+                onChange?.(iso);
+              }
               setOpen(false);
             }}
           />

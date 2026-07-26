@@ -55,6 +55,9 @@ class LedgerEntry(BaseModel):
     period_month: int
     description: str
     third_party_id: int | None
+    #: Resolved here rather than left to the client: an id in a ledger column
+    #: is not something a person reads.
+    third_party_name: str | None
     debit: Decimal
     credit: Decimal
     #: The account's balance after this movement.

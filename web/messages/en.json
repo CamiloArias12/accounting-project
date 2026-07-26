@@ -416,7 +416,14 @@
     "running": "Balance",
     "backToReport": "Back to the report",
     "empty": "No movement in this range.",
-    "eyebrow": "Accounting"
+    "eyebrow": "Accounting",
+    "thirdParty": "Third party",
+    "wholeChart": "The whole chart",
+    "everyThirdParty": "Every third party",
+    "accountSearch": "Search by code or name...",
+    "thirdPartySearch": "Search by name or document...",
+    "noMatches": "No matches",
+    "anyDate": "Any date"
   },
   "select": {
     "placeholder": "Choose…",

@@ -138,6 +138,7 @@ export interface LedgerEntry {
   period_month: number;
   description: string;
   third_party_id: number | null;
+  third_party_name: string | null;
   debit: string;
   credit: string;
   running_balance: string;

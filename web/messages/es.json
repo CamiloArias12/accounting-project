@@ -416,7 +416,14 @@
     "running": "Saldo",
     "backToReport": "Volver al resumen",
     "empty": "Sin movimientos en el rango.",
-    "eyebrow": "Contabilidad"
+    "eyebrow": "Contabilidad",
+    "thirdParty": "Tercero",
+    "wholeChart": "Todo el plan de cuentas",
+    "everyThirdParty": "Todos los terceros",
+    "accountSearch": "Buscar por código o nombre...",
+    "thirdPartySearch": "Buscar por nombre o documento...",
+    "noMatches": "Sin coincidencias",
+    "anyDate": "Cualquier fecha"
   },
   "select": {
     "placeholder": "Selecciona…",

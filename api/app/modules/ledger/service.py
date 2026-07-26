@@ -28,6 +28,7 @@ from app.modules.ledger.schemas import (
     LedgerReport,
     LedgerTotals,
 )
+from app.modules.third_parties.models import ThirdParty
 from app.modules.vouchers.errors import AccountNotPostable
 from app.modules.vouchers.models import Voucher, VoucherLine
 from app.modules.vouchers.posting import ZERO, VoucherStatus
@@ -147,6 +148,9 @@ class LedgerService:
                     # otherwise: a ledger reads badly with a blank column.
                     description=row.line_description or row.description,
                     third_party_id=row.third_party_id,
+                    third_party_name=(
+                        row.ThirdParty.full_name if row.ThirdParty else None
+                    ),
                     debit=debit,
                     credit=credit,
                     running_balance=running,
@@ -214,9 +218,16 @@ class LedgerService:
                 VoucherLine.debit,
                 VoucherLine.credit,
                 VoucherLine.description.label("line_description"),
+                # The entity, not its name columns: `full_name` is a Python
+                # property, and selecting the pieces here would be a third copy
+                # of the rule that assembles them.
+                ThirdParty,
             )
             .select_from(VoucherLine)
             .join(Voucher, Voucher.id == VoucherLine.voucher_id)
+            # Outer: most lines name no third party, and an inner join would
+            # drop them from the account's own ledger.
+            .outerjoin(ThirdParty, ThirdParty.id == VoucherLine.third_party_id)
             .where(
                 Voucher.status == VoucherStatus.POSTED,
                 VoucherLine.account_code == code,

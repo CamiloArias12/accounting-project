@@ -1,5 +1,5 @@
 import { LedgerView } from "@/components/LedgerView";
-import { ApiError, ledgerApi } from "@/lib/api";
+import { ApiError, accountsApi, ledgerApi, thirdPartiesApi } from "@/lib/api";
 import type { AccountLedger, LedgerReport } from "@/types/voucher";
 
 export const metadata = {
@@ -11,6 +11,7 @@ interface Props {
     date_from?: string;
     date_to?: string;
     account?: string;
+    third_party?: string;
   }>;
 }
 
@@ -26,25 +27,32 @@ export default async function LedgerPage({ searchParams }: Props) {
   const dateFrom = params.date_from ?? "";
   const dateTo = params.date_to ?? "";
   const account = params.account ?? "";
+  const thirdParty = params.third_party ?? "";
 
   let report = EMPTY;
   let detail: AccountLedger | null = null;
   let loadError: string | null = null;
 
-  const range = {
+  const filters = {
     date_from: dateFrom || undefined,
     date_to: dateTo || undefined,
+    third_party_id: thirdParty ? Number(thirdParty) : undefined,
   };
 
   try {
     // The detail replaces the report rather than sitting beside it: one account
     // at a time is how a ledger is read.
-    if (account) detail = await ledgerApi.account(account, range);
-    else report = await ledgerApi.report(range);
+    if (account) detail = await ledgerApi.account(account, filters);
+    else report = await ledgerApi.report(filters);
   } catch (caught) {
     loadError =
       caught instanceof ApiError ? caught.message : "Could not reach the API";
   }
+
+  const [accountLabel, thirdPartyLabel] = await Promise.all([
+    describeAccount(account),
+    describeThirdParty(thirdParty),
+  ]);
 
   return (
     <LedgerView
@@ -52,7 +60,35 @@ export default async function LedgerPage({ searchParams }: Props) {
       detail={detail}
       dateFrom={dateFrom}
       dateTo={dateTo}
+      account={account}
+      accountLabel={accountLabel}
+      thirdParty={thirdParty}
+      thirdPartyLabel={thirdPartyLabel}
       loadError={loadError}
     />
   );
+}
+
+/**
+ * The filters are read back from the URL, which carries codes and ids. The
+ * pickers need names, and a failed lookup falls back to what the URL said —
+ * a code in the box beats an empty box that looks like no filter at all.
+ */
+async function describeAccount(code: string): Promise<string> {
+  if (!code) return "";
+  try {
+    const found = await accountsApi.get(code);
+    return `${found.code} · ${found.name}`;
+  } catch {
+    return code;
+  }
+}
+
+async function describeThirdParty(id: string): Promise<string> {
+  if (!id) return "";
+  try {
+    return (await thirdPartiesApi.get(Number(id))).full_name;
+  } catch {
+    return id;
+  }
 }

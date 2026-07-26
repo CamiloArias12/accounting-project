@@ -3,10 +3,13 @@
 import { ArrowLeft } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback } from "react";
 
+import { searchAccounts, searchThirdParties } from "@/actions/lookups";
+import { AsyncCombobox, type Option } from "@/components/AsyncCombobox";
+import { DateField } from "@/components/DateField";
 import { LoadError, PageHeader, PageShell } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Table,
@@ -26,6 +29,11 @@ interface Props {
   detail: AccountLedger | null;
   dateFrom: string;
   dateTo: string;
+  /** The account being read, and its name, so the picker reads well on load. */
+  account: string;
+  accountLabel: string;
+  thirdParty: string;
+  thirdPartyLabel: string;
   loadError: string | null;
 }
 
@@ -34,6 +42,10 @@ export function LedgerView({
   detail,
   dateFrom,
   dateTo,
+  account,
+  accountLabel,
+  thirdParty,
+  thirdPartyLabel,
   loadError,
 }: Props) {
   const t = useTranslations("ledger");
@@ -49,6 +61,25 @@ export function LedgerView({
     router.push(`/ledger?${next}`);
   }
 
+  const accountOptions = useCallback(
+    async (query: string): Promise<Option[]> =>
+      (await searchAccounts(query)).map((found) => ({
+        value: found.code,
+        label: `${found.code} · ${found.name}`,
+      })),
+    [],
+  );
+
+  const thirdPartyOptions = useCallback(
+    async (query: string): Promise<Option[]> =>
+      (await searchThirdParties(query)).map((found) => ({
+        value: String(found.id),
+        label: found.full_name,
+        hint: found.formatted_document,
+      })),
+    [],
+  );
+
   return (
     <PageShell className="max-w-7xl">
       <PageHeader
@@ -60,26 +91,53 @@ export function LedgerView({
       {loadError && <LoadError message={loadError} />}
 
       <div className="flex flex-wrap items-end gap-3 rounded-xl bg-card p-3 shadow-xs ring-1 ring-border">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="ledger-from">{t("from")}</Label>
-          <Input
-            id="ledger-from"
-            type="date"
+        {/* Not `<input type="date">`: that renders in the browser's locale, so
+            a Spanish app on an English machine shows mm/dd/yyyy — which for
+            03/04 is a different day, not a formatting quibble. */}
+        <div className="flex w-40 flex-col gap-1.5">
+          <Label>{t("from")}</Label>
+          <DateField
+            name="date_from"
             defaultValue={dateFrom}
-            className="w-40"
-            onChange={(event) => go({ date_from: event.target.value })}
+            placeholder={t("anyDate")}
+            onChange={(value) => go({ date_from: value })}
           />
         </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="ledger-to">{t("to")}</Label>
-          <Input
-            id="ledger-to"
-            type="date"
+        <div className="flex w-40 flex-col gap-1.5">
+          <Label>{t("to")}</Label>
+          <DateField
+            name="date_to"
             defaultValue={dateTo}
-            className="w-40"
-            onChange={(event) => go({ date_to: event.target.value })}
+            placeholder={t("anyDate")}
+            onChange={(value) => go({ date_to: value })}
           />
         </div>
+        <div className="flex min-w-56 flex-1 flex-col gap-1.5">
+          <Label>{t("account")}</Label>
+          <AsyncCombobox
+            value={account}
+            selectedLabel={accountLabel}
+            placeholder={t("wholeChart")}
+            searchPlaceholder={t("accountSearch")}
+            emptyLabel={t("noMatches")}
+            search={accountOptions}
+            onChange={(option) => go({ account: option?.value ?? "" })}
+          />
+        </div>
+
+        <div className="flex min-w-56 flex-1 flex-col gap-1.5">
+          <Label>{t("thirdParty")}</Label>
+          <AsyncCombobox
+            value={thirdParty}
+            selectedLabel={thirdPartyLabel}
+            placeholder={t("everyThirdParty")}
+            searchPlaceholder={t("thirdPartySearch")}
+            emptyLabel={t("noMatches")}
+            search={thirdPartyOptions}
+            onChange={(option) => go({ third_party: option?.value ?? "" })}
+          />
+        </div>
+
         {detail && (
           <Button variant="outline" onClick={() => go({ account: "" })}>
             <ArrowLeft />
@@ -191,12 +249,13 @@ function AccountDetail({ detail }: { detail: AccountLedger }) {
         </dl>
       </header>
 
-      <TableCard minWidth="48rem">
+      <TableCard minWidth="56rem">
         <TableHeader>
           <TableRow className="bg-muted/50 hover:bg-muted/50">
             <TableHead className="pl-4">{t("voucher")}</TableHead>
             <TableHead>{t("date")}</TableHead>
             <TableHead>{t("description")}</TableHead>
+            <TableHead>{t("thirdParty")}</TableHead>
             <TableHead className="text-right">{t("debit")}</TableHead>
             <TableHead className="text-right">{t("credit")}</TableHead>
             <TableHead className="pr-4 text-right">{t("running")}</TableHead>
@@ -206,7 +265,7 @@ function AccountDetail({ detail }: { detail: AccountLedger }) {
           {detail.entries.length === 0 && (
             <TableRow className="hover:bg-transparent">
               <TableCell
-                colSpan={6}
+                colSpan={7}
                 className="py-14 text-center text-muted-foreground"
               >
                 {t("empty")}
@@ -225,6 +284,11 @@ function AccountDetail({ detail }: { detail: AccountLedger }) {
                 {entry.date}
               </TableCell>
               <TableCell>{entry.description}</TableCell>
+              <TableCell className="text-muted-foreground">
+                {/* A dash rather than a blank: most lines name nobody, and an
+                    empty cell reads as missing data. */}
+                {entry.third_party_name ?? "—"}
+              </TableCell>
               <Money value={entry.debit} />
               <Money value={entry.credit} />
               <Money value={entry.running_balance} strong className="pr-4" />
