@@ -4,8 +4,8 @@ import { useTranslations } from "next-intl";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 
-import { IDLE, type FormState } from "@/app/accounts/action-state";
-import { logIn } from "@/app/login/actions";
+import { IDLE, type FormState } from "@/actions/state";
+import { logIn } from "@/actions/auth";
 
 export function LoginForm() {
   const t = useTranslations("login");

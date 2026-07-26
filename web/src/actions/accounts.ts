@@ -4,7 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import type { FormState, ImportState } from "@/app/accounts/action-state";
+import type { FormState, ImportState } from "@/actions/state";
 import { ApiError, accountsApi } from "@/lib/api";
 import { NATURES, type Nature } from "@/types/account";
 

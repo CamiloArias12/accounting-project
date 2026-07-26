@@ -4,8 +4,8 @@ import { useTranslations } from "next-intl";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 
-import { IMPORT_IDLE, type ImportState } from "@/app/accounts/action-state";
-import { importAccounts } from "@/app/accounts/actions";
+import { IMPORT_IDLE, type ImportState } from "@/actions/state";
+import { importAccounts } from "@/actions/accounts";
 import type { ImportResult } from "@/types/account";
 
 export function ImportForm() {

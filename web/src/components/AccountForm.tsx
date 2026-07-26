@@ -4,12 +4,12 @@ import { useTranslations } from "next-intl";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 
-import { IDLE, type FormState } from "@/app/accounts/action-state";
+import { IDLE, type FormState } from "@/actions/state";
 import {
   changeAccountState,
   createAccount,
   updateAccount,
-} from "@/app/accounts/actions";
+} from "@/actions/accounts";
 import { NATURES, type Account } from "@/types/account";
 
 interface Props {

@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useFormStatus } from "react-dom";
 
-import { logOut } from "@/app/login/actions";
+import { logOut } from "@/actions/auth";
 
 interface Props {
   /** Null when nobody is signed in; reads stay public either way. */

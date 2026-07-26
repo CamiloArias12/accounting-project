@@ -50,14 +50,19 @@ After changing `package.json`, rebuild: `docker compose up -d --build web`.
 web/
 ├── messages/                     # Translations: en.json, es.json
 └── src/
+    ├── actions/                  # Server Actions. Not routes, so not in app/
+    │   ├── accounts.ts
+    │   ├── auth.ts
+    │   └── state.ts              # Their types and idle constants
     ├── app/
-    │   ├── layout.tsx            # Shell: sidebar, theme, i18n, session
-    │   ├── page.tsx              # Overview
-    │   ├── login/                # Sign-in page and its actions
-    │   └── accounts/
-    │       ├── page.tsx          # Server Component: fetches the tree
-    │       ├── actions.ts        # Server Actions (async functions only)
-    │       └── action-state.ts   # Their types and idle constants
+    │   ├── layout.tsx            # Document, theme, translations
+    │   ├── (app)/                # Signed-in shell
+    │   │   ├── layout.tsx        # Sidebar
+    │   │   ├── page.tsx          # Overview
+    │   │   └── accounts/page.tsx
+    │   └── (auth)/               # Signed-out, no navigation
+    │       ├── layout.tsx        # Only the preference toggles
+    │       └── login/page.tsx
     ├── components/
     │   ├── Sidebar.tsx           # Navigation + preference toggles
     │   ├── ThemeScript.tsx       # Resolves the theme before first paint
@@ -92,6 +97,17 @@ Consequences:
 
 Forms use `useActionState` for the action result and `useFormStatus` for the
 pending state, so there is no hand-rolled loading flag.
+
+### Route groups
+
+`(app)` and `(auth)` split the chrome without touching a URL. The root layout
+holds only the document, the theme and the translations; the sidebar lives in
+`(app)`, so signing in is a page of its own rather than a form framed by
+navigation the visitor cannot use yet. `(auth)` still carries the theme and
+language toggles — someone landing there in an unreadable theme needs a way out.
+
+Server Actions moved to `src/actions/`. They are not routes, and keeping them
+out of `app/` means moving a page between groups never rewrites an import.
 
 ### Things that bite
 

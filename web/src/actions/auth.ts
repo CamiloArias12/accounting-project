@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 
-import type { FormState } from "@/app/accounts/action-state";
+import type { FormState } from "@/actions/state";
 import { ApiError, authApi } from "@/lib/api";
 import { endSession, startSession } from "@/lib/session";
 import { getTranslations } from "next-intl/server";
