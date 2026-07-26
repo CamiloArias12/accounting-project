@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute
 
 from app.modules.accounts.models import Account
+from app.modules.accounts.puc import Nature
 from app.modules.ledger.schemas import (
     AccountLedger,
     LedgerAccount,
@@ -151,6 +152,9 @@ class LedgerService:
                     third_party_name=(
                         row.ThirdParty.full_name if row.ThirdParty else None
                     ),
+                    third_party_document=(
+                        row.ThirdParty.formatted_document if row.ThirdParty else None
+                    ),
                     debit=debit,
                     credit=credit,
                     running_balance=running,
@@ -171,7 +175,140 @@ class LedgerService:
             closing_balance=running,
         )
 
+    async def auxiliary_book(
+        self,
+        *,
+        date_from: dt.date | None = None,
+        date_to: dt.date | None = None,
+        account_prefix: str | None = None,
+        third_party_id: int | None = None,
+    ) -> list[AccountLedger]:
+        """The auxiliary book: every account's movements, account by account.
+
+        The same thing `account()` returns, for as many accounts as the filters
+        match — two queries for all of them rather than two per account, which
+        is what makes exporting a whole chart survivable.
+
+        An account whose movement all falls outside the range still belongs in
+        the book when it carries a balance into it: a book that omits an opening
+        balance does not add up.
+        """
+        openings = await self._balances_before(
+            date_from, account_prefix, third_party_id
+        )
+        rows = await self._movements(
+            None, date_from, date_to, third_party_id, account_prefix
+        )
+
+        grouped: dict[str, list[Row[Any]]] = {}
+        names: dict[str, tuple[str, Nature]] = {}
+        for row in rows:
+            grouped.setdefault(row.account_code, []).append(row)
+            names[row.account_code] = (row.account_name, row.nature)
+
+        book: list[AccountLedger] = []
+        # Sorted by code, which is also the order of the chart: the book reads
+        # top-down like the plan it follows.
+        for code in sorted(set(grouped) | set(openings)):
+            movements = grouped.get(code, [])
+            opening = openings.get(code, ZERO)
+            if not movements and opening == ZERO:
+                continue
+
+            name, nature = names.get(code) or await self._describe(code)
+            running = opening
+            entries: list[LedgerEntry] = []
+            for row in movements:
+                debit, credit = _money(row.debit), _money(row.credit)
+                running = running + debit - credit
+                entries.append(
+                    LedgerEntry(
+                        voucher_id=row.voucher_id,
+                        voucher_number=row.number,
+                        date=row.date,
+                        period_year=row.period_year,
+                        period_month=row.period_month,
+                        description=row.line_description or row.description,
+                        third_party_id=row.third_party_id,
+                        third_party_name=(
+                            row.ThirdParty.full_name if row.ThirdParty else None
+                        ),
+                        third_party_document=(
+                            row.ThirdParty.formatted_document
+                            if row.ThirdParty
+                            else None
+                        ),
+                        debit=debit,
+                        credit=credit,
+                        running_balance=running,
+                        reverses_voucher_id=row.reverses_voucher_id,
+                    )
+                )
+
+            book.append(
+                AccountLedger(
+                    code=code,
+                    name=name,
+                    nature=nature,
+                    date_from=date_from,
+                    date_to=date_to,
+                    opening_balance=opening,
+                    entries=entries,
+                    debit=sum((e.debit for e in entries), ZERO),
+                    credit=sum((e.credit for e in entries), ZERO),
+                    closing_balance=running,
+                )
+            )
+
+        return book
+
     # --- plumbing ---------------------------------------------------------
+
+    async def _describe(self, code: str) -> tuple[str, Nature]:
+        """Name and nature of an account with no movement in the range.
+
+        Only reached for the accounts that are in the book on the strength of an
+        opening balance alone, so it stays a handful of lookups rather than one
+        per account.
+        """
+        account = await self._session.get(Account, code)
+        if account is None:
+            return code, Nature.DEBIT
+        return account.name, account.nature
+
+    async def _balances_before(
+        self,
+        date_from: dt.date | None,
+        account_prefix: str | None,
+        third_party_id: int | None,
+    ) -> dict[str, Decimal]:
+        """What every account carried into the range, in one query."""
+        if date_from is None:
+            return {}
+
+        query = (
+            select(
+                VoucherLine.account_code,
+                func.coalesce(func.sum(VoucherLine.debit), 0).label("debit"),
+                func.coalesce(func.sum(VoucherLine.credit), 0).label("credit"),
+            )
+            .select_from(VoucherLine)
+            .join(Voucher, Voucher.id == VoucherLine.voucher_id)
+            .where(
+                Voucher.status == VoucherStatus.POSTED,
+                Voucher.date < date_from,
+            )
+            .group_by(VoucherLine.account_code)
+        )
+        if account_prefix:
+            query = query.where(VoucherLine.account_code.startswith(account_prefix))
+        if third_party_id is not None:
+            query = query.where(VoucherLine.third_party_id == third_party_id)
+
+        return {
+            row.account_code: _money(row.debit) - _money(row.credit)
+            for row in (await self._session.execute(query)).all()
+        }
 
     async def _balance_before(
         self, code: str, date_from: dt.date | None, third_party_id: int | None
@@ -200,11 +337,18 @@ class LedgerService:
 
     async def _movements(
         self,
-        code: str,
+        code: str | None,
         date_from: dt.date | None,
         date_to: dt.date | None,
         third_party_id: int | None,
+        account_prefix: str | None = None,
     ) -> Sequence[Row[Any]]:
+        """Lines in the order the books were written in.
+
+        `code` narrows to one account, `account_prefix` to a branch, neither to
+        the whole chart — the auxiliary book reads many accounts at once, and
+        querying them one at a time would be one round trip per account.
+        """
         query = (
             select(
                 Voucher.id.label("voucher_id"),
@@ -214,6 +358,9 @@ class LedgerService:
                 Voucher.period_month,
                 Voucher.description,
                 Voucher.reverses_voucher_id,
+                VoucherLine.account_code,
+                Account.name.label("account_name"),
+                Account.nature,
                 VoucherLine.third_party_id,
                 VoucherLine.debit,
                 VoucherLine.credit,
@@ -225,17 +372,25 @@ class LedgerService:
             )
             .select_from(VoucherLine)
             .join(Voucher, Voucher.id == VoucherLine.voucher_id)
+            .join(Account, Account.code == VoucherLine.account_code)
             # Outer: most lines name no third party, and an inner join would
             # drop them from the account's own ledger.
             .outerjoin(ThirdParty, ThirdParty.id == VoucherLine.third_party_id)
-            .where(
-                Voucher.status == VoucherStatus.POSTED,
-                VoucherLine.account_code == code,
+            .where(Voucher.status == VoucherStatus.POSTED)
+            # By number within the date, not by date alone: the consecutive is
+            # the order the books were written in, which is what a running
+            # balance follows. Account first, so one pass yields whole blocks.
+            .order_by(
+                VoucherLine.account_code,
+                Voucher.date,
+                Voucher.number,
+                VoucherLine.line_number,
             )
-            # By number, not by date: the consecutive is the order the books
-            # were written in, which is what a running balance follows.
-            .order_by(Voucher.date, Voucher.number, VoucherLine.line_number)
         )
+        if code is not None:
+            query = query.where(VoucherLine.account_code == code)
+        if account_prefix:
+            query = query.where(VoucherLine.account_code.startswith(account_prefix))
         if date_from is not None:
             query = query.where(Voucher.date >= date_from)
         if date_to is not None:

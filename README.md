@@ -43,7 +43,7 @@ model and the import are documented in [`api/README.md`](./api/README.md).
 | `/accounts`      | The chart as a tree: search, create, edit, soft-delete, restore, import    |
 | `/third-parties` | Natural and legal persons, with the DANE places and the NIT check digit    |
 | `/vouchers`      | List and editor; save a draft, post it, reverse a posted one              |
-| `/ledger`        | Balances per account, and one account's movements with a running balance   |
+| `/ledger`        | Balances per account, one account's movements, and the auxiliary book as .xlsx |
 | `/periods`       | The twelve months of a year, closed and reopened                          |
 | `/exogena`       | Generate the XML, download an earlier one, and manage the UVT behind it    |
 

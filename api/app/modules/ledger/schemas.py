@@ -58,6 +58,9 @@ class LedgerEntry(BaseModel):
     #: Resolved here rather than left to the client: an id in a ledger column
     #: is not something a person reads.
     third_party_name: str | None
+    #: The number as people write it, check digit included. What identifies a
+    #: third party on a printed book; two of them can share a name.
+    third_party_document: str | None
     debit: Decimal
     credit: Decimal
     #: The account's balance after this movement.

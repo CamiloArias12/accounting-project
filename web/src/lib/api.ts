@@ -435,4 +435,18 @@ export const ledgerApi = {
   account(code: string, params: LedgerParams = {}): Promise<AccountLedger> {
     return request<AccountLedger>(`/ledger/${code}${toQuery({ ...params })}`);
   },
+
+  /**
+   * The auxiliary book as a spreadsheet.
+   *
+   * The raw `Response`: this one is a workbook on its way to a browser that
+   * will save it, not to a component that will read it. The route handler
+   * passes it straight through.
+   */
+  async book(params: LedgerParams & { locale?: string } = {}): Promise<Response> {
+    return fetch(`${API}/ledger/export${toQuery({ ...params })}`, {
+      cache: "no-store",
+      headers: await buildHeaders(),
+    });
+  },
 };

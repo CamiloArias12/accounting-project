@@ -11,7 +11,7 @@ import { generateExogena, refreshUvt, setUvt } from "@/actions/exogena";
 import { IDLE, type FormState } from "@/actions/state";
 import { LoadError, PageHeader, PageShell } from "@/components/PageHeader";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -163,22 +163,20 @@ function GenerationsCard({ generations }: { generations: Generation[] }) {
                   {generation.generated_at.slice(0, 16).replace("T", " ")}
                 </TableCell>
                 <TableCell className="pr-4 text-right">
-                  {/* A plain link, not a fetch: the browser saves the file, and
-                      the token never leaves the server. */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    nativeButton={false}
-                    render={
-                      <a
-                        href={`/exogena/${generation.id}/file`}
-                        download={generation.filename}
-                      >
-                        <Download />
-                        {t("download")}
-                      </a>
-                    }
-                  />
+                  {/* A link, not a fetch: the browser saves the file and the
+                      token never leaves the server. Styled rather than rendered
+                      through `Button`, which would put `role="button"` on an
+                      anchor that navigates. */}
+                  <a
+                    href={`/exogena/${generation.id}/file`}
+                    download={generation.filename}
+                    className={cn(
+                      buttonVariants({ variant: "outline", size: "sm" }),
+                    )}
+                  >
+                    <Download />
+                    {t("download")}
+                  </a>
                 </TableCell>
               </TableRow>
             ))}

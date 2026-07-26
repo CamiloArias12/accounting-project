@@ -139,6 +139,8 @@ export interface LedgerEntry {
   description: string;
   third_party_id: number | null;
   third_party_name: string | null;
+  /** The document as people write it, check digit included. */
+  third_party_document: string | null;
   debit: string;
   credit: string;
   running_balance: string;

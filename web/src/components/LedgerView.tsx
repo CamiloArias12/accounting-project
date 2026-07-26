@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Download } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback } from "react";
@@ -9,7 +9,7 @@ import { searchAccounts, searchThirdParties } from "@/actions/lookups";
 import { AsyncCombobox, type Option } from "@/components/AsyncCombobox";
 import { DateField } from "@/components/DateField";
 import { LoadError, PageHeader, PageShell } from "@/components/PageHeader";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
   Table,
@@ -86,6 +86,26 @@ export function LedgerView({
         eyebrow={t("eyebrow")}
         title={t("title")}
         subtitle={t("subtitle")}
+        actions={
+          // A link carrying the current filters, not a fetch: the browser saves
+          // the file and the token never leaves the server.
+          //
+          // Styled with `buttonVariants` rather than rendered through `Button`,
+          // which puts `role="button"` on whatever it renders — correct for a
+          // div, wrong for an anchor that navigates. A download announced as a
+          // button is a download a screen reader describes wrongly.
+          <a
+            href={`/ledger/export?${params}`}
+            download
+            // `cn`, not the bare variants: cva concatenates, so the base
+            // `border-transparent` would otherwise sit alongside the outline
+            // variant's `border-border` and win on stylesheet order.
+            className={cn(buttonVariants({ variant: "outline" }))}
+          >
+            <Download />
+            {t("downloadBook")}
+          </a>
+        }
       />
 
       {loadError && <LoadError message={loadError} />}

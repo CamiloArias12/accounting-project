@@ -424,7 +424,8 @@
     "accountSearch": "Search by code or name...",
     "thirdPartySearch": "Search by name or document...",
     "noMatches": "No matches",
-    "anyDate": "Any date"
+    "anyDate": "Any date",
+    "downloadBook": "Download the auxiliary book"
   },
   "select": {
     "placeholder": "Choose…",
