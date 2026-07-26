@@ -5,14 +5,17 @@
     "overview": "Resumen",
     "accounts": "Plan de cuentas",
     "menu": "Abrir menú",
-    "close": "Cerrar menú"
+    "close": "Cerrar menú",
+    "thirdParties": "Terceros"
   },
   "overview": {
     "title": "Resumen",
     "subtitle": "Plataforma de contabilidad",
     "accountsCard": "Plan de cuentas",
     "accountsCardHint": "Consulta, crea e importa las cuentas del PUC.",
-    "open": "Abrir"
+    "open": "Abrir",
+    "thirdPartiesCard": "Terceros",
+    "thirdPartiesCardHint": "Registra clientes, proveedores y demás terceros."
   },
   "accounts": {
     "title": "Plan de cuentas",
@@ -108,5 +111,151 @@
     "updated": "Cuenta {code} actualizada",
     "deleted": "Cuenta {code} eliminada",
     "restored": "Cuenta {code} restaurada"
+  },
+  "thirdParties": {
+    "title": "Terceros",
+    "count": "{count, plural, =0 {Sin terceros} one {# tercero} other {# terceros}}",
+    "includingDeleted": "incluyendo eliminados",
+    "newThirdParty": "Nuevo tercero",
+    "showDeleted": "Ver eliminados",
+    "hideDeleted": "Ocultar eliminados",
+    "searchPlaceholder": "Buscar por documento o nombre…",
+    "allTypes": "Todos los tipos",
+    "empty": "Todavía no hay terceros. Crea el primero.",
+    "columnDocument": "Documento",
+    "columnName": "Nombre",
+    "columnType": "Tipo",
+    "deletedBadge": "eliminado",
+    "inactiveBadge": "inactivo",
+    "personTypes": {
+      "Natural person": "Persona natural",
+      "Legal entity": "Persona jurídica"
+    }
+  },
+  "thirdPartyForm": {
+    "createTitle": "Nuevo tercero",
+    "editTitle": "Editar tercero",
+    "deletedNotice": "Este tercero está eliminado. Restáuralo para volver a usarlo.",
+    "personType": "Tipo de persona",
+    "identification": "Identificación",
+    "document": "Documento",
+    "names": "Nombres",
+    "birth": "Nacimiento",
+    "personal": "Datos personales",
+    "company": "Empresa",
+    "legalRepresentative": "Representante legal",
+    "contact": "Contacto y ubicación",
+    "declarations": "Declaraciones SARLAFT",
+    "declarationsHint": "Marca solo lo que el tercero declare afirmativamente.",
+    "documentType": "Tipo de documento",
+    "documentNumber": "Número de documento",
+    "checkDigit": "DV",
+    "checkDigitHint": "Se calcula solo si lo dejas vacío.",
+    "firstName": "Primer nombre",
+    "middleName": "Segundo nombre",
+    "firstSurname": "Primer apellido",
+    "secondSurname": "Segundo apellido",
+    "issueDate": "Fecha de expedición",
+    "issueDepartment": "Departamento de expedición",
+    "issueCity": "Ciudad de expedición",
+    "birthDate": "Fecha de nacimiento",
+    "gender": "Género",
+    "maritalStatus": "Estado civil",
+    "housingType": "Tipo de vivienda",
+    "educationLevel": "Estudios",
+    "profession": "Profesión",
+    "legalName": "Razón social",
+    "companyType": "Tipo de sociedad",
+    "companyNature": "Naturaleza",
+    "legalRepName": "Nombre del representante",
+    "tradeName": "Nombre comercial",
+    "address": "Dirección",
+    "country": "País",
+    "department": "Departamento",
+    "city": "Ciudad",
+    "choose": "Selecciona…",
+    "mobilePhone": "Celular",
+    "landline": "Teléfono fijo",
+    "email": "Correo",
+    "taxRegime": "Régimen",
+    "active": "Activo",
+    "foreignOperations": "Realiza operaciones en el extranjero",
+    "publicResources": "Administra recursos públicos",
+    "publicRecognition": "Goza de reconocimiento público",
+    "publicPower": "Ejerce poder público",
+    "save": "Guardar",
+    "saving": "Guardando…",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "deleting": "Eliminando…",
+    "restore": "Restaurar",
+    "restoring": "Restaurando…",
+    "personTypes": {
+      "Natural person": "Persona natural",
+      "Legal entity": "Persona jurídica"
+    },
+    "documentTypes": {
+      "Citizen ID": "Cédula de ciudadanía",
+      "Foreigner ID": "Cédula de extranjería",
+      "NIT": "NIT",
+      "Minor ID": "Tarjeta de identidad",
+      "Passport": "Pasaporte",
+      "Birth certificate": "Registro civil",
+      "NUIP": "NUIP"
+    },
+    "genders": {
+      "Male": "Masculino",
+      "Female": "Femenino"
+    },
+    "maritalStatuses": {
+      "Single": "Soltero(a)",
+      "Married": "Casado(a)",
+      "Domestic partnership": "Unión libre",
+      "Female head of household": "Mujer cabeza de familia",
+      "Other": "Otro"
+    },
+    "housingTypes": {
+      "Owned": "Propia",
+      "Rented": "Arrendada",
+      "Family owned": "Familiar",
+      "Other": "Otra"
+    },
+    "educationLevels": {
+      "Primary": "Primaria",
+      "Secondary": "Secundaria",
+      "Technical": "Tecnología",
+      "University": "Universitaria",
+      "Postgraduate": "Posgrado"
+    },
+    "taxRegimes": {
+      "Not VAT responsible": "No responsable del IVA",
+      "VAT responsible": "Responsable del IVA",
+      "Simplified": "Simplificado",
+      "Subsidized": "Subsidiado"
+    },
+    "companyTypes": {
+      "Corporation": "Sociedad Anónima",
+      "Limited liability company": "Sociedad Limitada",
+      "Simplified joint-stock company": "Sociedad por Acciones Simplificada",
+      "Limited partnership by shares": "Sociedad en Comandita por Acciones",
+      "De facto partnership": "Sociedad de Hecho",
+      "Sole proprietorship": "Empresa Unipersonal",
+      "Cooperative": "Entidad Cooperativa",
+      "Nonprofit organization": "Entidad Sin Ánimo de Lucro",
+      "Foundation": "Fundación",
+      "Trade association": "Agremiación",
+      "Consortium": "Consorcio",
+      "Temporary joint venture": "Unión Temporal"
+    }
+  },
+  "thirdPartyErrors": {
+    "missingId": "Falta el identificador del tercero",
+    "missingField": "Falta un campo obligatorio: {field}"
+  },
+  "thirdPartySuccess": {
+    "created": "Tercero {name} creado",
+    "updated": "Tercero {name} actualizado",
+    "deleted": "Tercero {name} eliminado",
+    "restored": "Tercero {name} restaurado"
   }
 }

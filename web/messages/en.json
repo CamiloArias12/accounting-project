@@ -5,14 +5,17 @@
     "overview": "Overview",
     "accounts": "Chart of accounts",
     "menu": "Open menu",
-    "close": "Close menu"
+    "close": "Close menu",
+    "thirdParties": "Third parties"
   },
   "overview": {
     "title": "Overview",
     "subtitle": "Accounting platform",
     "accountsCard": "Chart of accounts",
     "accountsCardHint": "Browse, create and import the PUC accounts.",
-    "open": "Open"
+    "open": "Open",
+    "thirdPartiesCard": "Third parties",
+    "thirdPartiesCardHint": "Register customers, suppliers and anyone else the books point at."
   },
   "accounts": {
     "title": "Chart of accounts",
@@ -108,5 +111,151 @@
     "updated": "Account {code} updated",
     "deleted": "Account {code} deleted",
     "restored": "Account {code} restored"
+  },
+  "thirdParties": {
+    "title": "Third parties",
+    "count": "{count, plural, =0 {No third parties} one {# third party} other {# third parties}}",
+    "includingDeleted": "including deleted",
+    "newThirdParty": "New third party",
+    "showDeleted": "Show deleted",
+    "hideDeleted": "Hide deleted",
+    "searchPlaceholder": "Search by document or name…",
+    "allTypes": "All types",
+    "empty": "No third parties yet. Create the first one.",
+    "columnDocument": "Document",
+    "columnName": "Name",
+    "columnType": "Type",
+    "deletedBadge": "deleted",
+    "inactiveBadge": "inactive",
+    "personTypes": {
+      "Natural person": "Natural person",
+      "Legal entity": "Legal entity"
+    }
+  },
+  "thirdPartyForm": {
+    "createTitle": "New third party",
+    "editTitle": "Edit third party",
+    "deletedNotice": "This third party is deleted. Restore it to use it again.",
+    "personType": "Kind of person",
+    "identification": "Identification",
+    "document": "Document",
+    "names": "Names",
+    "birth": "Birth",
+    "personal": "Personal details",
+    "company": "Company",
+    "legalRepresentative": "Legal representative",
+    "contact": "Contact and address",
+    "declarations": "SARLAFT declarations",
+    "declarationsHint": "Tick only what the third party declares to be true.",
+    "documentType": "Document type",
+    "documentNumber": "Document number",
+    "checkDigit": "Check digit",
+    "checkDigitHint": "Derived when left empty.",
+    "firstName": "First name",
+    "middleName": "Middle name",
+    "firstSurname": "First surname",
+    "secondSurname": "Second surname",
+    "issueDate": "Issue date",
+    "issueDepartment": "Issue department",
+    "issueCity": "Issue city",
+    "birthDate": "Date of birth",
+    "gender": "Gender",
+    "maritalStatus": "Marital status",
+    "housingType": "Housing",
+    "educationLevel": "Education",
+    "profession": "Profession",
+    "legalName": "Legal name",
+    "companyType": "Legal form",
+    "companyNature": "Nature",
+    "legalRepName": "Representative name",
+    "tradeName": "Trade name",
+    "address": "Address",
+    "country": "Country",
+    "department": "Department",
+    "city": "City",
+    "choose": "Choose…",
+    "mobilePhone": "Mobile",
+    "landline": "Landline",
+    "email": "Email",
+    "taxRegime": "Tax regime",
+    "active": "Active",
+    "foreignOperations": "Operates abroad",
+    "publicResources": "Handles public funds",
+    "publicRecognition": "Is publicly recognised",
+    "publicPower": "Holds public office",
+    "save": "Save",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "deleting": "Deleting…",
+    "restore": "Restore",
+    "restoring": "Restoring…",
+    "personTypes": {
+      "Natural person": "Natural person",
+      "Legal entity": "Legal entity"
+    },
+    "documentTypes": {
+      "Citizen ID": "Citizen ID",
+      "Foreigner ID": "Foreigner ID",
+      "NIT": "NIT",
+      "Minor ID": "Minor ID",
+      "Passport": "Passport",
+      "Birth certificate": "Birth certificate",
+      "NUIP": "NUIP"
+    },
+    "genders": {
+      "Male": "Male",
+      "Female": "Female"
+    },
+    "maritalStatuses": {
+      "Single": "Single",
+      "Married": "Married",
+      "Domestic partnership": "Domestic partnership",
+      "Female head of household": "Female head of household",
+      "Other": "Other"
+    },
+    "housingTypes": {
+      "Owned": "Owned",
+      "Rented": "Rented",
+      "Family owned": "Family owned",
+      "Other": "Other"
+    },
+    "educationLevels": {
+      "Primary": "Primary",
+      "Secondary": "Secondary",
+      "Technical": "Technical",
+      "University": "University",
+      "Postgraduate": "Postgraduate"
+    },
+    "taxRegimes": {
+      "Not VAT responsible": "Not VAT responsible",
+      "VAT responsible": "VAT responsible",
+      "Simplified": "Simplified",
+      "Subsidized": "Subsidized"
+    },
+    "companyTypes": {
+      "Corporation": "Corporation",
+      "Limited liability company": "Limited liability company",
+      "Simplified joint-stock company": "Simplified joint-stock company",
+      "Limited partnership by shares": "Limited partnership by shares",
+      "De facto partnership": "De facto partnership",
+      "Sole proprietorship": "Sole proprietorship",
+      "Cooperative": "Cooperative",
+      "Nonprofit organization": "Nonprofit organization",
+      "Foundation": "Foundation",
+      "Trade association": "Trade association",
+      "Consortium": "Consortium",
+      "Temporary joint venture": "Temporary joint venture"
+    }
+  },
+  "thirdPartyErrors": {
+    "missingId": "The third party id is missing",
+    "missingField": "A required field is missing: {field}"
+  },
+  "thirdPartySuccess": {
+    "created": "Third party {name} created",
+    "updated": "Third party {name} updated",
+    "deleted": "Third party {name} deleted",
+    "restored": "Third party {name} restored"
   }
 }

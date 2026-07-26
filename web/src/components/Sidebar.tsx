@@ -12,13 +12,14 @@ import type { Theme } from "@/lib/theme";
 
 interface NavItem {
   href: string;
-  labelKey: "overview" | "accounts";
+  labelKey: "overview" | "accounts" | "thirdParties";
   icon: string;
 }
 
 const NAV: NavItem[] = [
   { href: "/", labelKey: "overview", icon: "▤" },
   { href: "/accounts", labelKey: "accounts", icon: "▦" },
+  { href: "/third-parties", labelKey: "thirdParties", icon: "◍" },
 ];
 
 interface Props {

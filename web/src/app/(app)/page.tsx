@@ -22,6 +22,17 @@ export default function Overview() {
             {t("open")} →
           </span>
         </Link>
+
+        <Link
+          href="/third-parties"
+          className="flex flex-col gap-1 rounded-lg border border-border bg-surface p-4 transition-colors hover:border-accent"
+        >
+          <span className="text-sm font-medium">{t("thirdPartiesCard")}</span>
+          <span className="text-sm text-muted">{t("thirdPartiesCardHint")}</span>
+          <span className="mt-2 text-sm font-medium text-accent">
+            {t("open")} →
+          </span>
+        </Link>
       </div>
     </main>
   );
