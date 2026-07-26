@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -41,23 +41,28 @@ def _as_download(generation: ExogenaGeneration) -> Response:
     )
 
 
-@router.post("/generate")
+@router.post(
+    "/generate", response_model=GenerationRead, status_code=status.HTTP_201_CREATED
+)
 async def generate(
     payload: GenerateRequest, service: ServiceDep, user: CurrentUser
-) -> Response:
-    """Build the report for a taxable year and hand it back as a download.
+) -> ExogenaGeneration:
+    """Build the report for a taxable year and report what came out.
 
-    The generation is recorded first and the bytes are kept with it, so the
-    same file can be fetched again later — `/history/{id}/file` returns
-    what was filed, not what the books would produce today.
+    The record, not the bytes: how many third parties made the cut and how many
+    fell below the threshold is what a person needs to see before filing
+    anything, and a browser handed an attachment shows none of it. The file
+    itself is one request away at `/history/{id}/file`.
+
+    What is kept there is what was generated, not what the books would produce
+    today — a reversal or a correction may have landed since.
     """
-    generation = await service.generate(
+    return await service.generate(
         payload,
         nit=settings.COMPANY_NIT,
         legal_name=settings.COMPANY_LEGAL_NAME,
         user_id=user.id,
     )
-    return _as_download(generation)
 
 
 @router.get("/history", response_model=list[GenerationRead])

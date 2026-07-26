@@ -9,6 +9,7 @@ import type {
   AccountUpdate,
   ImportResult,
 } from "@/types/account";
+import type { Generation, UvtRun, UvtValue } from "@/types/exogena";
 import type {
   City,
   Country,
@@ -351,6 +352,70 @@ export const periodsApi = {
   reopen(year: number, month: number): Promise<Period> {
     return request<Period>(`/periods/${year}/${month}/reopen`, {
       method: "POST",
+    });
+  },
+};
+
+export interface GenerateRequest {
+  year: number;
+  /** Zero means no threshold, and then the year's UVT is not needed at all. */
+  threshold_uvt: string;
+}
+
+export const exogenaApi = {
+  /**
+   * Builds the report and answers with the record, not the bytes.
+   *
+   * How many third parties made the cut and how many fell below the threshold
+   * is what a person needs before filing anything; the file is a click away.
+   */
+  generate(payload: GenerateRequest): Promise<Generation> {
+    return request<Generation>("/exogena/generate", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  history(limit = 50): Promise<Generation[]> {
+    return request<Generation[]>(`/exogena/history?limit=${limit}`);
+  },
+
+  /**
+   * The stored file, untouched.
+   *
+   * The raw `Response` rather than a parsed body: this one is XML, and it is on
+   * its way to a browser that will save it, not to a component that will read
+   * it. The route handler passes it straight through.
+   */
+  async file(id: number): Promise<Response> {
+    return fetch(`${API}/exogena/history/${id}/file`, {
+      cache: "no-store",
+      headers: await buildHeaders(),
+    });
+  },
+};
+
+export const uvtApi = {
+  values(): Promise<UvtValue[]> {
+    return request<UvtValue[]>("/uvt");
+  },
+
+  runs(limit = 20): Promise<UvtRun[]> {
+    return request<UvtRun[]>(`/uvt/runs?limit=${limit}`);
+  },
+
+  /** 202: the fetch runs after the response, and lands in `runs()`. */
+  refresh(year: number): Promise<{ year: number; accepted: boolean }> {
+    return request<{ year: number; accepted: boolean }>("/uvt/refresh", {
+      method: "POST",
+      body: JSON.stringify({ year }),
+    });
+  },
+
+  set(year: number, value: string): Promise<UvtValue> {
+    return request<UvtValue>(`/uvt/${year}`, {
+      method: "PUT",
+      body: JSON.stringify({ value }),
     });
   },
 };

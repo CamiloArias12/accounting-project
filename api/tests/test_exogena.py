@@ -3,7 +3,7 @@ from typing import Any
 from xml.etree import ElementTree as ET
 
 import pytest
-from httpx import AsyncClient
+from httpx import AsyncClient, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.exogena.report import Filer, InvalidFiler
@@ -99,6 +99,19 @@ def parse(xml: str) -> ET.Element:
     return ET.fromstring(xml)
 
 
+async def generate(client: AsyncClient, payload: dict[str, Any]) -> Response:
+    """Generate a report and fetch the file it produced.
+
+    Two calls, because the endpoint answers with the record rather than the
+    bytes: what a person needs to see before filing is how many third parties
+    made the cut, and an attachment shows none of it.
+    """
+    created = await client.post(BASE + "/generate", json=payload)
+    assert created.status_code == 201, created.text
+
+    return await client.get(f"{BASE}/history/{created.json()['id']}/file")
+
+
 # --- the filer's own NIT -------------------------------------------------
 
 
@@ -128,9 +141,7 @@ async def test_the_xml_has_the_required_shape(
     supplier = await a_supplier(auth_client, places)
     await a_payment(auth_client, supplier, "1000000.00", "100000.00")
 
-    generated = await auth_client.post(
-        BASE + "/generate", json={"year": 2025, "threshold_uvt": "0"}
-    )
+    generated = await generate(auth_client, {"year": 2025, "threshold_uvt": "0"})
 
     assert generated.status_code == 200
     assert generated.headers["content-type"].startswith("application/xml")
@@ -175,9 +186,7 @@ async def test_movements_are_grouped_by_third_party_and_concept(
     await a_payment(auth_client, supplier, "1000000.00", "100000.00")
     await a_payment(auth_client, supplier, "500000.00", "50000.00")
 
-    generated = await auth_client.post(
-        BASE + "/generate", json={"year": 2025, "threshold_uvt": "0"}
-    )
+    generated = await generate(auth_client, {"year": 2025, "threshold_uvt": "0"})
 
     registros = parse(generated.text).findall("Registros/Registro")
     # Two payments, one third party, one concept: one row.
@@ -198,9 +207,7 @@ async def test_the_totals_match_the_rows(
     await a_payment(auth_client, first, "1000000.00", "100000.00")
     await a_payment(auth_client, second, "700000.00", "70000.00")
 
-    generated = await auth_client.post(
-        BASE + "/generate", json={"year": 2025, "threshold_uvt": "0"}
-    )
+    generated = await generate(auth_client, {"year": 2025, "threshold_uvt": "0"})
 
     root = parse(generated.text)
     registros = root.findall("Registros/Registro")
@@ -242,9 +249,7 @@ async def test_drafts_and_untagged_accounts_stay_out(
         },
     )
 
-    generated = await auth_client.post(
-        BASE + "/generate", json={"year": 2025, "threshold_uvt": "0"}
-    )
+    generated = await generate(auth_client, {"year": 2025, "threshold_uvt": "0"})
 
     totales = parse(generated.text).find("Totales")
     assert totales is not None
@@ -269,9 +274,7 @@ async def test_a_third_party_below_the_threshold_is_excluded(
     await a_payment(auth_client, big, "6000000.00", "0.00")
     await a_payment(auth_client, small, "1000000.00", "0.00")
 
-    generated = await auth_client.post(
-        BASE + "/generate", json={"year": 2025, "threshold_uvt": "100"}
-    )
+    generated = await generate(auth_client, {"year": 2025, "threshold_uvt": "100"})
 
     registros = parse(generated.text).findall("Registros/Registro")
     assert [r.attrib["valorBruto"] for r in registros] == ["6000000"]
@@ -295,9 +298,7 @@ async def test_a_threshold_without_a_uvt_is_refused(
 
 
 async def test_a_threshold_of_zero_needs_no_uvt(auth_client: AsyncClient) -> None:
-    generated = await auth_client.post(
-        BASE + "/generate", json={"year": 2019, "threshold_uvt": "0"}
-    )
+    generated = await generate(auth_client, {"year": 2019, "threshold_uvt": "0"})
 
     assert generated.status_code == 200
 
@@ -336,9 +337,7 @@ async def test_the_file_comes_back_byte_for_byte(
     supplier = await a_supplier(auth_client, places)
     await a_payment(auth_client, supplier, "1000000.00", "100000.00")
 
-    first = await auth_client.post(
-        BASE + "/generate", json={"year": 2025, "threshold_uvt": "0"}
-    )
+    first = await generate(auth_client, {"year": 2025, "threshold_uvt": "0"})
     generation_id = (await auth_client.get(BASE + "/history")).json()[0]["id"]
 
     # The books move underneath it.

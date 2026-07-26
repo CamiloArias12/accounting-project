@@ -12,7 +12,8 @@
     "periods": "Periods",
     "groupGeneral": "General",
     "groupRecords": "Master data",
-    "groupAccounting": "Accounting"
+    "groupAccounting": "Accounting",
+    "exogena": "Exógena"
   },
   "overview": {
     "title": "Overview",
@@ -435,5 +436,61 @@
     "showing": "{first}–{last} of {total}",
     "previous": "Previous",
     "next": "Next"
+  },
+  "exogena": {
+    "eyebrow": "Reports",
+    "title": "Exógena",
+    "subtitle": "The simplified XML filing, built from the posted vouchers",
+    "generateTitle": "Generate the file",
+    "generateHelp": "Groups the taxable year's movements by third party and DIAN concept.",
+    "year": "Year",
+    "thresholdUvt": "Threshold in UVT",
+    "thresholdHelp": "A threshold of zero excludes nobody, and then the year's UVT is not needed.",
+    "generate": "Generate",
+    "generating": "Generating...",
+    "historyTitle": "Generations",
+    "historyHelp": "Each file is kept as it came out: what you download is what was filed, not what the books would say today.",
+    "noGenerations": "Nothing generated yet.",
+    "threshold": "Threshold",
+    "records": "Records",
+    "excluded": "Excluded",
+    "gross": "Gross",
+    "withheld": "Withheld",
+    "generatedAt": "Generated",
+    "download": "Download",
+    "uvtTitle": "UVT",
+    "uvtHelp": "The threshold is measured in UVT, so the year needs its value before anything can be filtered.",
+    "fetchYear": "Fetch year",
+    "fetch": "Fetch from the source",
+    "fetching": "Fetching...",
+    "manualYear": "Year",
+    "manualValue": "Value in pesos",
+    "save": "Set by hand",
+    "saving": "Saving...",
+    "reload": "Reload the table",
+    "noValues": "No UVT values stored.",
+    "value": "Value",
+    "source": "Source",
+    "fetchedAt": "Fetched",
+    "runsTitle": "Recent attempts",
+    "attempts": "{count} attempt(s)",
+    "sources": {
+      "Fetched": "Fetched",
+      "Manual": "Manual"
+    },
+    "statuses": {
+      "Succeeded": "Succeeded",
+      "Failed": "Failed",
+      "Skipped": "Skipped"
+    }
+  },
+  "exogenaErrors": {
+    "yearRequired": "Give the year.",
+    "valueRequired": "Give the UVT value."
+  },
+  "exogenaSuccess": {
+    "generated": "File generated: {records} record(s), {excluded} excluded.",
+    "refreshQueued": "Asked for the UVT of {year}. The outcome shows up under recent attempts.",
+    "uvtSet": "UVT for {year} saved."
   }
 }

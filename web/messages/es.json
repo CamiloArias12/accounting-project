@@ -12,7 +12,8 @@
     "periods": "Períodos",
     "groupGeneral": "General",
     "groupRecords": "Maestros",
-    "groupAccounting": "Contabilidad"
+    "groupAccounting": "Contabilidad",
+    "exogena": "Exógena"
   },
   "overview": {
     "title": "Resumen",
@@ -435,5 +436,61 @@
     "showing": "{first}–{last} de {total}",
     "previous": "Anterior",
     "next": "Siguiente"
+  },
+  "exogena": {
+    "eyebrow": "Reportes",
+    "title": "Información exógena",
+    "subtitle": "Formato simplificado en XML, a partir de los comprobantes contabilizados",
+    "generateTitle": "Generar el archivo",
+    "generateHelp": "Agrupa por tercero y concepto DIAN los movimientos del año gravable.",
+    "year": "Año",
+    "thresholdUvt": "Tope en UVT",
+    "thresholdHelp": "Con tope 0 no se excluye a nadie y no hace falta la UVT del año.",
+    "generate": "Generar",
+    "generating": "Generando...",
+    "historyTitle": "Generaciones",
+    "historyHelp": "Cada archivo se guarda tal como salió: se descarga lo que se reportó, no lo que dirían los libros hoy.",
+    "noGenerations": "Todavía no se ha generado ningún archivo.",
+    "threshold": "Tope",
+    "records": "Registros",
+    "excluded": "Excluidos",
+    "gross": "Valor bruto",
+    "withheld": "Retención",
+    "generatedAt": "Generado",
+    "download": "Descargar",
+    "uvtTitle": "UVT",
+    "uvtHelp": "El tope se mide en UVT, así que el año necesita su valor antes de poder filtrar.",
+    "fetchYear": "Consultar el año",
+    "fetch": "Consultar la fuente",
+    "fetching": "Consultando...",
+    "manualYear": "Año",
+    "manualValue": "Valor en pesos",
+    "save": "Guardar a mano",
+    "saving": "Guardando...",
+    "reload": "Actualizar la tabla",
+    "noValues": "Sin valores de UVT almacenados.",
+    "value": "Valor",
+    "source": "Origen",
+    "fetchedAt": "Consultado",
+    "runsTitle": "Últimos intentos",
+    "attempts": "{count} intento(s)",
+    "sources": {
+      "Fetched": "De la fuente",
+      "Manual": "Manual"
+    },
+    "statuses": {
+      "Succeeded": "Exitoso",
+      "Failed": "Fallido",
+      "Skipped": "Omitido"
+    }
+  },
+  "exogenaErrors": {
+    "yearRequired": "Indica el año.",
+    "valueRequired": "Indica el valor de la UVT."
+  },
+  "exogenaSuccess": {
+    "generated": "Archivo generado: {records} registro(s), {excluded} excluido(s).",
+    "refreshQueued": "Se pidió la UVT de {year}. El resultado aparece en los últimos intentos.",
+    "uvtSet": "UVT de {year} guardada."
   }
 }

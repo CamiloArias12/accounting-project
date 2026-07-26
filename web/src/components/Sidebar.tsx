@@ -3,6 +3,7 @@
 import {
   BookOpen,
   CalendarRange,
+  FileCode2,
   LayoutDashboard,
   ListTree,
   Menu,
@@ -28,7 +29,8 @@ type NavLabel =
   | "thirdParties"
   | "vouchers"
   | "ledger"
-  | "periods";
+  | "periods"
+  | "exogena";
 
 interface NavItem {
   href: string;
@@ -65,6 +67,7 @@ const NAV: NavGroup[] = [
       { href: "/vouchers", labelKey: "vouchers", icon: ReceiptText },
       { href: "/ledger", labelKey: "ledger", icon: BookOpen },
       { href: "/periods", labelKey: "periods", icon: CalendarRange },
+      { href: "/exogena", labelKey: "exogena", icon: FileCode2 },
     ],
   },
 ];
