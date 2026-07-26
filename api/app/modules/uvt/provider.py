@@ -51,11 +51,16 @@ class UvtNotPublished(UvtError):
 
 
 class UvtSourceUnavailable(UvtError):
-    """The source failed in a way that might work on the next try."""
+    """The source failed in a way that might work on the next try.
 
-    def __init__(self, detail: str) -> None:
+    Carries how many attempts were spent, so the run record can say three
+    rather than leaving the count to be read out of the message.
+    """
+
+    def __init__(self, detail: str, *, attempts: int = 1) -> None:
         super().__init__(f"The UVT source is unavailable: {detail}")
         self.detail = detail
+        self.attempts = attempts
 
 
 class UvtProvider(Protocol):
@@ -135,4 +140,6 @@ async def fetch_with_retry(
                 # Backing off, so a source that is merely busy is not hammered.
                 await asyncio.sleep(base_delay_seconds * 2 ** (attempt - 1))
 
-    raise UvtSourceUnavailable(f"gave up after {attempts} attempts: {last}") from last
+    raise UvtSourceUnavailable(
+        f"gave up after {attempts} attempts: {last}", attempts=attempts
+    ) from last

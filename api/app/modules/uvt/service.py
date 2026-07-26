@@ -110,7 +110,9 @@ class UvtService:
                 provider=provider.name,
                 status=RunStatus.FAILED,
                 started=started,
-                attempts=0,
+                # What it actually spent, not zero: this column is the whole
+                # point of keeping the failures.
+                attempts=exc.attempts,
                 detail=str(exc),
             )
 

@@ -176,3 +176,14 @@ async def test_a_year_with_no_value_is_refused_not_guessed(
 
 async def test_the_endpoints_require_a_token(client: AsyncClient) -> None:
     assert (await client.get(BASE)).status_code == 401
+
+
+async def test_a_failed_run_records_the_attempts_it_spent(
+    session: AsyncSession,
+) -> None:
+    # The count is the point of keeping failures: a run that says zero
+    # attempts reads as if it never tried.
+    run = await UvtService(session).refresh(2025, AlwaysDown())
+
+    assert run.status is RunStatus.FAILED
+    assert run.attempts == 3
