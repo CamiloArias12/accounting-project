@@ -1,0 +1,121 @@
+name: CI
+
+# Los checks corren en todo push y PR; el deploy solo cuando main ya pasó los
+# checks, o a mano desde la pestaña Actions.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  api:
+    name: API — lint, tipos y tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Construir la imagen de desarrollo
+        # El target `dev` es el que trae ruff, mypy y pytest. Construirla aquí
+        # también valida el Dockerfile en cada push, no solo al desplegar.
+        run: docker build --target dev -t accounting-api:dev ./api
+
+      - name: Ruff
+        run: docker run --rm accounting-api:dev ruff check .
+
+      - name: Mypy
+        run: docker run --rm accounting-api:dev mypy .
+
+      - name: Pytest
+        # Los tests usan SQLite en memoria, así que no necesitan Postgres.
+        run: docker run --rm accounting-api:dev pytest -q
+
+  web:
+    name: Web — lint, tipos y build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Construir la imagen de desarrollo
+        run: docker build --target dev -t accounting-web:dev ./web
+
+      - name: ESLint
+        run: docker run --rm accounting-web:dev npm run lint
+
+      - name: Typecheck
+        run: docker run --rm accounting-web:dev npm run typecheck
+
+      - name: Build de producción
+        # Compila el target `prod` entero: si el standalone output se rompe, se
+        # ve aquí y no en el servidor.
+        run: docker build --target prod -t accounting-web:prod ./web
+
+  deploy:
+    name: Desplegar en producción
+    needs: [api, web]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    # Dos deploys simultáneos dejarían el servidor a medio construir.
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ¿Hay servidor configurado?
+        id: check
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          # Sin secrets no hay a dónde desplegar. Se sale en verde en vez de en
+          # rojo: el pipeline no está roto, simplemente todavía no se corrió
+          # scripts/setup-github-deploy.sh.
+          if [ -z "$DEPLOY_HOST" ] || [ -z "$SSH_PRIVATE_KEY" ]; then
+            echo "::notice::Deploy omitido: faltan los secrets DEPLOY_HOST y SSH_PRIVATE_KEY (ver scripts/setup-github-deploy.sh)"
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Preparar la clave SSH
+        if: steps.check.outputs.configured == 'true'
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          # Con el secret puesto, la identidad del servidor queda fijada y un
+          # secuestro de la IP no recibe el deploy. Sin él, se acepta la que
+          # anuncie el host (confianza al primer uso) para no exigir un paso
+          # manual: el pipeline funciona igual, con menos garantía.
+          if [ -n "$SSH_KNOWN_HOSTS" ]; then
+            printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          else
+            echo "::warning::SSH_KNOWN_HOSTS vacío; se acepta la clave del host sin verificar"
+            ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" > ~/.ssh/known_hosts 2>/dev/null
+          fi
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Aprovisionar el servidor
+        if: steps.check.outputs.configured == 'true'
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER || 'root' }}
+        run: |
+          # Idempotente: instala Docker y genera el .env solo la primera vez.
+          ssh -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" \
+            "DEPLOY_HOST=$DEPLOY_HOST bash -s" < scripts/provision.sh
+
+      - name: Desplegar
+        if: steps.check.outputs.configured == 'true'
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER || 'root' }}
+        run: |
+          # El script vive en el repo, versionado, y se ejecuta por stdin: el
+          # servidor no necesita tener una copia previa ni mantenerla al día.
+          ssh -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" \
+            "DEPLOY_SHA=${{ github.sha }} bash -s" < scripts/deploy.sh
