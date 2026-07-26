@@ -36,6 +36,184 @@ At <http://localhost:3000/accounts> you can browse the tree, search, create and
 edit accounts, soft-delete and restore them, and import the spreadsheet. The
 model and the import are documented in [`api/README.md`](./api/README.md).
 
+## Screens
+
+| Path             | What it does                                                              |
+| ---------------- | ------------------------------------------------------------------------- |
+| `/accounts`      | The chart as a tree: search, create, edit, soft-delete, restore, import    |
+| `/third-parties` | Natural and legal persons, with the DANE places and the NIT check digit    |
+| `/vouchers`      | List and editor; save a draft, post it, reverse a posted one              |
+| `/ledger`        | Balances per account, and one account's movements with a running balance   |
+| `/periods`       | The twelve months of a year, closed and reopened                          |
+| `/exogena`       | Generate the XML, download an earlier one, and manage the UVT behind it    |
+
+Everything is Spanish or English at a click, and the language is a cookie, not a
+URL segment.
+
+## Design decisions
+
+### The code is the hierarchy
+
+The level is the code's length and the parent is its prefix. That is not a
+shortcut but what the PUC actually is: `110505` *is* inside `1105` because of
+how it is written. Both are derived on the way in and never asked of the caller,
+so the two cannot disagree.
+
+`parent_code` is still a real column with a foreign key — derived, but stored,
+so the database can refuse to delete a parent that still has children even if
+the service check were bypassed. What it is not is the *source* of the
+relationship: change a code and the parent is recomputed from it, never the
+reverse.
+
+Reading a whole branch is then one `LIKE '1105%'` rather than a recursive query.
+The cost is that a code cannot be renamed without moving its children, which is
+the correct trade: in the PUC the code is the identity.
+
+### Only the leaves take entries
+
+A voucher line may only name an account with nothing under it. Posting to
+`1105` when `110505` exists would double-count it in every report that walks the
+tree. The check is at the domain layer, so it holds for the API, the import and
+anything added later.
+
+### Balances are computed, never stored
+
+There is no running-balance column and no per-account totals table. The ledger
+is what the posted voucher lines add up to, and keeping a second copy means the
+two drift the first time a write fails halfway — the classic accounting bug
+where the balance and the movements no longer agree and nobody knows which is
+right.
+
+The report gets the opening balance and the movement in **one** query:
+conditional aggregation over two slices of dates rather than two round trips.
+The account detail's running balance is accumulated in order of date and
+consecutive number, which is the order the books were written in and the only
+order in which a running balance means anything.
+
+If this became slow it would be a materialised view refreshed on posting, not a
+column — the derivation stays in one place either way.
+
+### Balance is a precondition of posting, not a report footer
+
+Debits must equal credits before a voucher can enter the books, and a voucher
+needs at least two lines. The reference project computes those totals only to
+print them, so an unbalanced entry saves happily and the trial balance quietly
+stops balancing. Here `totals.is_balanced` in the ledger is a consequence, not a
+check: if every voucher balanced, the books as a whole add up to zero.
+
+### Draft and posted
+
+A draft is a working document — editable, deletable, outside the balances. A
+posted voucher has a consecutive number and cannot be altered at all, only
+reversed. That is the line between a document someone is still writing and an
+accounting record.
+
+### Reversal instead of deletion
+
+A posted mistake is corrected by writing the entry that cancels it: same
+accounts, debits and credits swapped, posted in the same operation. Leaving the
+correction as a draft would be worse than either state, because the books show
+only the mistake until somebody remembers to finish. The pair stays visible —
+the original is marked as reversed, the reversal points back at it.
+
+### Period closing, and reopening
+
+Only *closed* periods have a row. A month with no row is open, so the books can
+be used before anyone has created a single period, and closing 2025-06 does not
+require the eleven other months to exist.
+
+Reopening is allowed and deliberately so: a period is closed to stop accidental
+entries, not to make the past unreachable, and a close that cannot be undone
+turns a mistyped month into a permanent one. Every change records who made it
+and when, which is the part that actually matters for an audit.
+
+### The company is configuration
+
+`COMPANY_NIT` and `COMPANY_LEGAL_NAME` are settings, not a table. The whole
+database belongs to one company, so a `companies` table would have exactly one
+row and every query would carry a foreign key that can only take one value —
+multi-tenancy's costs with none of its benefits. The spec lists "empresa" as a
+field of the voucher; here it is the same value for every voucher in the
+database, so it is printed on the screen and stamped into the exógena file
+rather than stored a thousand times.
+
+If the product ever hosted several companies, the change is a tenant column and
+a scoped session — not the removal of one that was never load-bearing.
+
+### Concurrency
+
+Two postings racing for the same consecutive number is the one race that
+matters, and it is settled by a unique index rather than by a lock: the loser
+gets an `IntegrityError`, rolls back, and retries with the next number. A
+`SELECT max(number)` under a lock would serialise every posting in the system to
+protect against something that happens rarely.
+
+Everything else relies on the database's own guarantees. A voucher and its lines
+are written in one transaction; the ledger reads a single snapshot; the UVT
+refresh is idempotent because the year is unique, so running it every night
+updates one row rather than accumulating them.
+
+### Money
+
+`Numeric(18,2)` in Postgres, `Decimal` in Python, decimal strings over HTTP, and
+integer cents in the browser. A float never touches an amount at any point: the
+server refuses an entry that is off by a hundredth, so the total the user is
+watching has to be the same figure the server will check.
+
+### Exógena and the UVT
+
+The report is built from posted vouchers, grouped by third party and DIAN
+concept, and rounded to whole pesos per row before totalling — the file the DIAN
+takes has no cents. Every generation is stored with the bytes it produced, so
+re-downloading gives what was filed rather than what the books would say today;
+a reversal landing afterwards must not change a document already sent.
+
+The UVT is fetched from a published table over the network, kept per year, and
+recorded with every attempt — including the failures, because a threshold that
+quietly used a stale UVT is exactly what the run log exists to make visible. A
+value typed in by hand outranks the source and is never overwritten by a fetch.
+A threshold of zero needs no UVT at all, which is what keeps the report usable
+for a year nobody has published one for yet.
+
+## Limitations
+
+Known, and deliberate for a five-day exercise:
+
+- **One company, one currency, no multi-tenancy.** See above.
+- **No user administration.** Users exist and authenticate; there is no screen
+  to create them and no roles — every signed-in user can do everything.
+- **The exógena format is the simplified one from the spec**, not the DIAN's
+  real 1001 specification, which is dozens of formats with their own layouts.
+- **No closing entry.** Closing a period stops entries in it; it does not cancel
+  income and expense accounts into equity for the year.
+- **No attachments on vouchers**, no PDF output, no printed reports.
+- **The UVT source is a third-party page.** It is parsed defensively and every
+  attempt is logged, but a layout change there breaks the fetch — hence the
+  manual override.
+- **Pagination is offset-based.** Fine for these volumes; a table of millions of
+  vouchers would want keyset pagination, since `OFFSET 900000` still walks
+  900,000 rows.
+
+## What would change for production
+
+- **The consecutive becomes per-book.** Real bookkeeping numbers vouchers by
+  type (CE, CI, CC…), not one series for everything. The retry-on-conflict
+  mechanism is unchanged; only the scope of the uniqueness moves.
+- **Audit trail on every write.** Vouchers record who created and posted them
+  and periods who closed them, but master data does not — a `who/when/what`
+  table would cover the rest.
+- **Background jobs move out of the request.** The UVT refresh runs in a
+  FastAPI background task, which dies with the process. Redis is already in the
+  stack; this belongs in a worker with retries that survive a restart.
+- **Rate limiting and lockout on the login endpoint**, which today will accept
+  attempts as fast as they arrive.
+- **Observability beyond the logs.** Every line is JSON and carries a request id
+  echoed back in `X-Request-ID`, which makes one call traceable across replicas.
+  There are still no metrics and no tracing, and "the ledger got slow" is not
+  answerable without them.
+- **Backups, and a restore that has actually been run.** An untested backup is a
+  belief, not a backup.
+
 ## Requirements
 
 Docker. Nothing else — no Node, no Python on the machine.
