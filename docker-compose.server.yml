@@ -25,6 +25,12 @@ services:
   web:
     image: ghcr.io/camiloarias12/accounting-web:${IMAGE_TAG:-latest}
     pull_policy: missing
+    environment:
+      # No `http://api:8000` aquí. Al entrar en la red `proxy` compartimos el
+      # espacio de nombres con el otro proyecto, que ya tiene un servicio
+      # llamado `api`: el nombre corto resuelve al suyo y la web se queda sin
+      # backend. El nombre del contenedor sí es único en las dos redes.
+      API_URL: http://accounting-api:8000
     networks:
       # `default` hay que repetirlo: al declarar redes se pierde la implícita,
       # y sin ella la web no vería a la API.
