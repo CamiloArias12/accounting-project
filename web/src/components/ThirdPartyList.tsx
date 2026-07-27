@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/table";
 import { PERSON_TYPES, type ThirdParty } from "@/types/third-party";
 
+
 interface Props {
   thirdParties: ThirdParty[];
   total: number;

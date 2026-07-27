@@ -9,8 +9,8 @@ accounting-project/
 ├── api/                        # Backend
 ├── web/                        # Frontend
 ├── scripts/                    # Aprovisionamiento y despliegue, idempotentes
-├── docker-compose.yml          # Base = producción
-└── docker-compose.override.yml # Desarrollo (Compose lo aplica solo)
+├── docker-compose.local.yml    # Desarrollo
+└── docker-compose.prod.yml     # Producción
 ```
 
 | Servicio | Stack                                | Puerto             |
@@ -93,8 +93,7 @@ donde **el nivel se deriva de la longitud del código** y el padre es su prefijo
 
 En <http://localhost:3000/accounts> se recorre el árbol, se busca, se crean y
 editan cuentas, se borran de forma lógica y se restauran, y se importa la
-planilla. El modelo y la importación están documentados en
-[`api/README.md`](./api/README.md).
+planilla.
 
 ## Pantallas
 
@@ -171,10 +170,11 @@ y un valor puesto a mano manda sobre la fuente.
 
 ## Las pruebas: qué se probó y por qué
 
-Cuarenta pruebas en `api/tests`, que se corren con `docker compose exec api
-pytest`. No son cobertura: son una por regla que, si se rompe, deja los libros
-mal sin que nadie se entere. Una cuenta que deja de aparecer en un listado se
-nota en la primera pantalla; un comprobante descuadrado que entra a los libros
+Cuarenta pruebas en `api/tests`, que se corren con
+`docker compose -f docker-compose.local.yml exec api pytest`. No son cobertura:
+son una por regla que, si se rompe, deja los libros mal sin que nadie se entere.
+Una cuenta que deja de aparecer en un listado se nota en la primera pantalla;
+un comprobante descuadrado que entra a los libros
 no se nota hasta que el balance de prueba deja de cuadrar meses después, y para
 entonces ya nadie sabe cuál de los mil asientos fue.
 
@@ -232,7 +232,8 @@ Cinco cosas que los libros no necesitaban para cuadrar, y la razón de cada una:
 - **Autenticación JWT.** La aplicación está detrás de un login; el token vive en
   una cookie httpOnly que el JavaScript del navegador no puede leer, y solo el
   servidor lo adjunta a las llamadas a la API.
-- **Un solo comando levanta el sistema completo.** `docker compose up -d --build`.
+- **Un solo comando levanta el sistema completo.**
+  `docker compose -f docker-compose.local.yml up -d --build`.
 - **CI en GitHub Actions**, y un despliegue que la sigue — ver más abajo.
 
 La gráfica es SVG dibujado a mano en vez de una librería de gráficas. Una sola
@@ -288,9 +289,22 @@ Docker. Nada más — ni Node, ni Python en la máquina.
 
 ```bash
 cp .env.example .env
-docker compose up -d --build
-docker compose exec api alembic upgrade head
+docker compose -f docker-compose.local.yml up -d --build
+docker compose -f docker-compose.local.yml exec api alembic upgrade head
+docker compose -f docker-compose.local.yml exec api python -m app.seed
 ```
+
+La última línea deja la base utilizable: el usuario **`admin@local.dev`** /
+**`local-admin-2026`** y 142 cuentas del PUC en los cuatro niveles. Se puede
+repetir sin romper nada, el usuario se cambia con `SEED_EMAIL` y
+`SEED_PASSWORD`, y fuera de `ENVIRONMENT=local` se niega a correr.
+
+El plan viene de [`api/fixtures/puc.csv`](./api/fixtures/puc.csv), que además de
+código, nombre y naturaleza lleva el concepto DIAN y la marca de retención que
+la exógena necesita. El mismo plan está en
+[`api/fixtures/puc.xlsx`](./api/fixtures/puc.xlsx) con el formato de la planilla
+—código, nombre, tipo, naturaleza— para probar la importación desde
+`/accounts`.
 
 El `.env` copiado arranca tal cual; esto es lo que trae:
 
@@ -309,8 +323,7 @@ POSTGRES_DB=accounting
 
 DB_POOL_SIZE=10                # conexiones por réplica de la API
 DB_MAX_OVERFLOW=5
-CACHE_TTL_SECONDS=300          # vida del plan de cuentas en caché
-
+CACHE_TTL_SECONDS=300
 COMPANY_NIT=900000000-5        # la empresa es configuración, no una tabla
 COMPANY_LEGAL_NAME=Mi Empresa S.A.S.
 
@@ -318,87 +331,39 @@ UVT_SOURCE=http                # `simulated` responde sin red — lo que usan la
 UVT_SOURCE_URL=https://www.gerencie.com/uvt.html
 UVT_SOURCE_TIMEOUT_SECONDS=10
 
-CORS_ORIGINS=["http://localhost:3000"]
+CORS_ORIGINS=["http://localhost:3000"
 ```
 
 - Web: <http://localhost:3000>
 - API: <http://localhost:8000> · documentación en <http://localhost:8000/docs>
 
-El código está montado dentro de los contenedores, así que **web y API recargan
-al editar**. Postgres y Redis se publican en el host para poder conectar un
-cliente externo.
+
 
 ## Producción
 
-`docker-compose.override.yml` se aplica automáticamente, así que producción
-significa pasar solo el archivo base:
+Producción es el otro archivo:
 
 ```bash
-docker compose -f docker-compose.yml up -d --build
-docker compose -f docker-compose.yml exec api alembic upgrade head
+docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml exec api alembic upgrade head
 ```
 
 
 ## Instancia en vivo
 
 <http://46.224.38.172:3001> — ingresar con `demo@accounting-project.dev` /
-`demo-accounting-2026`. El PUC colombiano ya está cargado: 2.446 cuentas en los
-cinco niveles, así que el árbol, la búsqueda y el selector de cuentas tienen
-algo real adentro.
-
-Es una máquina de demostración, no un servicio con garantía de disponibilidad, y
-comparte el host con una aplicación de producción no relacionada. Por eso la
-aplicación está en el puerto 3001 y la API escucha solo en loopback: la web la
-alcanza por la red de Compose, y nada más lo necesita.
-
-## Integración y despliegue continuos
-
-`.github/workflows/ci.yml` corre en cada push y pull request: ruff, mypy y
-pytest para la API, ESLint, `tsc` y un build de producción para la web. Cada
-verificación corre dentro de las propias imágenes de este repositorio, así que
-los Dockerfiles quedan ejercitados por el mismo job que revisa el código.
-
-En `main`, una vez pasan las verificaciones, las imágenes se publican en GHCR y
-el servidor se actualiza:
-
-```
-push a main → verificaciones → imágenes a ghcr.io → aprovisionar → desplegar → verificar
-```
-
-Dos scripts llevan el despliegue, ambos idempotentes:
-
-- [`scripts/provision.sh`](./scripts/provision.sh) — instala Docker si falta y
-  genera el `.env` del servidor con credenciales aleatorias, una sola vez. Nunca
-  se regenera: la contraseña de Postgres queda grabada en el volumen la primera
-  vez que se inicializa, y rotar `JWT_SECRET` cerraría la sesión de todo el
-  mundo en cada push.
-- [`scripts/deploy.sh`](./scripts/deploy.sh) — trae el commit exacto, migra con
-  la imagen nueva *antes* de intercambiar los contenedores, levanta el stack y
-  espera al endpoint de salud. Se niega a correr si un contenedor nuestro
-  pertenece a otro proyecto de Compose, si un puerto está tomado por un proceso
-  ajeno o si hay menos de 2 GB de disco libre.
-
-Nada se construye en el servidor. Tiene 3,7 GB de RAM compartidos con la base de
-datos de producción de alguien más, y un `next build` allí podría invocar al OOM
-killer o llenar el disco. Las imágenes llegan del registro, ya construidas.
-
-Un paso no se puede automatizar, porque hasta que exista GitHub no tiene por
-dónde entrar: instalar la llave de despliegue.
-[`scripts/setup-github-deploy.sh`](./scripts/setup-github-deploy.sh) lo hace en
-un comando — genera la llave, la instala y sube `SSH_PRIVATE_KEY`,
-`DEPLOY_HOST` y `SSH_KNOWN_HOSTS` al repositorio:
-
-```bash
-./scripts/setup-github-deploy.sh <ip-del-servidor>
-```
-
-Sin esos secretos el job de despliegue termina en verde y lo dice: el pipeline
-no está roto, está sin configurar.
+`demo-accounting-2026`.
 
 ## Comandos
 
-| Comando                                                            | Descripción         |
-| ------------------------------------------------------------------ | ------------------- |
-| `docker compose exec api pytest`                                   | Pruebas de la API   |
-| `docker compose exec api alembic upgrade head`                     | Aplicar migraciones |
-| `docker compose exec api alembic revision --autogenerate -m "msg"` | Nueva migración     |
+Todos con `-f docker-compose.local.yml`, que aquí se abrevia como `$C`:
+
+```bash
+C="docker compose -f docker-compose.local.yml"
+```
+
+| Comando                                          | Descripción         |
+| ------------------------------------------------ | ------------------- |
+| `$C exec api pytest`                             | Pruebas de la API   |
+| `$C exec api alembic upgrade head`               | Aplicar migraciones |
+| `$C exec api alembic revision --autogenerate -m "msg"` | Nueva migración |

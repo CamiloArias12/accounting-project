@@ -1,0 +1,93 @@
+name: accounting
+
+services:
+  postgres:
+    container_name: accounting-postgres
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?falta POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?falta POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-accounting}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    container_name: accounting-redis
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    container_name: accounting-api
+    image: accounting-api:dev
+    build:
+      context: ./api
+      target: dev
+    restart: unless-stopped
+    # Todo lo del .env llega a la API. Lo de abajo lo pisa, porque el host de
+    # Postgres o Redis dentro de la red de Compose no es el que vale fuera.
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:?falta POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?falta POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-accounting}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      ENVIRONMENT: local
+      DEBUG: "true"
+      CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost:3000"]}
+    ports:
+      - "${API_BIND:-0.0.0.0}:${API_PORT:-8000}:8000"
+    volumes:
+      # El volumen anónimo evita que el bind mount tape el venv de la imagen.
+      - ./api:/app
+      - /app/.venv
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  web:
+    container_name: accounting-web
+    image: accounting-web:dev
+    build:
+      context: ./web
+      target: dev
+    restart: unless-stopped
+    environment:
+      API_URL: http://api:8000
+    ports:
+      - "${WEB_BIND:-0.0.0.0}:${WEB_PORT:-3000}:3000"
+    volumes:
+      # Los volúmenes anónimos protegen node_modules y .next del bind mount.
+      - ./web:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      api:
+        condition: service_started
+
+volumes:
+  postgres_data:
+  redis_data:

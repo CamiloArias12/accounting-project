@@ -1,13 +1,3 @@
-# Configuración base = PRODUCCIÓN.
-#
-# Compose carga docker-compose.override.yml automáticamente, que reconfigura
-# todo para desarrollo (hot reload). Por eso:
-#
-#   docker compose up -d                        -> dev
-#   docker compose -f docker-compose.yml up -d  -> prod
-#
-# `name` explícito: sin esto Compose lo deduce del directorio y puede recrear
-# los contenedores de otro proyecto que se llame igual.
 name: accounting
 
 services:
@@ -42,9 +32,11 @@ services:
 
   api:
     container_name: accounting-api
-    # Tag distinto al de dev: si ambos modos comparten tag, un `up` sin --build
-    # reutiliza silenciosamente la imagen del otro modo.
-    image: accounting-api:prod
+    # La imagen que publica el CI. Con --build se construye y se etiqueta igual,
+    # así que esto también funciona sin acceso al registro.
+    image: ghcr.io/camiloarias12/accounting-api:${IMAGE_TAG:-latest}
+    # `missing` en lugar de `always`: si la imagen ya está, no sale a la red.
+    pull_policy: missing
     build:
       context: ./api
       target: prod
@@ -89,7 +81,8 @@ services:
 
   web:
     container_name: accounting-web
-    image: accounting-web:prod
+    image: ghcr.io/camiloarias12/accounting-web:${IMAGE_TAG:-latest}
+    pull_policy: missing
     build:
       context: ./web
       target: prod

@@ -15,7 +15,7 @@ set -euo pipefail
 
 APP_DIR="${APP_DIR:-/opt/accounting-project}"
 REPO_URL="${REPO_URL:-https://github.com/CamiloArias12/accounting-project.git}"
-COMPOSE=(docker compose -f docker-compose.yml -f docker-compose.server.yml)
+COMPOSE=(docker compose -f docker-compose.prod.yml)
 PROJECT=accounting
 
 log()  { printf '\n\033[1;34m==>\033[0m %s\n' "$1"; }
@@ -84,7 +84,7 @@ git clean -fd
 
 log "Obteniendo las imágenes ($IMAGE_TAG)"
 # No se construye en el servidor: 3.7 GB de RAM compartidos con producción
-# ajena. `pull_policy: missing` en el override evita bajar lo que ya está.
+# ajena. `pull_policy: missing` evita bajar lo que ya está.
 "${COMPOSE[@]}" pull --quiet api web 2>/dev/null || {
   # Si el registro no las tiene (o son privadas), sirve una imagen cargada a
   # mano con `docker load`. Si tampoco está, no hay nada que desplegar.
