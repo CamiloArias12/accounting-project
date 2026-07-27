@@ -6,8 +6,9 @@ Monorepo de la plataforma contable. Todo corre en Docker.
 
 ```
 accounting-project/
-├── web/                        # Frontend — Next.js 16 + React 19 + Tailwind 4
-├── api/                        # Backend  — FastAPI + SQLAlchemy async
+├── api/                        # Backend
+├── web/                        # Frontend
+├── scripts/                    # Aprovisionamiento y despliegue, idempotentes
 ├── docker-compose.yml          # Base = producción
 └── docker-compose.override.yml # Desarrollo (Compose lo aplica solo)
 ```
@@ -18,6 +19,64 @@ accounting-project/
 | `api`    | FastAPI 0.140, SQLAlchemy 2, Alembic | 8000               |
 | postgres | Postgres 17                          | 5432 (solo en dev) |
 | redis    | Redis 7                              | 6379 (solo en dev) |
+
+### El backend, por módulo de negocio
+
+```
+api/
+├── app/
+│   ├── main.py                 # Arranque: middlewares, handlers, routers
+│   ├── api/v1/router.py        # El único sitio donde se montan los módulos
+│   ├── modules/                # Un paquete por área del dominio
+│   │   ├── accounts/           # Plan de cuentas: PUC, importación, caché
+│   │   ├── auth/               # Usuarios, JWT, dependencia `current_user`
+│   │   ├── vouchers/           # Comprobantes: cuadre, contabilización, reversión
+│   │   ├── periods/            # Cierre y reapertura de períodos
+│   │   ├── ledger/             # Libro mayor y libro auxiliar
+│   │   ├── third_parties/      # Terceros, documentos y dígito de verificación
+│   │   ├── locations/          # Catálogos DANE: país, departamento, ciudad
+│   │   ├── exogena/            # Reporte XML e historial de generaciones
+│   │   ├── uvt/                # Valor de la UVT y su integración externa
+│   │   └── health/             # La sonda que espera el despliegue
+│   └── shared/                 # Config, sesión, paginación, errores, logging
+├── alembic/versions/           # Migraciones, incluidos los catálogos sembrados
+└── tests/                      # 40 pruebas — ver «Las pruebas», más abajo
+```
+
+
+| Archivo | Responsabilidad |
+| ------- | --------------- |
+| `models.py` | Las tablas. SQLAlchemy y nada más |
+| `schemas.py` | Lo que entra y sale por HTTP. Pydantic, en el borde |
+| `service.py` | Las reglas y las transacciones. No sabe qué es una petición |
+| `router.py` | Rutas, códigos de estado y dependencias. Sin lógica |
+| `errors.py` | Los errores del módulo, que un handler traduce a HTTP |
+
+
+### El frontend, por ruta
+
+```
+web/src/
+├── app/
+│   ├── (app)/                  # Bajo sesión, una carpeta por pantalla de las
+│   │   │                       #   de «Pantallas»; ledger/export/ y
+│   │   │                       #   exogena/[id]/file/ son descargas, no vistas
+│   │   └── loading.tsx         # El esqueleto de espera, uno para todas
+│   └── (auth)/login/           # La única ruta pública
+├── actions/                    # Server Actions: el único camino de escritura
+├── components/                 # Vistas y componentes; `ui/` es el kit base
+├── lib/                        # Cliente de la API, sesión, dinero, formato
+├── types/                      # El contrato con la API, escrito a mano
+└── i18n/                       # Español e inglés, elegidos por cookie
+```
+
+## Modelo de datos
+
+Doce tablas. Diagrama exportado de DBeaver sobre el esquema real, no dibujado a
+mano: si difiere de la base, la base tiene la razón.
+
+![Modelo entidad-relación](docs/modelo-entidad-relacion.png)
+
 
 ## Plan de cuentas
 
@@ -55,138 +114,111 @@ segmento de la URL.
 
 ### El código es la jerarquía
 
-El nivel es la longitud del código y el padre es su prefijo. Eso no es un atajo
-sino lo que el PUC es en realidad: `110505` *está* dentro de `1105` por cómo
-está escrito. Ambos se derivan a la entrada y nunca se le piden al llamante, así
-que los dos no pueden contradecirse.
-
-`parent_code` sigue siendo una columna real con llave foránea — derivada, pero
-almacenada, para que la base de datos pueda negarse a borrar un padre que aún
-tiene hijos incluso si se saltara la validación del servicio. Lo que no es, es
-la *fuente* de la relación: se cambia un código y el padre se recalcula a partir
-de él, nunca al revés.
-
-Leer una rama completa es entonces un solo `LIKE '1105%'` en lugar de una
-consulta recursiva. El costo es que un código no se puede renombrar sin mover
-sus hijos, que es el trato correcto: en el PUC el código es la identidad.
+El nivel es la longitud del código y el padre es su prefijo, así que ambos se
+derivan a la entrada y no pueden contradecirse. Leer una rama es un
+`LIKE '1105%'`; el costo es que un código no se renombra sin mover sus hijos.
 
 ### Solo las hojas reciben movimientos
 
-Una línea de comprobante solo puede nombrar una cuenta que no tenga nada debajo.
 Contabilizar en `1105` existiendo `110505` lo contaría dos veces en todo reporte
-que recorra el árbol. La validación está en la capa de dominio, así que vale
-para la API, para la importación y para cualquier cosa que se agregue después.
+que recorra el árbol. La regla vive en el dominio, no en el endpoint.
 
 ### Los saldos se calculan, nunca se guardan
 
-No hay columna de saldo acumulado ni tabla de totales por cuenta. El libro es lo
-que suman las líneas de los comprobantes contabilizados, y mantener una segunda
-copia significa que las dos se separan la primera vez que una escritura falla a
-medias — el error contable clásico donde el saldo y los movimientos ya no
-coinciden y nadie sabe cuál tiene la razón.
-
-El reporte obtiene el saldo inicial y el movimiento en **una sola** consulta:
-agregación condicional sobre dos rangos de fechas en lugar de dos viajes. El
-saldo corrido del detalle de cuenta se acumula en orden de fecha y consecutivo,
-que es el orden en que se escribieron los libros y el único orden en el que un
-saldo corrido significa algo.
-
-Si esto se volviera lento sería una vista materializada refrescada al
-contabilizar, no una columna — la derivación queda en un solo lugar de
-cualquier forma.
+El libro es lo que suman las líneas contabilizadas: una segunda copia se separa
+de la primera en cuanto una escritura falla a medias. Saldo inicial y movimiento
+salen en una consulta; si se volviera lento, vista materializada y no columna.
 
 ### El cuadre es precondición de contabilizar, no pie de reporte
 
-Los débitos deben igualar a los créditos antes de que un comprobante entre a los
-libros, y un comprobante necesita al menos dos líneas. El proyecto de referencia
-calcula esos totales solo para imprimirlos, así que un asiento descuadrado se
-guarda tan feliz y el balance de prueba deja de cuadrar en silencio. Aquí
-`totals.is_balanced` en el libro es una consecuencia, no una validación: si cada
-comprobante cuadró, los libros en conjunto suman cero.
+Débitos iguales a créditos y mínimo dos líneas antes de entrar a los libros.
 
-### Borrador y contabilizado
+### Borrador, contabilizado y reversión
 
-Un borrador es un documento de trabajo — editable, borrable, fuera de los
-saldos. Un comprobante contabilizado tiene consecutivo y no se puede alterar en
-absoluto, solo reversar. Esa es la línea entre un documento que alguien todavía
-está escribiendo y un registro contable.
-
-### Reversión en lugar de borrado
-
-Un error contabilizado se corrige escribiendo el asiento que lo cancela: mismas
-cuentas, débitos y créditos invertidos, contabilizado en la misma operación.
-Dejar la corrección como borrador sería peor que cualquiera de los dos estados,
-porque los libros muestran solo el error hasta que alguien se acuerde de
-terminar. El par queda visible — el original queda marcado como reversado y la
-reversión apunta de vuelta a él.
+Un borrador se edita y no toca los saldos; un contabilizado no se altera, se
+cancela con el asiento inverso contabilizado en la misma operación. El par queda
+visible: el original marcado y la reversión apuntando a él.
 
 ### Cierre de periodo, y reapertura
 
-Solo los periodos *cerrados* tienen fila. Un mes sin fila está abierto, así que
-los libros se pueden usar antes de que nadie haya creado un solo periodo, y
-cerrar 2025-06 no exige que existan los otros once meses.
-
-Reabrir está permitido, y a propósito: un periodo se cierra para frenar asientos
-accidentales, no para volver el pasado inalcanzable, y un cierre que no se puede
-deshacer convierte un mes mal digitado en uno permanente. Cada cambio registra
-quién lo hizo y cuándo, que es la parte que de verdad importa para una
-auditoría.
+Solo los periodos cerrados tienen fila, así que un mes sin fila está abierto.
+Reabrir se permite —un cierre irreversible vuelve permanente un mes mal
+digitado— y cada cambio registra quién y cuándo.
 
 ### La empresa es configuración
 
-`COMPANY_NIT` y `COMPANY_LEGAL_NAME` son parámetros, no una tabla. La base de
-datos entera pertenece a una sola empresa, así que una tabla `companies` tendría
-exactamente una fila y cada consulta cargaría una llave foránea que solo puede
-tomar un valor — los costos de la multi-tenencia sin ninguno de sus beneficios.
-La especificación lista "empresa" como campo del comprobante; aquí es el mismo
-valor para todos los comprobantes de la base, así que se imprime en pantalla y
-se estampa en el archivo de exógena en vez de guardarse mil veces.
-
-Si el producto alguna vez alojara varias empresas, el cambio es una columna de
-tenant y una sesión con alcance — no la remoción de algo que nunca sostuvo nada.
+Con una sola empresa, `companies` sería una tabla de una fila y cada consulta
+llevaría una llave foránea con un único valor posible. Se imprime en pantalla y
+se estampa en la exógena; con varias, sería una columna de tenant.
 
 ### Concurrencia
 
-Dos contabilizaciones compitiendo por el mismo consecutivo es la única carrera
-que importa, y se resuelve con un índice único en vez de con un bloqueo: el
-perdedor recibe un `IntegrityError`, hace rollback y reintenta con el siguiente
-número. Un `SELECT max(number)` bajo bloqueo serializaría todas las
-contabilizaciones del sistema para protegerse de algo que pasa rara vez.
-
-Todo lo demás se apoya en las garantías de la propia base de datos. Un
-comprobante y sus líneas se escriben en una transacción; el libro lee una sola
-instantánea; el refresco de la UVT es idempotente porque el año es único, así
-que ejecutarlo cada noche actualiza una fila en lugar de acumularlas.
+El consecutivo lo resuelve un índice único y no un bloqueo: el perdedor
+reintenta con el siguiente número. Lo demás se apoya en la base — una
+transacción por comprobante, una instantánea por reporte.
 
 ### El dinero
 
 `Numeric(18,2)` en Postgres, `Decimal` en Python, cadenas decimales sobre HTTP y
-centavos enteros en el navegador. Un float no toca un importe en ningún punto:
-el servidor rechaza un asiento descuadrado por una centésima, así que el total
-que el usuario está viendo tiene que ser la misma cifra que el servidor va a
-revisar.
+centavos enteros en el navegador: ningún float toca un importe en ningún punto.
 
 ### La exógena y la UVT
 
-El reporte se construye a partir de comprobantes contabilizados, agrupados por
-tercero y concepto DIAN, y redondeados a pesos enteros por fila antes de
-totalizar — el archivo que recibe la DIAN no tiene centavos. Cada generación se
-guarda con los bytes que produjo, así que volver a descargarla entrega lo que se
-presentó y no lo que dirían los libros hoy; una reversión que llegue después no
-puede cambiar un documento ya enviado.
+Cada generación guarda sus bytes, así que re-descargarla entrega lo que se
+presentó y no lo que dirían los libros hoy. El POST devuelve el registro y
+`?download=true` el archivo. La UVT se guarda por año con cada intento anotado,
+y un valor puesto a mano manda sobre la fuente.
 
-La UVT se obtiene de una tabla publicada por red, se guarda por año y se
-registra con cada intento — incluidos los fallidos, porque un umbral que usó en
-silencio una UVT vieja es exactamente lo que el log de ejecuciones existe para
-hacer visible. Un valor digitado a mano manda sobre la fuente y nunca lo
-sobrescribe una consulta. Un umbral de cero no necesita UVT alguna, que es lo
-que mantiene el reporte utilizable para un año del que nadie ha publicado una
-todavía.
+## Las pruebas: qué se probó y por qué
 
-## Extensiones opcionales, y por qué estas
+Cuarenta pruebas en `api/tests`, que se corren con `docker compose exec api
+pytest`. No son cobertura: son una por regla que, si se rompe, deja los libros
+mal sin que nadie se entere. Una cuenta que deja de aparecer en un listado se
+nota en la primera pantalla; un comprobante descuadrado que entra a los libros
+no se nota hasta que el balance de prueba deja de cuadrar meses después, y para
+entonces ya nadie sabe cuál de los mil asientos fue.
 
-El enunciado lista un puñado de extras y pregunta cuáles se eligieron y por qué.
-Cinco de ellos están aquí:
+Lo que protegen, en orden de riesgo:
+
+- **El cuadre.** Débitos iguales a créditos, mínimo dos líneas, una sola columna
+  por línea, sin negativos y con dos decimales — en `Decimal`, con el caso que
+  justifica el tipo: `0.10 + 0.20` debe dar exactamente `0.30`.
+- **La jerarquía del PUC.** El nivel y el padre salen del código, el código no se
+  renombra, y solo las hojas reciben movimientos.
+- **Los estados del comprobante.** Un borrador se edita y se borra; uno
+  contabilizado tiene consecutivo y no se toca, solo se reversa. Y las tres cosas
+  que la reversión no permite: reversar dos veces, reversar una reversión,
+  reversar un borrador.
+- **El período.** Un mes sin fila está abierto; cerrado rechaza la
+  contabilización pero sigue aceptando borradores; el cierre sigue al período y
+  no a la fecha del papel.
+- **El libro mayor.** El borrador no llega, el reporte suma cero, las fechas
+  separan el saldo inicial del movimiento, y la reversión devuelve el saldo
+  medido sobre los libros y no afirmado.
+- **La exógena.** El DV del informante se verifica antes de firmar el archivo,
+  una fila por tercero y concepto, el umbral en UVT convertido a pesos, y el
+  archivo que se vuelve a descargar es byte por byte el que se presentó.
+- **La UVT.** Reintento ante fallo transitorio, rendición tras tres intentos, el
+  año único para que una tarea nocturna no acumule filas, y el valor manual que
+  una consulta nunca sobrescribe.
+- **La autenticación.** Un solo test recorre los once endpoints de lectura y las
+  escrituras: un router montado sin la dependencia es como se publican datos de
+  negocio, y eso no se ve en las pruebas de ese router.
+
+Lo que deliberadamente no se prueba: el catálogo DANE, que son datos de una
+migración ya ejecutada; el formato del `.xlsx` más allá de que abra, traiga
+números y sume cero; los listados y sus filtros, que fallan a la vista; y el
+frontend, donde el tiempo rindió más en las reglas del servidor.
+
+Queda un hueco conocido: **la concurrencia no tiene prueba**. Las pruebas corren
+sobre SQLite en memoria con una sola conexión, así que la carrera por el
+consecutivo no se puede reproducir ahí. La garantía es el índice único más el
+reintento descrito arriba; probarla de verdad pide levantar Postgres en la suite
+y lanzar dos contabilizaciones en paralelo.
+
+## Más allá del núcleo contable
+
+Cinco cosas que los libros no necesitaban para cuadrar, y la razón de cada una:
 
 - **Exportación del libro a hoja de cálculo.** El libro auxiliar, en
   `/ledger/export`. Un contador filtra, totaliza y pega un libro en un papel de
@@ -221,47 +253,32 @@ dos asientos dibujaría una diagonal a través de días en los que no pasó nada
 
 ## Limitaciones
 
-Conocidas, y deliberadas para un ejercicio de cinco días:
+Conocidas y deliberadas, cada una con su porqué:
 
 - **Una empresa, una moneda, sin multi-tenencia.** Ver arriba.
 - **Sin administración de usuarios.** Los usuarios existen y se autentican; no
   hay pantalla para crearlos ni roles — todo usuario autenticado puede hacer
   todo.
-- **El formato de exógena es el simplificado del enunciado**, no la
-  especificación 1001 real de la DIAN, que son decenas de formatos con sus
-  propios diseños.
-- **Sin asiento de cierre.** Cerrar un periodo frena los asientos en él; no
-  cancela las cuentas de ingresos y gastos contra el patrimonio del año.
 - **Sin adjuntos en los comprobantes**, sin salida en PDF, sin reportes
   impresos.
 - **La fuente de la UVT es una página de terceros.** Se parsea de forma
   defensiva y cada intento queda registrado, pero un cambio de maquetación allá
   rompe la consulta — de ahí la sobrescritura manual.
-- **La paginación es por offset.** Está bien para estos volúmenes; una tabla de
-  millones de comprobantes querría paginación por keyset, ya que `OFFSET 900000`
-  igual recorre 900.000 filas.
+- **Sin cola ni eventos.** Todo se resuelve dentro de la petición que lo pide.
+  Con esta carga alcanza; a más escala, el trabajo se reparte con eventos o una
+  cola.
 
 ## Qué cambiaría para producción
 
-- **El consecutivo pasa a ser por libro.** La contabilidad real numera los
-  comprobantes por tipo (CE, CI, CC…), no con una sola serie para todo. El
-  mecanismo de reintento ante conflicto no cambia; solo se mueve el alcance de
-  la unicidad.
 - **Traza de auditoría en cada escritura.** Los comprobantes registran quién los
   creó y contabilizó, y los periodos quién los cerró, pero los datos maestros
   no — una tabla de `quién/cuándo/qué` cubriría el resto.
-- **Los trabajos en segundo plano salen del request.** El refresco de la UVT
-  corre en un background task de FastAPI, que muere con el proceso. Redis ya
-  está en el stack; esto pertenece a un worker con reintentos que sobrevivan a
-  un reinicio.
+- **Una cola para los trabajos en segundo plano.** Redis ya está en el stack, así
+  que el refresco de la UVT —y cualquier cosa que se le sume después: la exógena
+  de un año entero, un envío por correo— pertenece a un worker aparte, con
+  reintentos y con la corrida sobreviviendo al reinicio del proceso que la pidió.
 - **Rate limiting y bloqueo en el endpoint de login**, que hoy acepta intentos
   tan rápido como lleguen.
-- **Observabilidad más allá de los logs.** Cada línea es JSON y lleva un id de
-  request devuelto en `X-Request-ID`, lo que hace rastreable una llamada entre
-  réplicas. Siguen sin haber métricas ni trazas, y "el libro se puso lento" no
-  se responde sin ellas.
-- **Respaldos, y una restauración que se haya ejecutado de verdad.** Un respaldo
-  sin probar es una creencia, no un respaldo.
 
 ## Requisitos
 
@@ -273,6 +290,35 @@ Docker. Nada más — ni Node, ni Python en la máquina.
 cp .env.example .env
 docker compose up -d --build
 docker compose exec api alembic upgrade head
+```
+
+El `.env` copiado arranca tal cual; esto es lo que trae:
+
+```bash
+ENVIRONMENT=local
+
+WEB_PORT=3000                  # puertos publicados en el host
+API_PORT=8000
+POSTGRES_PORT=5432
+REDIS_PORT=6379
+
+POSTGRES_USER=postgres         # obligatorios: Compose falla sin ellos
+POSTGRES_PASSWORD=postgres
+POSTGRES_DB=accounting
+# JWT_SECRET=                  # fuera de local la API no arranca sin él
+
+DB_POOL_SIZE=10                # conexiones por réplica de la API
+DB_MAX_OVERFLOW=5
+CACHE_TTL_SECONDS=300          # vida del plan de cuentas en caché
+
+COMPANY_NIT=900000000-5        # la empresa es configuración, no una tabla
+COMPANY_LEGAL_NAME=Mi Empresa S.A.S.
+
+UVT_SOURCE=http                # `simulated` responde sin red — lo que usan las pruebas
+UVT_SOURCE_URL=https://www.gerencie.com/uvt.html
+UVT_SOURCE_TIMEOUT_SECONDS=10
+
+CORS_ORIGINS=["http://localhost:3000"]
 ```
 
 - Web: <http://localhost:3000>
@@ -292,18 +338,6 @@ docker compose -f docker-compose.yml up -d --build
 docker compose -f docker-compose.yml exec api alembic upgrade head
 ```
 
-Diferencias con desarrollo:
-
-- Imágenes construidas desde el target `prod`: sin dependencias de desarrollo,
-  sin código montado y con un usuario sin privilegios (`app` en la API, `nextjs`
-  en la web).
-- Next se sirve desde su salida `standalone`, no desde `next dev`.
-- Postgres y Redis **no** publican puertos en el host: solo se alcanzan desde la
-  red de Compose.
-- `DEBUG=false` y `ENVIRONMENT=production`.
-
-Las migraciones no corren al arrancar — se disparan explícitamente, para que un
-despliegue con varias réplicas nunca compita consigo mismo.
 
 ## Instancia en vivo
 
@@ -363,44 +397,8 @@ no está roto, está sin configurar.
 
 ## Comandos
 
-Todo corre dentro de los contenedores:
-
-| Comando                                                            | Descripción           |
-| ------------------------------------------------------------------ | --------------------- |
-| `docker compose up -d`                                             | Levantar (dev)        |
-| `docker compose down`                                              | Detener               |
-| `docker compose logs -f api`                                       | Logs                  |
-| `docker compose exec api pytest`                                   | Pruebas de la API     |
-| `docker compose exec api ruff check .`                             | Lint de la API        |
-| `docker compose exec api mypy .`                                   | Tipos de la API       |
-| `docker compose exec api alembic upgrade head`                     | Aplicar migraciones   |
-| `docker compose exec api alembic revision --autogenerate -m "msg"` | Nueva migración       |
-| `docker compose exec web npm run lint`                             | Lint de la web        |
-| `docker compose exec web npm run typecheck`                        | Tipos de la web       |
-
-## Entorno
-
-Todo vive en el `.env` de la raíz — ver [`.env.example`](./.env.example).
-`POSTGRES_USER` y `POSTGRES_PASSWORD` son obligatorios: Compose falla en lugar
-de arrancar con credenciales por defecto.
-
-La web habla con la API **solo desde el servidor** (Server Components y Server
-Actions), a través del nombre del servicio de Compose. Por eso `API_URL` no es
-`NEXT_PUBLIC_*`: nunca llega al navegador, no queda horneada en el bundle y
-cambiarla no obliga a reconstruir la imagen.
-
-## Notas
-
-`docker-compose.yml` fija `name: accounting`. Sin un nombre explícito, Compose
-deriva uno del directorio y puede recrear los contenedores de cualquier otro
-proyecto que viva en un directorio con el mismo nombre.
-
-Dev y prod usan etiquetas de imagen distintas (`accounting-api:dev` /
-`accounting-api:prod`, y lo mismo para `web`). Con una etiqueta compartida,
-cambiar de modo hace que un `up` sin `--build` reutilice en silencio la imagen
-del otro modo: la web arrancaría con el `CMD` de producción encima del bind
-mount de desarrollo y entraría en bucle de reinicios.
-
-## Licencia
-
-Por definir.
+| Comando                                                            | Descripción         |
+| ------------------------------------------------------------------ | ------------------- |
+| `docker compose exec api pytest`                                   | Pruebas de la API   |
+| `docker compose exec api alembic upgrade head`                     | Aplicar migraciones |
+| `docker compose exec api alembic revision --autogenerate -m "msg"` | Nueva migración     |

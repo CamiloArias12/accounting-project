@@ -9,6 +9,7 @@ from sqlalchemy import (
     Date,
     Enum,
     ForeignKey,
+    Index,
     Numeric,
     String,
     UniqueConstraint,
@@ -44,14 +45,15 @@ class Voucher(Base, TimestampMixin):
         CheckConstraint(
             "period_month BETWEEN 1 AND 12", name="ck_vouchers_period_month"
         ),
+        Index("ix_vouchers_period", "period_year", "period_month"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     number: Mapped[int | None] = mapped_column(default=None)
 
     date: Mapped[dt.date] = mapped_column(Date, index=True)
-    period_year: Mapped[int] = mapped_column(index=True)
-    period_month: Mapped[int] = mapped_column(index=True)
+    period_year: Mapped[int] = mapped_column()
+    period_month: Mapped[int] = mapped_column()
 
     description: Mapped[str] = mapped_column(String(255))
     status: Mapped[VoucherStatus] = mapped_column(
