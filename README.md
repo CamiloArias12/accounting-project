@@ -1,259 +1,273 @@
 # accounting-project
 
-Monorepo for the accounting platform. Everything runs in Docker.
+Monorepo de la plataforma contable. Todo corre en Docker.
 
-## Layout
+## Estructura
 
 ```
 accounting-project/
 ├── web/                        # Frontend — Next.js 16 + React 19 + Tailwind 4
-├── api/                        # Backend  — FastAPI + async SQLAlchemy
-├── docker-compose.yml          # Base = production
-└── docker-compose.override.yml # Development (Compose applies it automatically)
+├── api/                        # Backend  — FastAPI + SQLAlchemy async
+├── docker-compose.yml          # Base = producción
+└── docker-compose.override.yml # Desarrollo (Compose lo aplica solo)
 ```
 
-| Service  | Stack                                | Port               |
+| Servicio | Stack                                | Puerto             |
 | -------- | ------------------------------------ | ------------------ |
 | `web`    | Next.js 16, React 19, Tailwind 4     | 3000               |
 | `api`    | FastAPI 0.140, SQLAlchemy 2, Alembic | 8000               |
-| postgres | Postgres 17                          | 5432 (dev only)    |
-| redis    | Redis 7                              | 6379 (dev only)    |
+| postgres | Postgres 17                          | 5432 (solo en dev) |
+| redis    | Redis 7                              | 6379 (solo en dev) |
 
-## Chart of accounts
+## Plan de cuentas
 
-The implemented domain is the Colombian PUC: a five-level hierarchy where **the
-level is derived from the code length** and the parent is its prefix.
+El dominio implementado es el PUC colombiano: una jerarquía de cinco niveles
+donde **el nivel se deriva de la longitud del código** y el padre es su prefijo.
 
 ```
-1        Class       ACTIVOS
-11       Group         DISPONIBLE
-1105     Account         CAJA
-110505   Subaccount        CAJA GENERAL
-11050501 Auxiliary           (any longer code)
+1        Clase       ACTIVOS
+11       Grupo         DISPONIBLE
+1105     Cuenta          CAJA
+110505   Subcuenta         CAJA GENERAL
+11050501 Auxiliar            (cualquier código más largo)
 ```
 
-At <http://localhost:3000/accounts> you can browse the tree, search, create and
-edit accounts, soft-delete and restore them, and import the spreadsheet. The
-model and the import are documented in [`api/README.md`](./api/README.md).
+En <http://localhost:3000/accounts> se recorre el árbol, se busca, se crean y
+editan cuentas, se borran de forma lógica y se restauran, y se importa la
+planilla. El modelo y la importación están documentados en
+[`api/README.md`](./api/README.md).
 
-## Screens
+## Pantallas
 
-| Path             | What it does                                                              |
-| ---------------- | ------------------------------------------------------------------------- |
-| `/accounts`      | The chart as a tree: search, create, edit, soft-delete, restore, import    |
-| `/third-parties` | Natural and legal persons, with the DANE places and the NIT check digit    |
-| `/vouchers`      | List and editor; save a draft, post it, reverse a posted one              |
-| `/ledger`        | Balances per account, one account's movements, and the auxiliary book as .xlsx |
-| `/periods`       | The twelve months of a year, closed and reopened                          |
-| `/exogena`       | Generate the XML, download an earlier one, and manage the UVT behind it    |
+| Ruta             | Qué hace                                                                    |
+| ---------------- | --------------------------------------------------------------------------- |
+| `/accounts`      | El plan como árbol: buscar, crear, editar, borrar lógicamente, restaurar, importar |
+| `/third-parties` | Personas naturales y jurídicas, con los lugares DANE y el dígito de verificación del NIT |
+| `/vouchers`      | Listado y editor; guardar un borrador, contabilizarlo, reversar uno contabilizado |
+| `/ledger`        | Saldos por cuenta, movimientos de una cuenta y el libro auxiliar en .xlsx    |
+| `/periods`       | Los doce meses de un año, cerrados y reabiertos                              |
+| `/exogena`       | Generar el XML, descargar uno anterior y administrar la UVT detrás de él     |
 
-Everything is Spanish or English at a click, and the language is a cookie, not a
-URL segment.
+Todo está en español o en inglés a un clic, y el idioma es una cookie, no un
+segmento de la URL.
 
-## Design decisions
+## Decisiones de diseño
 
-### The code is the hierarchy
+### El código es la jerarquía
 
-The level is the code's length and the parent is its prefix. That is not a
-shortcut but what the PUC actually is: `110505` *is* inside `1105` because of
-how it is written. Both are derived on the way in and never asked of the caller,
-so the two cannot disagree.
+El nivel es la longitud del código y el padre es su prefijo. Eso no es un atajo
+sino lo que el PUC es en realidad: `110505` *está* dentro de `1105` por cómo
+está escrito. Ambos se derivan a la entrada y nunca se le piden al llamante, así
+que los dos no pueden contradecirse.
 
-`parent_code` is still a real column with a foreign key — derived, but stored,
-so the database can refuse to delete a parent that still has children even if
-the service check were bypassed. What it is not is the *source* of the
-relationship: change a code and the parent is recomputed from it, never the
-reverse.
+`parent_code` sigue siendo una columna real con llave foránea — derivada, pero
+almacenada, para que la base de datos pueda negarse a borrar un padre que aún
+tiene hijos incluso si se saltara la validación del servicio. Lo que no es, es
+la *fuente* de la relación: se cambia un código y el padre se recalcula a partir
+de él, nunca al revés.
 
-Reading a whole branch is then one `LIKE '1105%'` rather than a recursive query.
-The cost is that a code cannot be renamed without moving its children, which is
-the correct trade: in the PUC the code is the identity.
+Leer una rama completa es entonces un solo `LIKE '1105%'` en lugar de una
+consulta recursiva. El costo es que un código no se puede renombrar sin mover
+sus hijos, que es el trato correcto: en el PUC el código es la identidad.
 
-### Only the leaves take entries
+### Solo las hojas reciben movimientos
 
-A voucher line may only name an account with nothing under it. Posting to
-`1105` when `110505` exists would double-count it in every report that walks the
-tree. The check is at the domain layer, so it holds for the API, the import and
-anything added later.
+Una línea de comprobante solo puede nombrar una cuenta que no tenga nada debajo.
+Contabilizar en `1105` existiendo `110505` lo contaría dos veces en todo reporte
+que recorra el árbol. La validación está en la capa de dominio, así que vale
+para la API, para la importación y para cualquier cosa que se agregue después.
 
-### Balances are computed, never stored
+### Los saldos se calculan, nunca se guardan
 
-There is no running-balance column and no per-account totals table. The ledger
-is what the posted voucher lines add up to, and keeping a second copy means the
-two drift the first time a write fails halfway — the classic accounting bug
-where the balance and the movements no longer agree and nobody knows which is
-right.
+No hay columna de saldo acumulado ni tabla de totales por cuenta. El libro es lo
+que suman las líneas de los comprobantes contabilizados, y mantener una segunda
+copia significa que las dos se separan la primera vez que una escritura falla a
+medias — el error contable clásico donde el saldo y los movimientos ya no
+coinciden y nadie sabe cuál tiene la razón.
 
-The report gets the opening balance and the movement in **one** query:
-conditional aggregation over two slices of dates rather than two round trips.
-The account detail's running balance is accumulated in order of date and
-consecutive number, which is the order the books were written in and the only
-order in which a running balance means anything.
+El reporte obtiene el saldo inicial y el movimiento en **una sola** consulta:
+agregación condicional sobre dos rangos de fechas en lugar de dos viajes. El
+saldo corrido del detalle de cuenta se acumula en orden de fecha y consecutivo,
+que es el orden en que se escribieron los libros y el único orden en el que un
+saldo corrido significa algo.
 
-If this became slow it would be a materialised view refreshed on posting, not a
-column — the derivation stays in one place either way.
+Si esto se volviera lento sería una vista materializada refrescada al
+contabilizar, no una columna — la derivación queda en un solo lugar de
+cualquier forma.
 
-### Balance is a precondition of posting, not a report footer
+### El cuadre es precondición de contabilizar, no pie de reporte
 
-Debits must equal credits before a voucher can enter the books, and a voucher
-needs at least two lines. The reference project computes those totals only to
-print them, so an unbalanced entry saves happily and the trial balance quietly
-stops balancing. Here `totals.is_balanced` in the ledger is a consequence, not a
-check: if every voucher balanced, the books as a whole add up to zero.
+Los débitos deben igualar a los créditos antes de que un comprobante entre a los
+libros, y un comprobante necesita al menos dos líneas. El proyecto de referencia
+calcula esos totales solo para imprimirlos, así que un asiento descuadrado se
+guarda tan feliz y el balance de prueba deja de cuadrar en silencio. Aquí
+`totals.is_balanced` en el libro es una consecuencia, no una validación: si cada
+comprobante cuadró, los libros en conjunto suman cero.
 
-### Draft and posted
+### Borrador y contabilizado
 
-A draft is a working document — editable, deletable, outside the balances. A
-posted voucher has a consecutive number and cannot be altered at all, only
-reversed. That is the line between a document someone is still writing and an
-accounting record.
+Un borrador es un documento de trabajo — editable, borrable, fuera de los
+saldos. Un comprobante contabilizado tiene consecutivo y no se puede alterar en
+absoluto, solo reversar. Esa es la línea entre un documento que alguien todavía
+está escribiendo y un registro contable.
 
-### Reversal instead of deletion
+### Reversión en lugar de borrado
 
-A posted mistake is corrected by writing the entry that cancels it: same
-accounts, debits and credits swapped, posted in the same operation. Leaving the
-correction as a draft would be worse than either state, because the books show
-only the mistake until somebody remembers to finish. The pair stays visible —
-the original is marked as reversed, the reversal points back at it.
+Un error contabilizado se corrige escribiendo el asiento que lo cancela: mismas
+cuentas, débitos y créditos invertidos, contabilizado en la misma operación.
+Dejar la corrección como borrador sería peor que cualquiera de los dos estados,
+porque los libros muestran solo el error hasta que alguien se acuerde de
+terminar. El par queda visible — el original queda marcado como reversado y la
+reversión apunta de vuelta a él.
 
-### Period closing, and reopening
+### Cierre de periodo, y reapertura
 
-Only *closed* periods have a row. A month with no row is open, so the books can
-be used before anyone has created a single period, and closing 2025-06 does not
-require the eleven other months to exist.
+Solo los periodos *cerrados* tienen fila. Un mes sin fila está abierto, así que
+los libros se pueden usar antes de que nadie haya creado un solo periodo, y
+cerrar 2025-06 no exige que existan los otros once meses.
 
-Reopening is allowed and deliberately so: a period is closed to stop accidental
-entries, not to make the past unreachable, and a close that cannot be undone
-turns a mistyped month into a permanent one. Every change records who made it
-and when, which is the part that actually matters for an audit.
+Reabrir está permitido, y a propósito: un periodo se cierra para frenar asientos
+accidentales, no para volver el pasado inalcanzable, y un cierre que no se puede
+deshacer convierte un mes mal digitado en uno permanente. Cada cambio registra
+quién lo hizo y cuándo, que es la parte que de verdad importa para una
+auditoría.
 
-### The company is configuration
+### La empresa es configuración
 
-`COMPANY_NIT` and `COMPANY_LEGAL_NAME` are settings, not a table. The whole
-database belongs to one company, so a `companies` table would have exactly one
-row and every query would carry a foreign key that can only take one value —
-multi-tenancy's costs with none of its benefits. The spec lists "empresa" as a
-field of the voucher; here it is the same value for every voucher in the
-database, so it is printed on the screen and stamped into the exógena file
-rather than stored a thousand times.
+`COMPANY_NIT` y `COMPANY_LEGAL_NAME` son parámetros, no una tabla. La base de
+datos entera pertenece a una sola empresa, así que una tabla `companies` tendría
+exactamente una fila y cada consulta cargaría una llave foránea que solo puede
+tomar un valor — los costos de la multi-tenencia sin ninguno de sus beneficios.
+La especificación lista "empresa" como campo del comprobante; aquí es el mismo
+valor para todos los comprobantes de la base, así que se imprime en pantalla y
+se estampa en el archivo de exógena en vez de guardarse mil veces.
 
-If the product ever hosted several companies, the change is a tenant column and
-a scoped session — not the removal of one that was never load-bearing.
+Si el producto alguna vez alojara varias empresas, el cambio es una columna de
+tenant y una sesión con alcance — no la remoción de algo que nunca sostuvo nada.
 
-### Concurrency
+### Concurrencia
 
-Two postings racing for the same consecutive number is the one race that
-matters, and it is settled by a unique index rather than by a lock: the loser
-gets an `IntegrityError`, rolls back, and retries with the next number. A
-`SELECT max(number)` under a lock would serialise every posting in the system to
-protect against something that happens rarely.
+Dos contabilizaciones compitiendo por el mismo consecutivo es la única carrera
+que importa, y se resuelve con un índice único en vez de con un bloqueo: el
+perdedor recibe un `IntegrityError`, hace rollback y reintenta con el siguiente
+número. Un `SELECT max(number)` bajo bloqueo serializaría todas las
+contabilizaciones del sistema para protegerse de algo que pasa rara vez.
 
-Everything else relies on the database's own guarantees. A voucher and its lines
-are written in one transaction; the ledger reads a single snapshot; the UVT
-refresh is idempotent because the year is unique, so running it every night
-updates one row rather than accumulating them.
+Todo lo demás se apoya en las garantías de la propia base de datos. Un
+comprobante y sus líneas se escriben en una transacción; el libro lee una sola
+instantánea; el refresco de la UVT es idempotente porque el año es único, así
+que ejecutarlo cada noche actualiza una fila en lugar de acumularlas.
 
-### Money
+### El dinero
 
-`Numeric(18,2)` in Postgres, `Decimal` in Python, decimal strings over HTTP, and
-integer cents in the browser. A float never touches an amount at any point: the
-server refuses an entry that is off by a hundredth, so the total the user is
-watching has to be the same figure the server will check.
+`Numeric(18,2)` en Postgres, `Decimal` en Python, cadenas decimales sobre HTTP y
+centavos enteros en el navegador. Un float no toca un importe en ningún punto:
+el servidor rechaza un asiento descuadrado por una centésima, así que el total
+que el usuario está viendo tiene que ser la misma cifra que el servidor va a
+revisar.
 
-### Exógena and the UVT
+### La exógena y la UVT
 
-The report is built from posted vouchers, grouped by third party and DIAN
-concept, and rounded to whole pesos per row before totalling — the file the DIAN
-takes has no cents. Every generation is stored with the bytes it produced, so
-re-downloading gives what was filed rather than what the books would say today;
-a reversal landing afterwards must not change a document already sent.
+El reporte se construye a partir de comprobantes contabilizados, agrupados por
+tercero y concepto DIAN, y redondeados a pesos enteros por fila antes de
+totalizar — el archivo que recibe la DIAN no tiene centavos. Cada generación se
+guarda con los bytes que produjo, así que volver a descargarla entrega lo que se
+presentó y no lo que dirían los libros hoy; una reversión que llegue después no
+puede cambiar un documento ya enviado.
 
-The UVT is fetched from a published table over the network, kept per year, and
-recorded with every attempt — including the failures, because a threshold that
-quietly used a stale UVT is exactly what the run log exists to make visible. A
-value typed in by hand outranks the source and is never overwritten by a fetch.
-A threshold of zero needs no UVT at all, which is what keeps the report usable
-for a year nobody has published one for yet.
+La UVT se obtiene de una tabla publicada por red, se guarda por año y se
+registra con cada intento — incluidos los fallidos, porque un umbral que usó en
+silencio una UVT vieja es exactamente lo que el log de ejecuciones existe para
+hacer visible. Un valor digitado a mano manda sobre la fuente y nunca lo
+sobrescribe una consulta. Un umbral de cero no necesita UVT alguna, que es lo
+que mantiene el reporte utilizable para un año del que nadie ha publicado una
+todavía.
 
-## Optional extensions, and why these
+## Extensiones opcionales, y por qué estas
 
-The brief lists a handful of extras and asks which were chosen and why. Five of
-them are here:
+El enunciado lista un puñado de extras y pregunta cuáles se eligieron y por qué.
+Cinco de ellos están aquí:
 
-- **Export of the ledger to a spreadsheet.** The auxiliary book, at
-  `/ledger/export`. An accountant filters, totals and pastes a book into a
-  working paper, so it has to leave the app as a file — and openpyxl was
-  already a dependency for the chart import, so it cost no new code in the
-  supply chain.
-- **A chart of an account's balance over time.** On the ledger's account
-  detail. Drawn from the same entries the table below it shows rather than from
-  a second endpoint: a chart that disagrees with the figures printed under it is
-  worse than no chart.
-- **JWT authentication.** The app sits behind a login; the token lives in an
-  httpOnly cookie the browser's JavaScript cannot read, and only the server
-  attaches it to API calls.
-- **One command brings the whole system up.** `docker compose up -d --build`.
-- **CI in GitHub Actions**, and a deployment that follows it — see below.
+- **Exportación del libro a hoja de cálculo.** El libro auxiliar, en
+  `/ledger/export`. Un contador filtra, totaliza y pega un libro en un papel de
+  trabajo, así que tiene que salir de la aplicación como archivo — y openpyxl ya
+  era dependencia para la importación del plan, así que no costó código nuevo en
+  la cadena de suministro.
+- **Una gráfica del saldo de una cuenta en el tiempo.** En el detalle de cuenta
+  del libro. Dibujada a partir de los mismos asientos que muestra la tabla de
+  abajo y no de un segundo endpoint: una gráfica que contradice las cifras
+  impresas debajo es peor que ninguna gráfica.
+- **Autenticación JWT.** La aplicación está detrás de un login; el token vive en
+  una cookie httpOnly que el JavaScript del navegador no puede leer, y solo el
+  servidor lo adjunta a las llamadas a la API.
+- **Un solo comando levanta el sistema completo.** `docker compose up -d --build`.
+- **CI en GitHub Actions**, y un despliegue que la sigue — ver más abajo.
 
-The chart is hand-drawn SVG rather than a charting library. One line chart does
-not justify recharts and its d3 dependencies in the bundle, and everything a
-library would provide here — a path, an axis, a hover label — is the component
-itself. If a second or third chart appears, that trade flips.
+La gráfica es SVG dibujado a mano en vez de una librería de gráficas. Una sola
+gráfica de línea no justifica recharts y sus dependencias de d3 en el bundle, y
+todo lo que una librería aportaría aquí — un path, un eje, una etiqueta al pasar
+el mouse — es el componente mismo. Si aparece una segunda o una tercera gráfica,
+ese trato se invierte.
 
-It is scaled to the data rather than anchored to zero. Forcing zero into the
-axis is a bar chart's rule, where the bar's length *is* the value; a cash
-account sitting at 3.500.000 would otherwise spend the whole chart as a flat
-line at the bottom with its actual movement invisible. The axis labels carry the
-magnitude, and the zero line is drawn whenever it falls in view.
+Está escalada a los datos en vez de anclada a cero. Forzar el cero en el eje es
+la regla de un gráfico de barras, donde la longitud de la barra *es* el valor;
+una cuenta de caja parada en 3.500.000 se pasaría toda la gráfica como una línea
+plana abajo, con su movimiento real invisible. Las etiquetas del eje llevan la
+magnitud, y la línea del cero se dibuja siempre que caiga a la vista.
 
-The line steps rather than slopes, because that is what a balance does: it holds
-its value until the next movement changes it. Interpolating between two entries
-would draw a diagonal through days on which nothing happened.
+La línea escalona en vez de inclinarse, porque eso es lo que hace un saldo:
+mantiene su valor hasta que el siguiente movimiento lo cambia. Interpolar entre
+dos asientos dibujaría una diagonal a través de días en los que no pasó nada.
 
-## Limitations
+## Limitaciones
 
-Known, and deliberate for a five-day exercise:
+Conocidas, y deliberadas para un ejercicio de cinco días:
 
-- **One company, one currency, no multi-tenancy.** See above.
-- **No user administration.** Users exist and authenticate; there is no screen
-  to create them and no roles — every signed-in user can do everything.
-- **The exógena format is the simplified one from the spec**, not the DIAN's
-  real 1001 specification, which is dozens of formats with their own layouts.
-- **No closing entry.** Closing a period stops entries in it; it does not cancel
-  income and expense accounts into equity for the year.
-- **No attachments on vouchers**, no PDF output, no printed reports.
-- **The UVT source is a third-party page.** It is parsed defensively and every
-  attempt is logged, but a layout change there breaks the fetch — hence the
-  manual override.
-- **Pagination is offset-based.** Fine for these volumes; a table of millions of
-  vouchers would want keyset pagination, since `OFFSET 900000` still walks
-  900,000 rows.
+- **Una empresa, una moneda, sin multi-tenencia.** Ver arriba.
+- **Sin administración de usuarios.** Los usuarios existen y se autentican; no
+  hay pantalla para crearlos ni roles — todo usuario autenticado puede hacer
+  todo.
+- **El formato de exógena es el simplificado del enunciado**, no la
+  especificación 1001 real de la DIAN, que son decenas de formatos con sus
+  propios diseños.
+- **Sin asiento de cierre.** Cerrar un periodo frena los asientos en él; no
+  cancela las cuentas de ingresos y gastos contra el patrimonio del año.
+- **Sin adjuntos en los comprobantes**, sin salida en PDF, sin reportes
+  impresos.
+- **La fuente de la UVT es una página de terceros.** Se parsea de forma
+  defensiva y cada intento queda registrado, pero un cambio de maquetación allá
+  rompe la consulta — de ahí la sobrescritura manual.
+- **La paginación es por offset.** Está bien para estos volúmenes; una tabla de
+  millones de comprobantes querría paginación por keyset, ya que `OFFSET 900000`
+  igual recorre 900.000 filas.
 
-## What would change for production
+## Qué cambiaría para producción
 
-- **The consecutive becomes per-book.** Real bookkeeping numbers vouchers by
-  type (CE, CI, CC…), not one series for everything. The retry-on-conflict
-  mechanism is unchanged; only the scope of the uniqueness moves.
-- **Audit trail on every write.** Vouchers record who created and posted them
-  and periods who closed them, but master data does not — a `who/when/what`
-  table would cover the rest.
-- **Background jobs move out of the request.** The UVT refresh runs in a
-  FastAPI background task, which dies with the process. Redis is already in the
-  stack; this belongs in a worker with retries that survive a restart.
-- **Rate limiting and lockout on the login endpoint**, which today will accept
-  attempts as fast as they arrive.
-- **Observability beyond the logs.** Every line is JSON and carries a request id
-  echoed back in `X-Request-ID`, which makes one call traceable across replicas.
-  There are still no metrics and no tracing, and "the ledger got slow" is not
-  answerable without them.
-- **Backups, and a restore that has actually been run.** An untested backup is a
-  belief, not a backup.
+- **El consecutivo pasa a ser por libro.** La contabilidad real numera los
+  comprobantes por tipo (CE, CI, CC…), no con una sola serie para todo. El
+  mecanismo de reintento ante conflicto no cambia; solo se mueve el alcance de
+  la unicidad.
+- **Traza de auditoría en cada escritura.** Los comprobantes registran quién los
+  creó y contabilizó, y los periodos quién los cerró, pero los datos maestros
+  no — una tabla de `quién/cuándo/qué` cubriría el resto.
+- **Los trabajos en segundo plano salen del request.** El refresco de la UVT
+  corre en un background task de FastAPI, que muere con el proceso. Redis ya
+  está en el stack; esto pertenece a un worker con reintentos que sobrevivan a
+  un reinicio.
+- **Rate limiting y bloqueo en el endpoint de login**, que hoy acepta intentos
+  tan rápido como lleguen.
+- **Observabilidad más allá de los logs.** Cada línea es JSON y lleva un id de
+  request devuelto en `X-Request-ID`, lo que hace rastreable una llamada entre
+  réplicas. Siguen sin haber métricas ni trazas, y "el libro se puso lento" no
+  se responde sin ellas.
+- **Respaldos, y una restauración que se haya ejecutado de verdad.** Un respaldo
+  sin probar es una creencia, no un respaldo.
 
-## Requirements
+## Requisitos
 
-Docker. Nothing else — no Node, no Python on the machine.
+Docker. Nada más — ni Node, ni Python en la máquina.
 
-## Development
+## Desarrollo
 
 ```bash
 cp .env.example .env
@@ -262,129 +276,131 @@ docker compose exec api alembic upgrade head
 ```
 
 - Web: <http://localhost:3000>
-- API: <http://localhost:8000> · docs at <http://localhost:8000/docs>
+- API: <http://localhost:8000> · documentación en <http://localhost:8000/docs>
 
-The code is mounted into the containers, so **web and API both reload on edit**.
-Postgres and Redis are published on the host so you can attach an external
-client.
+El código está montado dentro de los contenedores, así que **web y API recargan
+al editar**. Postgres y Redis se publican en el host para poder conectar un
+cliente externo.
 
-## Production
+## Producción
 
-`docker-compose.override.yml` is applied automatically, so production means
-passing only the base file:
+`docker-compose.override.yml` se aplica automáticamente, así que producción
+significa pasar solo el archivo base:
 
 ```bash
 docker compose -f docker-compose.yml up -d --build
 docker compose -f docker-compose.yml exec api alembic upgrade head
 ```
 
-Differences from development:
+Diferencias con desarrollo:
 
-- Images built from the `prod` target: no dev dependencies, no mounted code, and
-  an unprivileged user (`app` in the API, `nextjs` in the web).
-- Next is served from its `standalone` output, not `next dev`.
-- Postgres and Redis publish **no** host ports: they are reachable only from the
-  Compose network.
-- `DEBUG=false` and `ENVIRONMENT=production`.
+- Imágenes construidas desde el target `prod`: sin dependencias de desarrollo,
+  sin código montado y con un usuario sin privilegios (`app` en la API, `nextjs`
+  en la web).
+- Next se sirve desde su salida `standalone`, no desde `next dev`.
+- Postgres y Redis **no** publican puertos en el host: solo se alcanzan desde la
+  red de Compose.
+- `DEBUG=false` y `ENVIRONMENT=production`.
 
-Migrations do not run on startup — trigger them explicitly, so a multi-replica
-deploy never races itself.
+Las migraciones no corren al arrancar — se disparan explícitamente, para que un
+despliegue con varias réplicas nunca compita consigo mismo.
 
-## Live instance
+## Instancia en vivo
 
-<http://46.224.38.172:3001> — sign in with `demo@accounting-project.dev` /
-`demo-accounting-2026`. The Colombian PUC is already loaded: 2.446 accounts
-across the five levels, so the tree, the search and the account picker have
-something real in them.
+<http://46.224.38.172:3001> — ingresar con `demo@accounting-project.dev` /
+`demo-accounting-2026`. El PUC colombiano ya está cargado: 2.446 cuentas en los
+cinco niveles, así que el árbol, la búsqueda y el selector de cuentas tienen
+algo real adentro.
 
-It is a demonstration box, not a service with an uptime guarantee, and it shares
-the host with an unrelated production application. That is why the app sits on
-port 3001 and the API listens on loopback only: the web reaches it over the
-Compose network, and nothing else needs to.
+Es una máquina de demostración, no un servicio con garantía de disponibilidad, y
+comparte el host con una aplicación de producción no relacionada. Por eso la
+aplicación está en el puerto 3001 y la API escucha solo en loopback: la web la
+alcanza por la red de Compose, y nada más lo necesita.
 
-## Continuous integration and deployment
+## Integración y despliegue continuos
 
-`.github/workflows/ci.yml` runs on every push and pull request: ruff, mypy and
-pytest for the API, ESLint, `tsc` and a production build for the web. Every
-check runs inside this repository's own images, so the Dockerfiles are exercised
-by the same job that lints the code.
+`.github/workflows/ci.yml` corre en cada push y pull request: ruff, mypy y
+pytest para la API, ESLint, `tsc` y un build de producción para la web. Cada
+verificación corre dentro de las propias imágenes de este repositorio, así que
+los Dockerfiles quedan ejercitados por el mismo job que revisa el código.
 
-On `main`, once the checks pass, the images are published to GHCR and the server
-is updated:
+En `main`, una vez pasan las verificaciones, las imágenes se publican en GHCR y
+el servidor se actualiza:
 
 ```
-push a main → checks → imágenes a ghcr.io → aprovisionar → desplegar → verificar
+push a main → verificaciones → imágenes a ghcr.io → aprovisionar → desplegar → verificar
 ```
 
-Two scripts carry the deployment, both idempotent:
+Dos scripts llevan el despliegue, ambos idempotentes:
 
-- [`scripts/provision.sh`](./scripts/provision.sh) — installs Docker if it is
-  missing and generates the server's `.env` with random credentials, once. It is
-  never regenerated: the Postgres password is baked into the volume the first
-  time it initialises, and rotating `JWT_SECRET` would sign everyone out on
-  every push.
-- [`scripts/deploy.sh`](./scripts/deploy.sh) — fetches the exact commit,
-  migrates with the new image *before* swapping the containers, brings the stack
-  up and waits for the health endpoint. It refuses to run if a container of ours
-  belongs to another Compose project, if a port is taken by a foreign process,
-  or if there is under 2 GB of free disk.
+- [`scripts/provision.sh`](./scripts/provision.sh) — instala Docker si falta y
+  genera el `.env` del servidor con credenciales aleatorias, una sola vez. Nunca
+  se regenera: la contraseña de Postgres queda grabada en el volumen la primera
+  vez que se inicializa, y rotar `JWT_SECRET` cerraría la sesión de todo el
+  mundo en cada push.
+- [`scripts/deploy.sh`](./scripts/deploy.sh) — trae el commit exacto, migra con
+  la imagen nueva *antes* de intercambiar los contenedores, levanta el stack y
+  espera al endpoint de salud. Se niega a correr si un contenedor nuestro
+  pertenece a otro proyecto de Compose, si un puerto está tomado por un proceso
+  ajeno o si hay menos de 2 GB de disco libre.
 
-Nothing is built on the server. It has 3.7 GB of RAM shared with somebody else's
-production database, and a `next build` there could invoke the OOM killer or
-fill the disk. The images arrive from the registry, already built.
+Nada se construye en el servidor. Tiene 3,7 GB de RAM compartidos con la base de
+datos de producción de alguien más, y un `next build` allí podría invocar al OOM
+killer o llenar el disco. Las imágenes llegan del registro, ya construidas.
 
-One step cannot be automated, because until it exists GitHub has no way in:
-installing the deploy key. [`scripts/setup-github-deploy.sh`](./scripts/setup-github-deploy.sh)
-does it in one command — generates the key, installs it, and uploads
-`SSH_PRIVATE_KEY`, `DEPLOY_HOST` and `SSH_KNOWN_HOSTS` to the repository:
+Un paso no se puede automatizar, porque hasta que exista GitHub no tiene por
+dónde entrar: instalar la llave de despliegue.
+[`scripts/setup-github-deploy.sh`](./scripts/setup-github-deploy.sh) lo hace en
+un comando — genera la llave, la instala y sube `SSH_PRIVATE_KEY`,
+`DEPLOY_HOST` y `SSH_KNOWN_HOSTS` al repositorio:
 
 ```bash
 ./scripts/setup-github-deploy.sh <ip-del-servidor>
 ```
 
-Without those secrets the deploy job exits green and says so: the pipeline is
-not broken, it is unconfigured.
+Sin esos secretos el job de despliegue termina en verde y lo dice: el pipeline
+no está roto, está sin configurar.
 
-## Commands
+## Comandos
 
-Everything runs inside the containers:
+Todo corre dentro de los contenedores:
 
-| Command                                                            | Description        |
-| ------------------------------------------------------------------ | ------------------ |
-| `docker compose up -d`                                             | Start (dev)        |
-| `docker compose down`                                              | Stop               |
-| `docker compose logs -f api`                                       | Logs               |
-| `docker compose exec api pytest`                                   | API tests          |
-| `docker compose exec api ruff check .`                             | API lint           |
-| `docker compose exec api mypy .`                                   | API types          |
-| `docker compose exec api alembic upgrade head`                     | Apply migrations   |
-| `docker compose exec api alembic revision --autogenerate -m "msg"` | New migration      |
-| `docker compose exec web npm run lint`                             | Web lint           |
-| `docker compose exec web npm run typecheck`                        | Web types          |
+| Comando                                                            | Descripción           |
+| ------------------------------------------------------------------ | --------------------- |
+| `docker compose up -d`                                             | Levantar (dev)        |
+| `docker compose down`                                              | Detener               |
+| `docker compose logs -f api`                                       | Logs                  |
+| `docker compose exec api pytest`                                   | Pruebas de la API     |
+| `docker compose exec api ruff check .`                             | Lint de la API        |
+| `docker compose exec api mypy .`                                   | Tipos de la API       |
+| `docker compose exec api alembic upgrade head`                     | Aplicar migraciones   |
+| `docker compose exec api alembic revision --autogenerate -m "msg"` | Nueva migración       |
+| `docker compose exec web npm run lint`                             | Lint de la web        |
+| `docker compose exec web npm run typecheck`                        | Tipos de la web       |
 
-## Environment
+## Entorno
 
-Everything lives in the root `.env` — see [`.env.example`](./.env.example).
-`POSTGRES_USER` and `POSTGRES_PASSWORD` are mandatory: Compose fails rather than
-starting with default credentials.
+Todo vive en el `.env` de la raíz — ver [`.env.example`](./.env.example).
+`POSTGRES_USER` y `POSTGRES_PASSWORD` son obligatorios: Compose falla en lugar
+de arrancar con credenciales por defecto.
 
-The web talks to the API **from the server only** (Server Components and Server
-Actions), through the Compose service name. That is why `API_URL` is not
-`NEXT_PUBLIC_*`: it never reaches the browser, is not baked into the bundle, and
-changing it does not require rebuilding the image.
+La web habla con la API **solo desde el servidor** (Server Components y Server
+Actions), a través del nombre del servicio de Compose. Por eso `API_URL` no es
+`NEXT_PUBLIC_*`: nunca llega al navegador, no queda horneada en el bundle y
+cambiarla no obliga a reconstruir la imagen.
 
-## Notes
+## Notas
 
-`docker-compose.yml` pins `name: accounting`. Without an explicit name, Compose
-derives one from the directory and can recreate the containers of any other
-project living in a directory with the same name.
+`docker-compose.yml` fija `name: accounting`. Sin un nombre explícito, Compose
+deriva uno del directorio y puede recrear los contenedores de cualquier otro
+proyecto que viva en un directorio con el mismo nombre.
 
-Dev and prod use different image tags (`accounting-api:dev` /
-`accounting-api:prod`, likewise for `web`). With a shared tag, switching modes
-makes `up` without `--build` silently reuse the other mode's image: the web
-would boot with the production `CMD` on top of the development bind mount and
-restart-loop.
+Dev y prod usan etiquetas de imagen distintas (`accounting-api:dev` /
+`accounting-api:prod`, y lo mismo para `web`). Con una etiqueta compartida,
+cambiar de modo hace que un `up` sin `--build` reutilice en silencio la imagen
+del otro modo: la web arrancaría con el `CMD` de producción encima del bind
+mount de desarrollo y entraría en bucle de reinicios.
 
-## License
+## Licencia
 
-To be defined.
+Por definir.

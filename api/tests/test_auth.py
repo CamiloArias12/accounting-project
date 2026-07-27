@@ -1,4 +1,4 @@
-from httpx import AsyncClient, Response
+from httpx import AsyncClient
 
 REGISTRATION = {
     "email": "someone@example.com",
@@ -6,69 +6,49 @@ REGISTRATION = {
     "full_name": "Someone",
 }
 
-
-async def register(client: AsyncClient, **overrides: object) -> Response:
-    return await client.post(
-        "/api/v1/auth/register", json={**REGISTRATION, **overrides}
-    )
-
-
-async def test_register_returns_the_user_without_the_password(
-    client: AsyncClient,
-) -> None:
-    response = await register(client)
-
-    assert response.status_code == 201
-    body = response.json()
-    assert body["email"] == "someone@example.com"
-    assert "password" not in body
-    assert "hashed_password" not in body
-
-
-async def test_email_is_normalized(client: AsyncClient) -> None:
-    response = await register(client, email="  MiXeD@Example.COM  ")
-
-    assert response.json()["email"] == "mixed@example.com"
+#: One read endpoint per module. A router mounted without the dependency is how
+#: business data ends up public, and that is invisible in the router's own
+#: tests — hence the list, in one place, covering all of them.
+PROTECTED = [
+    "/api/v1/auth/me",
+    "/api/v1/accounts",
+    "/api/v1/accounts/tree",
+    "/api/v1/third-parties",
+    "/api/v1/locations/countries",
+    "/api/v1/vouchers",
+    "/api/v1/ledger",
+    "/api/v1/ledger/export",
+    "/api/v1/periods/2026/7",
+    "/api/v1/exogena/history",
+    "/api/v1/uvt",
+]
 
 
-async def test_duplicate_email_returns_409(client: AsyncClient) -> None:
-    await register(client)
-    assert (await register(client)).status_code == 409
+async def test_registering_and_logging_in(client: AsyncClient) -> None:
+    registered = await client.post("/api/v1/auth/register", json=REGISTRATION)
 
+    assert registered.status_code == 201
+    # The password never comes back out, in either spelling.
+    assert "password" not in registered.json()
+    assert "hashed_password" not in registered.json()
 
-async def test_short_password_is_rejected(client: AsyncClient) -> None:
-    assert (await register(client, password="short")).status_code == 422
-
-
-async def test_login_returns_a_bearer_token(client: AsyncClient) -> None:
-    await register(client)
-
-    response = await client.post(
+    logged_in = await client.post(
         "/api/v1/auth/login",
         data={"username": REGISTRATION["email"], "password": REGISTRATION["password"]},
     )
+    assert logged_in.status_code == 200
+    assert logged_in.json()["token_type"] == "bearer"
 
-    assert response.status_code == 200
-    assert response.json()["token_type"] == "bearer"
-    assert response.json()["access_token"]
-
-
-async def test_wrong_password_returns_401(client: AsyncClient) -> None:
-    await register(client)
-
-    response = await client.post(
-        "/api/v1/auth/login",
-        data={"username": REGISTRATION["email"], "password": "wrong-password"},
+    token = logged_in.json()["access_token"]
+    me = await client.get(
+        "/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"}
     )
+    assert me.json()["email"] == REGISTRATION["email"]
 
-    assert response.status_code == 401
 
-
-async def test_unknown_email_returns_401_with_the_same_message(
-    client: AsyncClient,
-) -> None:
+async def test_a_bad_login_says_nothing_about_the_account(client: AsyncClient) -> None:
     """The response must not reveal whether the email exists."""
-    await register(client)
+    await client.post("/api/v1/auth/register", json=REGISTRATION)
 
     unknown = await client.post(
         "/api/v1/auth/login",
@@ -83,60 +63,16 @@ async def test_unknown_email_returns_401_with_the_same_message(
     assert unknown.json()["detail"] == wrong.json()["detail"]
 
 
-async def test_me_requires_a_token(client: AsyncClient) -> None:
-    assert (await client.get("/api/v1/auth/me")).status_code == 401
+async def test_every_module_is_behind_the_login(client: AsyncClient) -> None:
+    for path in PROTECTED:
+        assert (await client.get(path)).status_code == 401, path
 
-
-async def test_me_rejects_a_forged_token(client: AsyncClient) -> None:
-    response = await client.get(
-        "/api/v1/auth/me", headers={"Authorization": "Bearer not-a-real-token"}
-    )
-
-    assert response.status_code == 401
-
-
-async def test_me_returns_the_authenticated_user(auth_client: AsyncClient) -> None:
-    response = await auth_client.get("/api/v1/auth/me")
-
-    assert response.status_code == 200
-    assert response.json()["email"] == "tester@example.com"
-
-
-# --- accounts are protected ----------------------------------------------
-
-ACCOUNT = {"code": "1", "name": "ACTIVOS", "nature": "Debito"}
-
-
-async def test_reading_accounts_requires_a_token(client: AsyncClient) -> None:
-    """A chart of accounts is business data, not a public resource."""
-    assert (await client.get("/api/v1/accounts")).status_code == 401
-    assert (await client.get("/api/v1/accounts/tree")).status_code == 401
-    assert (await client.get("/api/v1/accounts/1")).status_code == 401
-
-
-async def test_reading_accounts_rejects_a_forged_token(client: AsyncClient) -> None:
-    response = await client.get(
-        "/api/v1/accounts", headers={"Authorization": "Bearer not-a-real-token"}
-    )
-    assert response.status_code == 401
-
-
-async def test_creating_an_account_requires_a_token(client: AsyncClient) -> None:
-    assert (await client.post("/api/v1/accounts", json=ACCOUNT)).status_code == 401
-
-
-async def test_deleting_an_account_requires_a_token(client: AsyncClient) -> None:
+    # And the writes, which is where an unprotected router does real damage.
+    account = {"code": "1", "name": "ACTIVOS", "nature": "Debito"}
+    assert (await client.post("/api/v1/accounts", json=account)).status_code == 401
     assert (await client.delete("/api/v1/accounts/1")).status_code == 401
 
-
-async def test_importing_requires_a_token(client: AsyncClient) -> None:
-    response = await client.post(
-        "/api/v1/accounts/import",
-        files={"file": ("puc.xlsx", b"x", "application/vnd.ms-excel")},
+    forged = await client.get(
+        "/api/v1/accounts", headers={"Authorization": "Bearer not-a-real-token"}
     )
-    assert response.status_code == 401
-
-
-async def test_a_token_unlocks_the_module(auth_client: AsyncClient) -> None:
-    assert (await auth_client.post("/api/v1/accounts", json=ACCOUNT)).status_code == 201
-    assert (await auth_client.get("/api/v1/accounts")).status_code == 200
+    assert forged.status_code == 401

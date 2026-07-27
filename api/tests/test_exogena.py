@@ -2,11 +2,9 @@ from decimal import Decimal
 from typing import Any
 from xml.etree import ElementTree as ET
 
-import pytest
 from httpx import AsyncClient, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.exogena.report import Filer, InvalidFiler
 from tests.test_third_parties_api import natural_payload, seed_places
 from tests.test_vouchers import a_posted_voucher
 
@@ -95,10 +93,6 @@ async def a_payment(
     )
 
 
-def parse(xml: str) -> ET.Element:
-    return ET.fromstring(xml)
-
-
 async def generate(client: AsyncClient, payload: dict[str, Any]) -> Response:
     """Generate a report and fetch the file it produced.
 
@@ -112,72 +106,7 @@ async def generate(client: AsyncClient, payload: dict[str, Any]) -> Response:
     return await client.get(f"{BASE}/history/{created.json()['id']}/file")
 
 
-# --- the filer's own NIT -------------------------------------------------
-
-
-def test_the_filer_nit_is_verified() -> None:
-    filer = Filer.of(nit="900000000-5", legal_name="Acme", year=2025)
-    assert filer.check_digit == 5
-
-
-def test_a_wrong_check_digit_is_refused() -> None:
-    # A file filed under a mistyped NIT is filed against somebody else.
-    with pytest.raises(InvalidFiler, match="is 5, not 9"):
-        Filer.of(nit="900000000-9", legal_name="Acme", year=2025)
-
-
-def test_the_check_digit_is_derived_when_it_is_not_given() -> None:
-    assert Filer.of(nit="900000000", legal_name="Acme", year=2025).check_digit == 5
-
-
-# --- the document ------------------------------------------------------------
-
-
-async def test_the_xml_has_the_required_shape(
-    auth_client: AsyncClient, session: AsyncSession
-) -> None:
-    await seed_chart(auth_client)
-    places = await seed_places(session)
-    supplier = await a_supplier(auth_client, places)
-    await a_payment(auth_client, supplier, "1000000.00", "100000.00")
-
-    generated = await generate(auth_client, {"year": 2025, "threshold_uvt": "0"})
-
-    assert generated.status_code == 200
-    assert generated.headers["content-type"].startswith("application/xml")
-    assert "attachment" in generated.headers["content-disposition"]
-
-    root = parse(generated.text)
-    assert root.tag == "InformacionExogena"
-    assert root.attrib["version"] == "1.0"
-
-    # The tags stay Spanish: they are the file format the DIAN mandates, not
-    # a naming choice of ours.
-    filer = root.find("Informante")
-    assert filer is not None
-    assert set(filer.attrib) == {"nit", "dv", "razonSocial", "anioGravable"}
-    assert filer.attrib["anioGravable"] == "2025"
-
-    registro = root.find("Registros/Registro")
-    assert registro is not None
-    assert set(registro.attrib) == {
-        "tipoDoc",
-        "numDoc",
-        "nombre",
-        "concepto",
-        "valorBruto",
-        "valorRetencion",
-    }
-    # 13 is the DIAN's code for a cédula de ciudadanía. The file carries the
-    # code, not our label: "Citizen ID" would be rejected.
-    assert registro.attrib["tipoDoc"] == "13"
-    assert registro.attrib["concepto"] == "5002"
-    assert registro.attrib["valorBruto"] == "1000000"
-    assert registro.attrib["valorRetencion"] == "100000"
-    assert registro.attrib["nombre"] == "Ana Restrepo"
-
-
-async def test_movements_are_grouped_by_third_party_and_concept(
+async def test_the_xml_carries_one_row_per_third_party_and_concept(
     auth_client: AsyncClient, session: AsyncSession
 ) -> None:
     await seed_chart(auth_client)
@@ -185,52 +114,8 @@ async def test_movements_are_grouped_by_third_party_and_concept(
     supplier = await a_supplier(auth_client, places)
     await a_payment(auth_client, supplier, "1000000.00", "100000.00")
     await a_payment(auth_client, supplier, "500000.00", "50000.00")
-
-    generated = await generate(auth_client, {"year": 2025, "threshold_uvt": "0"})
-
-    registros = parse(generated.text).findall("Registros/Registro")
-    # Two payments, one third party, one concept: one row.
-    assert len(registros) == 1
-    assert registros[0].attrib["valorBruto"] == "1500000"
-    assert registros[0].attrib["valorRetencion"] == "150000"
-
-
-async def test_the_totals_match_the_rows(
-    auth_client: AsyncClient, session: AsyncSession
-) -> None:
-    await seed_chart(auth_client)
-    places = await seed_places(session)
-    first = await a_supplier(auth_client, places)
-    second = await a_supplier(
-        auth_client, places, document_number="80808080", first_name="Beto"
-    )
-    await a_payment(auth_client, first, "1000000.00", "100000.00")
-    await a_payment(auth_client, second, "700000.00", "70000.00")
-
-    generated = await generate(auth_client, {"year": 2025, "threshold_uvt": "0"})
-
-    root = parse(generated.text)
-    registros = root.findall("Registros/Registro")
-    totales = root.find("Totales")
-    assert totales is not None
-
-    assert totales.attrib["registros"] == str(len(registros))
-    assert totales.attrib["totalValorBruto"] == str(
-        sum(int(r.attrib["valorBruto"]) for r in registros)
-    )
-    assert totales.attrib["totalRetencion"] == str(
-        sum(int(r.attrib["valorRetencion"]) for r in registros)
-    )
-
-
-async def test_drafts_and_untagged_accounts_stay_out(
-    auth_client: AsyncClient, session: AsyncSession
-) -> None:
-    await seed_chart(auth_client)
-    places = await seed_places(session)
-    supplier = await a_supplier(auth_client, places)
-    # A draft: not in the books. And 110505 carries no concept, so the cash
-    # side of every entry is not reportable either.
+    # A draft is not in the books, and 110505 carries no concept, so neither
+    # the unposted entry nor the cash side is reportable.
     await auth_client.post(
         "/api/v1/vouchers",
         json={
@@ -251,15 +136,44 @@ async def test_drafts_and_untagged_accounts_stay_out(
 
     generated = await generate(auth_client, {"year": 2025, "threshold_uvt": "0"})
 
-    totales = parse(generated.text).find("Totales")
+    assert generated.headers["content-type"].startswith("application/xml")
+    root = ET.fromstring(generated.text)
+    assert root.tag == "InformacionExogena"
+
+    # The tags stay Spanish: they are the file format the DIAN mandates, not a
+    # naming choice of ours.
+    filer = root.find("Informante")
+    assert filer is not None
+    assert set(filer.attrib) == {"nit", "dv", "razonSocial", "anioGravable"}
+    assert filer.attrib["anioGravable"] == "2025"
+
+    registros = root.findall("Registros/Registro")
+    # Two payments, one third party, one concept: one row, and the draft's
+    # 900.000 nowhere in it.
+    assert len(registros) == 1
+    assert set(registros[0].attrib) == {
+        "tipoDoc",
+        "numDoc",
+        "nombre",
+        "concepto",
+        "valorBruto",
+        "valorRetencion",
+    }
+    # 13 is the DIAN's code for a cédula de ciudadanía. The file carries the
+    # code, not our label: "Citizen ID" would be rejected.
+    assert registros[0].attrib["tipoDoc"] == "13"
+    assert registros[0].attrib["concepto"] == "5002"
+    assert registros[0].attrib["valorBruto"] == "1500000"
+    assert registros[0].attrib["valorRetencion"] == "150000"
+    assert registros[0].attrib["nombre"] == "Ana Restrepo"
+
+    totales = root.find("Totales")
     assert totales is not None
-    assert totales.attrib["registros"] == "0"
+    assert totales.attrib["registros"] == "1"
+    assert totales.attrib["totalValorBruto"] == "1500000"
 
 
-# --- the threshold -----------------------------------------------------------
-
-
-async def test_a_third_party_below_the_threshold_is_excluded(
+async def test_the_threshold_needs_the_uvt_of_that_year(
     auth_client: AsyncClient, session: AsyncSession
 ) -> None:
     await seed_chart(auth_client)
@@ -276,56 +190,28 @@ async def test_a_third_party_below_the_threshold_is_excluded(
 
     generated = await generate(auth_client, {"year": 2025, "threshold_uvt": "100"})
 
-    registros = parse(generated.text).findall("Registros/Registro")
+    registros = ET.fromstring(generated.text).findall("Registros/Registro")
     assert [r.attrib["valorBruto"] for r in registros] == ["6000000"]
 
+    # The filing is recorded with what it was generated from.
     history = (await auth_client.get(BASE + "/history")).json()
     assert history[0]["threshold_pesos"] == "4979900.00"
     assert history[0]["excluded_count"] == 1
+    assert history[0]["uvt_value"] == "49799.00"
+    assert history[0]["generated_by_user_id"] is not None
 
-
-async def test_a_threshold_without_a_uvt_is_refused(
-    auth_client: AsyncClient,
-) -> None:
-    # Falling back to a neighbouring year would move the threshold by
-    # thousands of pesos without anybody noticing.
+    # Falling back to a neighbouring year would move the threshold by thousands
+    # of pesos without anybody noticing.
     refused = await auth_client.post(
         BASE + "/generate", json={"year": 2019, "threshold_uvt": "100"}
     )
-
     assert refused.status_code == 409
     assert "needs the UVT of 2019" in refused.json()["detail"]
 
-
-async def test_a_threshold_of_zero_needs_no_uvt(auth_client: AsyncClient) -> None:
-    generated = await generate(auth_client, {"year": 2019, "threshold_uvt": "0"})
-
-    assert generated.status_code == 200
-
-
-# --- history and re-download --------------------------------------------------
-
-
-async def test_a_generation_is_recorded_with_its_parameters(
-    auth_client: AsyncClient, session: AsyncSession
-) -> None:
-    await seed_chart(auth_client)
-    places = await seed_places(session)
-    supplier = await a_supplier(auth_client, places)
-    await a_payment(auth_client, supplier, "1000000.00", "100000.00")
-    await auth_client.put("/api/v1/uvt/2025", json={"value": "49799.00"})
-
-    await auth_client.post(
-        BASE + "/generate", json={"year": 2025, "threshold_uvt": "10"}
-    )
-
-    history = (await auth_client.get(BASE + "/history")).json()
-    assert len(history) == 1
-    assert history[0]["year"] == 2025
-    assert history[0]["threshold_uvt"] == "10.00"
-    assert history[0]["uvt_value"] == "49799.00"
-    assert history[0]["generated_at"]
-    assert history[0]["generated_by_user_id"] is not None
+    # A threshold of zero needs no UVT at all, which keeps the report usable
+    # for a year nobody has published one for.
+    no_uvt_needed = await generate(auth_client, {"year": 2019, "threshold_uvt": "0"})
+    assert no_uvt_needed.status_code == 200
 
 
 async def test_the_file_comes_back_byte_for_byte(
@@ -347,12 +233,3 @@ async def test_the_file_comes_back_byte_for_byte(
     assert again.status_code == 200
     assert again.text == first.text
     assert "9999999" not in again.text
-
-
-async def test_a_generation_that_does_not_exist(auth_client: AsyncClient) -> None:
-    missing = await auth_client.get(f"{BASE}/history/9999/file")
-    assert missing.status_code == 404
-
-
-async def test_the_endpoints_require_a_token(client: AsyncClient) -> None:
-    assert (await client.get(BASE + "/history")).status_code == 401

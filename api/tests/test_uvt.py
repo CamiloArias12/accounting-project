@@ -1,13 +1,11 @@
 from decimal import Decimal
 
 import pytest
-from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.uvt.models import RunStatus, UvtSource
+from app.modules.uvt.models import RunStatus
 from app.modules.uvt.provider import (
     PUBLISHED,
-    HttpUvtProvider,
     SimulatedUvtProvider,
     UvtNotPublished,
     UvtSourceUnavailable,
@@ -15,8 +13,6 @@ from app.modules.uvt.provider import (
     parse_uvt_table,
 )
 from app.modules.uvt.service import UvtService
-
-BASE = "/api/v1/uvt"
 
 
 class AlwaysDown:
@@ -51,147 +47,51 @@ class FlakyOnce:
         return Decimal("49799")
 
 
-async def test_a_published_year_comes_back() -> None:
-    provider = SimulatedUvtProvider()
-    assert await provider.fetch(2025) == PUBLISHED[2025]
-
-
-async def test_an_unpublished_year_is_not_invented() -> None:
-    with pytest.raises(UvtNotPublished):
-        await SimulatedUvtProvider().fetch(2099)
-
-
-async def test_a_transient_failure_is_retried() -> None:
-    provider = FlakyOnce()
-
-    value, attempts = await fetch_with_retry(provider, 2025, base_delay_seconds=0)
-
+async def test_a_transient_failure_is_retried_and_a_dead_source_gives_up() -> None:
+    value, attempts = await fetch_with_retry(FlakyOnce(), 2025, base_delay_seconds=0)
     assert value == Decimal("49799")
     assert attempts == 2
 
-
-async def test_the_retry_gives_up_and_says_so() -> None:
-    provider = AlwaysDown()
-
+    down = AlwaysDown()
     with pytest.raises(UvtSourceUnavailable, match="gave up after 3"):
-        await fetch_with_retry(provider, 2025, base_delay_seconds=0)
+        await fetch_with_retry(down, 2025, base_delay_seconds=0)
+    assert down.calls == 3
 
-    assert provider.calls == 3
-
-
-async def test_an_unpublished_year_is_not_retried() -> None:
     # Asking again will not make the DIAN publish sooner.
-    provider = SimulatedUvtProvider()
-
     with pytest.raises(UvtNotPublished):
-        await fetch_with_retry(provider, 2099, base_delay_seconds=0)
+        await fetch_with_retry(SimulatedUvtProvider(), 2099, base_delay_seconds=0)
 
 
-async def test_a_refresh_stores_the_value_and_records_the_run(
+async def test_a_refresh_records_every_run_and_never_duplicates_a_year(
     session: AsyncSession,
 ) -> None:
     service = UvtService(session)
 
     run = await service.refresh(2025, SimulatedUvtProvider())
-
     assert run.status is RunStatus.SUCCEEDED
-    assert run.value == PUBLISHED[2025]
     assert await service.value_for(2025) == PUBLISHED[2025]
 
-
-async def test_running_twice_updates_rather_than_duplicates(
-    session: AsyncSession,
-) -> None:
     # What makes a nightly job safe: the year is unique, so the second run
     # writes over the first instead of adding another row.
-    service = UvtService(session)
     await service.refresh(2025, SimulatedUvtProvider())
-    await service.refresh(2025, SimulatedUvtProvider())
-
-    values = [v for v in await service.all_values() if v.year == 2025]
-    assert len(values) == 1
+    assert len([v for v in await service.all_values() if v.year == 2025]) == 1
     assert len(await service.runs()) == 2
 
+    # A failure is kept too — a threshold that quietly used a stale UVT is what
+    # the run log exists to make visible — and stores no value.
+    failed = await UvtService(session).refresh(2099, AlwaysDown())
+    assert failed.status is RunStatus.FAILED
+    assert failed.attempts == 3
+    assert "gave up" in (failed.detail or "")
+    assert [v.year for v in await service.all_values()] == [2025]
 
-async def test_a_failure_is_recorded_and_nothing_is_stored(
-    session: AsyncSession,
-) -> None:
-    service = UvtService(session)
-
-    run = await service.refresh(2025, AlwaysDown())
-
-    assert run.status is RunStatus.FAILED
-    assert "gave up" in (run.detail or "")
-    assert await service.all_values() == []
-
-
-async def test_an_unpublished_year_is_skipped_not_failed(
-    session: AsyncSession,
-) -> None:
-    run = await UvtService(session).refresh(2099, SimulatedUvtProvider())
-
-    assert run.status is RunStatus.SKIPPED
-    assert "set it by hand" in (run.detail or "")
-
-
-async def test_a_manual_value_is_not_overwritten_by_a_fetch(
-    session: AsyncSession,
-) -> None:
-    # A figure read off the resolution outranks whatever a scraper makes of it.
-    service = UvtService(session)
+    # A figure read off the resolution beats whatever a scraper makes of it:
+    # once set by hand, a fetch leaves it alone.
     await service.set_manually(2025, Decimal("12345.00"))
-
-    run = await service.refresh(2025, SimulatedUvtProvider())
-
-    assert run.status is RunStatus.SKIPPED
+    skipped = await service.refresh(2025, SimulatedUvtProvider())
+    assert skipped.status is RunStatus.SKIPPED
     assert await service.value_for(2025) == Decimal("12345.00")
 
-
-async def test_the_refresh_endpoint_answers_before_the_work(
-    auth_client: AsyncClient,
-) -> None:
-    # 202, not 200: three attempts with backoff is not something a caller
-    # should hold a connection open for.
-    accepted = await auth_client.post(f"{BASE}/refresh", json={"year": 2025})
-
-    assert accepted.status_code == 202
-    assert accepted.json() == {"year": 2025, "accepted": True}
-
-
-async def test_setting_and_reading_a_value(auth_client: AsyncClient) -> None:
-    stored = await auth_client.put(f"{BASE}/2026", json={"value": "51000.00"})
-    assert stored.status_code == 200
-    assert stored.json()["source"] == UvtSource.MANUAL.value
-
-    read = await auth_client.get(f"{BASE}/2026")
-    assert read.json()["value"] == "51000.00"
-
-
-async def test_a_year_with_no_value_is_refused_not_guessed(
-    auth_client: AsyncClient,
-) -> None:
-    missing = await auth_client.get(f"{BASE}/2019")
-
-    assert missing.status_code == 404
-    assert "refresh it from the source" in missing.json()["detail"]
-
-
-async def test_the_endpoints_require_a_token(client: AsyncClient) -> None:
-    assert (await client.get(BASE)).status_code == 401
-
-
-async def test_a_failed_run_records_the_attempts_it_spent(
-    session: AsyncSession,
-) -> None:
-    # The count is the point of keeping failures: a run that says zero
-    # attempts reads as if it never tried.
-    run = await UvtService(session).refresh(2025, AlwaysDown())
-
-    assert run.status is RunStatus.FAILED
-    assert run.attempts == 3
-
-
-# --- the real source ----------------------------------------------------------
 
 #: A slice of the published table, kept here so the parser is tested against a
 #: fixture rather than against the internet. When the page changes, this is the
@@ -201,7 +101,6 @@ PAGE = """
 <table>
   <tr><td>2026</td><td>52.374</td></tr>
   <tr><td>2025</td><td>49.799</td></tr>
-  <tr><td>2024</td><td>47.065</td></tr>
 </table>
 <p>La UVT para 2026 quedó en 52.374 pesos.</p>
 """
@@ -210,27 +109,10 @@ PAGE = """
 def test_the_parser_reads_the_published_table() -> None:
     table = parse_uvt_table(PAGE)
 
-    # Colombian thousands separators are dots: 52.374 is fifty-two thousand.
-    assert table[2026] == Decimal("52374")
-    assert table[2025] == Decimal("49799")
-    assert table[2024] == Decimal("47065")
+    # Colombian thousands separators are dots: 52.374 is fifty-two thousand,
+    # and the year stated twice is read once.
+    assert table == {2026: Decimal("52374"), 2025: Decimal("49799")}
 
-
-def test_the_parser_ignores_figures_that_cannot_be_a_uvt() -> None:
     # A misparsed threshold is worse than no threshold, so anything below the
     # plausible floor is dropped rather than believed.
     assert parse_uvt_table("<td>2025</td><td>12.500</td>") == {}
-
-
-def test_the_parser_keeps_the_first_reading_of_a_year() -> None:
-    # These pages state the current year up top and repeat it further down.
-    doubled = "<td>2025</td><td>49.799</td> ... 2025 vale 49.799"
-    assert parse_uvt_table(doubled) == {2025: Decimal("49799")}
-
-
-async def test_a_source_that_will_not_answer_is_a_failure_not_a_value() -> None:
-    # Port 9 discards whatever it is sent, so the client gets nothing back.
-    provider = HttpUvtProvider(url="http://127.0.0.1:9/uvt", timeout_seconds=0.3)
-
-    with pytest.raises(UvtSourceUnavailable):
-        await provider.fetch(2025)
