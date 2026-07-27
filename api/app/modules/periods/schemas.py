@@ -1,5 +1,3 @@
-"""Pydantic at the edge: what an accounting period looks like over HTTP."""
-
 from __future__ import annotations
 
 import datetime as dt
@@ -14,11 +12,7 @@ from app.modules.periods.period import (
 
 
 class PeriodRead(BaseModel):
-    """A month and whether it accepts entries.
-
-    Reported for any month asked about, closed or not: only closed periods are
-    stored, so an open one has no row to read `changed_at` off.
-    """
+    """A month and whether it accepts entries."""
 
     year: int = Field(ge=MIN_PERIOD_YEAR, le=MAX_PERIOD_YEAR)
     month: int = Field(ge=1, le=12)

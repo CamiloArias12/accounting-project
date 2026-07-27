@@ -25,12 +25,14 @@ import {
 import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import type { Generation, UvtRun, UvtValue } from "@/types/exogena";
+import type { Company } from "@/types/voucher";
 
 interface Props {
   generations: Generation[];
   values: UvtValue[];
   runs: UvtRun[];
-  /** The taxable year the forms open on: the one just ended. */
+  // Whose report this is.
+  company: Company;
   defaultYear: number;
   loadError: string | null;
 }
@@ -39,6 +41,7 @@ export function ExogenaView({
   generations,
   values,
   runs,
+  company,
   defaultYear,
   loadError,
 }: Props) {
@@ -54,15 +57,20 @@ export function ExogenaView({
 
       {loadError && <LoadError message={loadError} />}
 
-      <GenerateCard defaultYear={defaultYear} />
+      <GenerateCard company={company} defaultYear={defaultYear} />
       <GenerationsCard generations={generations} />
       <UvtCard values={values} runs={runs} defaultYear={defaultYear} />
     </PageShell>
   );
 }
 
-/** The form that builds a report. */
-function GenerateCard({ defaultYear }: { defaultYear: number }) {
+function GenerateCard({
+  company,
+  defaultYear,
+}: {
+  company: Company;
+  defaultYear: number;
+}) {
   const t = useTranslations("exogena");
   const [state, submit] = useActionState<FormState, FormData>(
     generateExogena,
@@ -77,6 +85,21 @@ function GenerateCard({ defaultYear }: { defaultYear: number }) {
       description={t("generateHelp")}
     >
       <form action={submit} className="flex flex-wrap items-end gap-3">
+        <div className="flex flex-col gap-1.5">
+          <Label>{t("company")}</Label>
+          <p className="flex h-9 items-center text-sm text-muted-foreground">
+            {company.legal_name ? (
+              <>
+                {company.legal_name}
+                <span className="px-1.5 text-border">·</span>
+                <span className="tabular-nums">{company.nit}</span>
+              </>
+            ) : (
+              t("companyUnknown")
+            )}
+          </p>
+        </div>
+
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="exogena-year">{t("year")}</Label>
           <Input
@@ -104,8 +127,6 @@ function GenerateCard({ defaultYear }: { defaultYear: number }) {
         <Submit label={t("generate")} pendingLabel={t("generating")} />
       </form>
 
-      {/* The rule that makes the screen usable for a year the DIAN has not
-          published a UVT for: zero means no threshold, so no UVT is needed. */}
       <p className="text-xs text-muted-foreground">{t("thresholdHelp")}</p>
     </Card>
   );
@@ -139,8 +160,6 @@ function GenerationsCard({ generations }: { generations: Generation[] }) {
                   {generation.year}
                 </TableCell>
                 <TableCell className="text-right tabular-nums text-muted-foreground">
-                  {/* The UVT count and what it came to in pesos: the second is
-                      the number the rows were actually measured against. */}
                   {Number(generation.threshold_uvt) === 0
                     ? "—"
                     : `${generation.threshold_uvt} UVT · ${formatMoney(
@@ -163,10 +182,6 @@ function GenerationsCard({ generations }: { generations: Generation[] }) {
                   {generation.generated_at.slice(0, 16).replace("T", " ")}
                 </TableCell>
                 <TableCell className="pr-4 text-right">
-                  {/* A link, not a fetch: the browser saves the file and the
-                      token never leaves the server. Styled rather than rendered
-                      through `Button`, which would put `role="button"` on an
-                      anchor that navigates. */}
                   <a
                     href={`/exogena/${generation.id}/file`}
                     download={generation.filename}
@@ -187,12 +202,6 @@ function GenerationsCard({ generations }: { generations: Generation[] }) {
   );
 }
 
-/**
- * The UVT the threshold is measured in.
- *
- * Three things on one card because they are one subject: what is stored, how to
- * go and get it, and what happened the last few times we tried.
- */
 function UvtCard({
   values,
   runs,
@@ -271,8 +280,6 @@ function UvtCard({
         </form>
       </div>
 
-      {/* A refresh answers before it has run, so the table it lands in has to be
-          asked for again — the page has no way to know when it finished. */}
       <div>
         <Button variant="ghost" size="sm" onClick={() => router.refresh()}>
           <RefreshCw />
@@ -327,8 +334,6 @@ function UvtCard({
       {runs.length > 0 && (
         <div className="flex flex-col gap-2">
           <h3 className="text-sm font-medium">{t("runsTitle")}</h3>
-          {/* The failures are the point: a threshold that quietly used a stale
-              UVT because a fetch died is what this list makes visible. */}
           <ul className="flex flex-col gap-1.5 text-xs">
             {runs.map((run) => (
               <li key={run.id} className="flex flex-wrap items-center gap-2">
@@ -357,8 +362,6 @@ function UvtCard({
     </Card>
   );
 }
-
-// --- the pieces the cards are made of ---------------------------------------
 
 function Card({
   icon,

@@ -43,12 +43,7 @@ interface NavGroup {
   items: NavItem[];
 }
 
-/**
- * Grouped rather than a flat list of six.
- *
- * The distinction is real and worth showing: two of these screens are master
- * data that is edited once and read forever, three are the books themselves.
- */
+// Grouped rather than a flat list of six.
 const NAV: NavGroup[] = [
   {
     titleKey: "groupGeneral",
@@ -74,19 +69,14 @@ const NAV: NavGroup[] = [
 
 interface Props {
   initialTheme: Theme;
-  /** Null when nobody is signed in. */
   userEmail: string | null;
 }
 
 export function Sidebar({ initialTheme, userEmail }: Props) {
   const t = useTranslations("nav");
   const pathname = usePathname();
-  // Collapsed by default on small screens; the toggle is hidden from lg up,
-  // where the sidebar is always visible.
   const [open, setOpen] = useState(false);
 
-  // Escape closes the drawer. On a phone the overlay is the only other way
-  // out, and it is easy to miss that it is tappable.
   useEffect(() => {
     if (!open) return;
 
@@ -131,8 +121,6 @@ export function Sidebar({ initialTheme, userEmail }: Props) {
         )}
       >
         <div className="flex items-center gap-3 px-5 py-5">
-          {/* A mark rather than a wordmark alone: it gives the shell a fixed
-              point that survives the brand name being long in either language. */}
           <span
             aria-hidden
             className="grid size-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-primary to-indigo-500 text-sm font-bold text-primary-foreground shadow-sm"
@@ -172,8 +160,6 @@ export function Sidebar({ initialTheme, userEmail }: Props) {
                             : "text-foreground/75 hover:bg-sidebar-accent hover:text-foreground",
                         )}
                       >
-                        {/* The rail, not a border: it marks the active row
-                            without shifting the label by a pixel. */}
                         {active && (
                           <span
                             aria-hidden
@@ -210,7 +196,6 @@ export function Sidebar({ initialTheme, userEmail }: Props) {
   );
 }
 
-/** `/` only matches itself; deeper routes match by prefix. */
 function isActive(pathname: string, href: string): boolean {
   return href === "/" ? pathname === "/" : pathname.startsWith(href);
 }

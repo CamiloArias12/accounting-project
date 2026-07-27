@@ -1,14 +1,3 @@
-"""Reading the books.
-
-Only posted vouchers appear. A draft is a working document — counting it would
-mean the balances change while someone is still typing.
-
-There is no table behind this module: the ledger is what the voucher lines add
-up to. Keeping a running balance per account in its own table would be a second
-copy of the same truth, and the two would drift the first time a write failed
-halfway.
-"""
-
 from __future__ import annotations
 
 import datetime as dt
@@ -36,6 +25,7 @@ from app.modules.vouchers.posting import ZERO, VoucherStatus
 
 
 class LedgerService:
+    """Reading the books."""
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
@@ -47,13 +37,6 @@ class LedgerService:
         account_prefix: str | None = None,
         third_party_id: int | None = None,
     ) -> LedgerReport:
-        """Every account that moved, with what it carried in and what it ended on.
-
-        One query rather than two: the opening balance is the same sum over an
-        earlier slice of dates, so conditional aggregation gets both at once.
-        """
-        # The opening balance is the same sum over an earlier slice of dates,
-        # so one set of conditions per slice gets both in a single query.
         before: list[ColumnElement[bool]] = (
             [Voucher.date < date_from] if date_from is not None else []
         )
@@ -68,8 +51,6 @@ class LedgerService:
                 Account.code,
                 Account.name,
                 Account.nature,
-                # No `date_from` means no "before", so the opening is zero
-                # rather than everything.
                 _summed(VoucherLine.debit, before, unbounded=False).label(
                     "opening_debit"
                 ),
@@ -93,8 +74,6 @@ class LedgerService:
             opening = _money(row.opening_debit) - _money(row.opening_credit)
             debit, credit = _money(row.debit), _money(row.credit)
 
-            # An account whose only movement is outside the range still belongs
-            # in the report when it carries a balance into it.
             if opening == ZERO and debit == ZERO and credit == ZERO:
                 continue
 
@@ -125,7 +104,6 @@ class LedgerService:
         date_to: dt.date | None = None,
         third_party_id: int | None = None,
     ) -> AccountLedger:
-        """The movements behind one account, in the order they were posted."""
         account = await self._session.get(Account, code.strip())
         if account is None or account.is_deleted:
             raise AccountNotPostable(code, "it does not exist")
@@ -145,8 +123,6 @@ class LedgerService:
                     date=row.date,
                     period_year=row.period_year,
                     period_month=row.period_month,
-                    # The line's own note when it has one, the voucher's
-                    # otherwise: a ledger reads badly with a blank column.
                     description=row.line_description or row.description,
                     third_party_id=row.third_party_id,
                     third_party_name=(
@@ -183,16 +159,6 @@ class LedgerService:
         account_prefix: str | None = None,
         third_party_id: int | None = None,
     ) -> list[AccountLedger]:
-        """The auxiliary book: every account's movements, account by account.
-
-        The same thing `account()` returns, for as many accounts as the filters
-        match — two queries for all of them rather than two per account, which
-        is what makes exporting a whole chart survivable.
-
-        An account whose movement all falls outside the range still belongs in
-        the book when it carries a balance into it: a book that omits an opening
-        balance does not add up.
-        """
         openings = await self._balances_before(
             date_from, account_prefix, third_party_id
         )
@@ -207,8 +173,6 @@ class LedgerService:
             names[row.account_code] = (row.account_name, row.nature)
 
         book: list[AccountLedger] = []
-        # Sorted by code, which is also the order of the chart: the book reads
-        # top-down like the plan it follows.
         for code in sorted(set(grouped) | set(openings)):
             movements = grouped.get(code, [])
             opening = openings.get(code, ZERO)
@@ -262,15 +226,8 @@ class LedgerService:
 
         return book
 
-    # --- plumbing ---------------------------------------------------------
 
     async def _describe(self, code: str) -> tuple[str, Nature]:
-        """Name and nature of an account with no movement in the range.
-
-        Only reached for the accounts that are in the book on the strength of an
-        opening balance alone, so it stays a handful of lookups rather than one
-        per account.
-        """
         account = await self._session.get(Account, code)
         if account is None:
             return code, Nature.DEBIT
@@ -282,7 +239,6 @@ class LedgerService:
         account_prefix: str | None,
         third_party_id: int | None,
     ) -> dict[str, Decimal]:
-        """What every account carried into the range, in one query."""
         if date_from is None:
             return {}
 
@@ -343,12 +299,6 @@ class LedgerService:
         third_party_id: int | None,
         account_prefix: str | None = None,
     ) -> Sequence[Row[Any]]:
-        """Lines in the order the books were written in.
-
-        `code` narrows to one account, `account_prefix` to a branch, neither to
-        the whole chart — the auxiliary book reads many accounts at once, and
-        querying them one at a time would be one round trip per account.
-        """
         query = (
             select(
                 Voucher.id.label("voucher_id"),
@@ -365,21 +315,13 @@ class LedgerService:
                 VoucherLine.debit,
                 VoucherLine.credit,
                 VoucherLine.description.label("line_description"),
-                # The entity, not its name columns: `full_name` is a Python
-                # property, and selecting the pieces here would be a third copy
-                # of the rule that assembles them.
                 ThirdParty,
             )
             .select_from(VoucherLine)
             .join(Voucher, Voucher.id == VoucherLine.voucher_id)
             .join(Account, Account.code == VoucherLine.account_code)
-            # Outer: most lines name no third party, and an inner join would
-            # drop them from the account's own ledger.
             .outerjoin(ThirdParty, ThirdParty.id == VoucherLine.third_party_id)
             .where(Voucher.status == VoucherStatus.POSTED)
-            # By number within the date, not by date alone: the consecutive is
-            # the order the books were written in, which is what a running
-            # balance follows. Account first, so one pass yields whole blocks.
             .order_by(
                 VoucherLine.account_code,
                 Voucher.date,
@@ -407,11 +349,6 @@ def _summed(
     *,
     unbounded: bool = True,
 ) -> ColumnElement[Any]:
-    """Sum a column over the rows the conditions select.
-
-    With no conditions the meaning depends on the slice: an unbounded range is
-    everything, while a "before" with no starting date is nothing at all.
-    """
     if conditions:
         return func.coalesce(func.sum(case((and_(*conditions), column), else_=0)), 0)
     if unbounded:
@@ -425,7 +362,6 @@ def _narrow(
     third_party_id: int | None,
 ) -> Select[Any]:
     if account_prefix:
-        # Codes are prefixes of their children, so one branch is one LIKE.
         query = query.where(Account.code.startswith(account_prefix.strip()))
     if third_party_id is not None:
         query = query.where(VoucherLine.third_party_id == third_party_id)
@@ -441,14 +377,11 @@ def _totals(accounts: list[LedgerAccount]) -> LedgerTotals:
         debit=debit,
         credit=credit,
         balance=balance,
-        # The one check that covers everything behind it: if every voucher
-        # balanced, the books as a whole add up to nothing.
         is_balanced=balance == ZERO,
     )
 
 
 def _money(value: Any) -> Decimal:
-    """Aggregates come back as float on SQLite and Decimal on Postgres."""
     if isinstance(value, Decimal):
         return value
     return Decimal(str(value or 0))

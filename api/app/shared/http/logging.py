@@ -1,10 +1,3 @@
-"""Structured logging with a per-request identifier.
-
-Every log line carries the request id, so a single call can be followed across
-lines and across replicas. The id is echoed back in `X-Request-ID`, which is
-what makes a user-reported error traceable.
-"""
-
 from __future__ import annotations
 
 import json
@@ -19,13 +12,13 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 REQUEST_ID_HEADER = "X-Request-ID"
 
-#: Read by the formatter; a ContextVar keeps it correct under concurrency.
 request_id: ContextVar[str] = ContextVar("request_id", default="-")
 
 _RESERVED = frozenset(logging.LogRecord("", 0, "", 0, "", None, None).__dict__)
 
 
 class JsonFormatter(logging.Formatter):
+    """Structured logging with a per-request identifier."""
     def format(self, record: logging.LogRecord) -> str:
         payload = {
             "level": record.levelname,
@@ -35,7 +28,6 @@ class JsonFormatter(logging.Formatter):
             "time": self.formatTime(record, "%Y-%m-%dT%H:%M:%S%z"),
         }
 
-        # Anything passed via `extra=` rides along.
         payload.update({k: v for k, v in record.__dict__.items() if k not in _RESERVED})
 
         if record.exc_info:
@@ -52,7 +44,6 @@ def configure_logging(level: str) -> None:
     root.handlers = [handler]
     root.setLevel(level.upper())
 
-    # uvicorn ships its own handlers; drop them so everything is JSON.
     for name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
         logging.getLogger(name).handlers = []
         logging.getLogger(name).propagate = True
@@ -63,7 +54,6 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
         incoming = request.headers.get(REQUEST_ID_HEADER)
-        # An id from upstream is reused, so a trace survives across services.
         current = incoming or uuid.uuid4().hex
         token = request_id.set(current)
         started = time.perf_counter()
@@ -94,7 +84,6 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
             )
             return response
         finally:
-            # Reset last: the log lines above must still see the id.
             request_id.reset(token)
 
 

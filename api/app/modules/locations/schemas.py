@@ -1,11 +1,10 @@
-"""Pydantic at the edge: what the location catalogs look like over HTTP."""
-
 from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class CountryRead(BaseModel):
+    """Pydantic at the edge: what the location catalogs look like over HTTP."""
     model_config = ConfigDict(from_attributes=True)
 
     id: int

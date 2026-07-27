@@ -27,7 +27,7 @@ export interface Option {
 
 interface Props {
   value: string;
-  /** Shown on the trigger before anything has been searched. */
+  // Shown on the trigger before anything has been searched.
   selectedLabel?: string;
   placeholder: string;
   searchPlaceholder: string;
@@ -37,18 +37,6 @@ interface Props {
   disabled?: boolean;
 }
 
-/**
- * A picker that looks things up on the server as you type.
- *
- * Not a `<select>`: the chart of accounts has 2,449 rows and the third party
- * master grows without limit, so the list has to be narrowed before it reaches
- * the browser. Where the list is finite and already in hand, SearchableSelect
- * is the one to reach for — it posts its own value and needs no round trip.
- *
- * Built on Command, which brings what the hand-rolled version was missing:
- * arrow keys, Enter to choose, Escape to close, focus returned to the trigger,
- * and a listbox a screen reader can actually walk.
- */
 export function AsyncCombobox({
   value,
   selectedLabel,
@@ -64,12 +52,9 @@ export function AsyncCombobox({
   const [options, setOptions] = useState<Option[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Debounced, so typing a six-digit code is one lookup and not six.
   useEffect(() => {
     if (!open) return;
 
-    // The flag is raised inside the timer, not in the effect body: setting
-    // state synchronously there costs an extra render on every keystroke.
     const timer = setTimeout(() => {
       setLoading(true);
       search(query)
@@ -102,9 +87,6 @@ export function AsyncCombobox({
         }
       />
       <PopoverContent className="w-(--anchor-width) min-w-72 p-0" align="start">
-        {/* `shouldFilter={false}`: the filtering already happened on the
-            server, and letting cmdk filter again would hide rows the query
-            legitimately matched by code. */}
         <Command shouldFilter={false}>
           <CommandInput
             placeholder={searchPlaceholder}

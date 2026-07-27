@@ -41,7 +41,6 @@ export default async function LedgerPage({ searchParams }: Props) {
 
   try {
     // The detail replaces the report rather than sitting beside it: one account
-    // at a time is how a ledger is read.
     if (account) detail = await ledgerApi.account(account, filters);
     else report = await ledgerApi.report(filters);
   } catch (caught) {
@@ -69,11 +68,6 @@ export default async function LedgerPage({ searchParams }: Props) {
   );
 }
 
-/**
- * The filters are read back from the URL, which carries codes and ids. The
- * pickers need names, and a failed lookup falls back to what the URL said —
- * a code in the box beats an empty box that looks like no filter at all.
- */
 async function describeAccount(code: string): Promise<string> {
   if (!code) return "";
   try {

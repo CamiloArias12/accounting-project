@@ -1,18 +1,3 @@
-"""The third party table: whoever the books can point at.
-
-One table for both kinds of person, discriminated by `person_type`. The
-alternative — a table per kind — is what the reference project does, and it
-forces every accounting record to carry two nullable foreign keys and branch on
-which one is set. Here a movement points at one `third_party_id` and stops.
-
-The consequence is that the columns of each kind must be nullable, so "a natural
-person needs a first name" cannot be a NOT NULL constraint. That rule lives in
-the two constructors below, which are the only supported way to build a row.
-
-A third party is not a user: `users.third_party_id` links the two when someone
-needs to log in, and most third parties never will.
-"""
-
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
@@ -38,17 +23,13 @@ from app.modules.third_parties.documents import (
 from app.modules.third_parties.errors import IncompleteThirdParty
 from app.shared.database import Base, TimestampMixin
 
-#: Every enum is stored as its member name in a checked VARCHAR, the way the
-#: accounts module already does it, so the values stay readable in the database
-#: and renaming a label never needs a migration.
 _NATIVE_ENUM = False
 
 
 class ThirdParty(Base, TimestampMixin):
+    """The third party table: whoever the books can point at."""
     __tablename__ = "third_parties"
     __table_args__ = (
-        # Soft-deleted rows are included on purpose: a document that is already
-        # referenced by an accounting entry must not be reused by someone else.
         UniqueConstraint(
             "document_type", "document_number", name="uq_third_parties_document"
         ),
@@ -56,7 +37,6 @@ class ThirdParty(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    # --- Identity -----------------------------------------------------------
     person_type: Mapped[PersonType] = mapped_column(
         Enum(
             PersonType,
@@ -75,11 +55,8 @@ class ThirdParty(Base, TimestampMixin):
         )
     )
     document_number: Mapped[str] = mapped_column(String(20), index=True)
-    #: NIT only. Derived from the number, but stored so it can be searched and
-    #: printed without recomputing it.
     check_digit: Mapped[int | None] = mapped_column(default=None)
 
-    # --- Natural person -----------------------------------------------------
     first_name: Mapped[str | None] = mapped_column(String(50), default=None)
     middle_name: Mapped[str | None] = mapped_column(String(50), default=None)
     first_surname: Mapped[str | None] = mapped_column(String(50), default=None)
@@ -92,8 +69,6 @@ class ThirdParty(Base, TimestampMixin):
     birth_country_id: Mapped[int | None] = mapped_column(
         ForeignKey("countries.id", ondelete="RESTRICT"), default=None
     )
-    #: Null outside Colombia: the DANE catalog does not cover other countries,
-    #: so a foreign birthplace stops at the country.
     birth_department_id: Mapped[int | None] = mapped_column(
         ForeignKey("departments.id", ondelete="RESTRICT"), default=None
     )
@@ -133,7 +108,6 @@ class ThirdParty(Base, TimestampMixin):
     )
     profession: Mapped[str | None] = mapped_column(String(80), default=None)
 
-    # --- Legal entity -------------------------------------------------------
     legal_name: Mapped[str | None] = mapped_column(String(150), default=None)
     company_type: Mapped[CompanyType | None] = mapped_column(
         Enum(
@@ -159,10 +133,7 @@ class ThirdParty(Base, TimestampMixin):
     )
     legal_rep_name: Mapped[str | None] = mapped_column(String(150), default=None)
 
-    # --- Common -------------------------------------------------------------
-    #: The name the third party trades under, when it differs from the legal one.
     trade_name: Mapped[str | None] = mapped_column(String(150), default=None)
-    #: Residence for a person, registered address for a company.
     address: Mapped[str | None] = mapped_column(String(120), default=None)
     country_id: Mapped[int | None] = mapped_column(
         ForeignKey("countries.id", ondelete="RESTRICT"), default=None
@@ -186,16 +157,12 @@ class ThirdParty(Base, TimestampMixin):
         default=TaxRegime.NOT_VAT_RESPONSIBLE,
     )
 
-    # --- SARLAFT declarations -----------------------------------------------
     foreign_operations: Mapped[bool] = mapped_column(default=False)
     public_resources: Mapped[bool] = mapped_column(default=False)
     public_recognition: Mapped[bool] = mapped_column(default=False)
     public_power: Mapped[bool] = mapped_column(default=False)
 
-    # --- State --------------------------------------------------------------
     is_active: Mapped[bool] = mapped_column(default=True)
-    #: Soft delete marker. Rows are never removed: a third party named in an
-    #: accounting entry must stay resolvable for as long as the entry exists.
     deleted_at: Mapped[datetime | None] = mapped_column(default=None, index=True)
 
     issue_city: Mapped[City | None] = relationship(foreign_keys=[issue_city_id])
@@ -247,13 +214,6 @@ class ThirdParty(Base, TimestampMixin):
         public_power: bool = False,
         is_active: bool = True,
     ) -> ThirdParty:
-        """Register a human being.
-
-        Every field the reference project asks for is required here too; only
-        the second given name, the second surname and the landline are optional,
-        along with the birthplace below country level, which does not exist
-        outside Colombia.
-        """
         number = normalize_document(document_number, document_type)
 
         return cls(
@@ -319,12 +279,6 @@ class ThirdParty(Base, TimestampMixin):
         public_power: bool = False,
         is_active: bool = True,
     ) -> ThirdParty:
-        """Register an organization.
-
-        The document type is not a parameter: a legal entity registered in
-        Colombia is identified by its NIT, and accepting anything else would
-        make the check digit optional for rows that must have one.
-        """
         number = normalize_document(document_number, DocumentType.NIT)
 
         return cls(
@@ -358,7 +312,6 @@ class ThirdParty(Base, TimestampMixin):
 
     @property
     def full_name(self) -> str:
-        """What to show in a list or print on a document."""
         if self.person_type is PersonType.LEGAL:
             return self.legal_name or ""
 
@@ -372,7 +325,6 @@ class ThirdParty(Base, TimestampMixin):
 
     @property
     def formatted_document(self) -> str:
-        """The number as people write it, check digit included."""
         if self.check_digit is None:
             return self.document_number
         return f"{self.document_number}-{self.check_digit}"
@@ -382,7 +334,6 @@ class ThirdParty(Base, TimestampMixin):
         return self.deleted_at is not None
 
     def mark_deleted(self) -> None:
-        # Naive, to match the other timestamp columns.
         self.deleted_at = datetime.now(UTC).replace(tzinfo=None)
 
     def restore(self) -> None:
@@ -395,7 +346,6 @@ class ThirdParty(Base, TimestampMixin):
 def _resolve_check_digit(
     number: str, document_type: DocumentType, given: int | None
 ) -> int | None:
-    """Validate the check digit when it was supplied, derive it otherwise."""
     if not requires_check_digit(document_type):
         if given is not None:
             raise IncompleteThirdParty(f"A {document_type.value} has no check digit")

@@ -1,20 +1,15 @@
-"""Voucher business errors. The web layer maps them to status codes."""
-
 from app.shared.errors import DomainError
 
 
 class VoucherNotFound(DomainError):
+    """Voucher business errors."""
     def __init__(self, voucher_id: int) -> None:
         super().__init__(f"Voucher {voucher_id} does not exist")
         self.voucher_id = voucher_id
 
 
 class VoucherNotEditable(DomainError):
-    """A posted voucher is an accounting record, not a working document.
-
-    Correcting one means writing the reversing entry, not rewriting history:
-    the books have to show what was recorded and what corrected it.
-    """
+    """A posted voucher is an accounting record, not a working document."""
 
     def __init__(self, voucher_id: int) -> None:
         super().__init__(
@@ -31,10 +26,7 @@ class VoucherAlreadyPosted(DomainError):
 
 
 class VoucherNotPosted(DomainError):
-    """There is nothing to undo in a draft: it was never in the books.
-
-    A draft that turned out to be wrong is edited or discarded.
-    """
+    """There is nothing to undo in a draft: it was never in the books."""
 
     def __init__(self, voucher_id: int) -> None:
         super().__init__(
@@ -54,11 +46,7 @@ class VoucherAlreadyReversed(DomainError):
 
 
 class VoucherIsReversal(DomainError):
-    """A reversal is already a correction; undoing it would restore the error.
-
-    What is wanted in that case is a fresh entry, which says plainly what it
-    does instead of leaving a chain of undos to be unwound.
-    """
+    """A reversal is already a correction; undoing it would restore the error."""
 
     def __init__(self, voucher_id: int) -> None:
         super().__init__(
@@ -68,11 +56,7 @@ class VoucherIsReversal(DomainError):
 
 
 class AccountNotPostable(DomainError):
-    """Entries go on the leaves of the chart, never on a heading.
-
-    Posting to a parent would double-count it: its balance is the sum of its
-    children, and a figure of its own would be added on top.
-    """
+    """Entries go on the leaves of the chart, never on a heading."""
 
     def __init__(self, code: str, reason: str) -> None:
         super().__init__(f"Account {code} cannot be posted to: {reason}")

@@ -73,8 +73,6 @@ export default function Overview() {
               href={card.href}
               className="group relative flex flex-col gap-3 overflow-hidden rounded-2xl bg-card p-5 shadow-xs ring-1 ring-border transition-all hover:-translate-y-0.5 hover:shadow-md hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              {/* A wash that only appears on hover: it signals the whole card
-                  is the target, which a link-coloured word alone does not. */}
               <span
                 aria-hidden
                 className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/[0.07] to-transparent opacity-0 transition-opacity group-hover:opacity-100"

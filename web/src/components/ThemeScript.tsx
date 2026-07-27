@@ -1,12 +1,6 @@
 import { THEME_COOKIE } from "@/lib/theme";
 
-/**
- * Resolves the theme before the first paint.
- *
- * The server knows the cookie but not the OS preference, so "system" can only
- * be settled in the browser. Doing it in a blocking inline script avoids the
- * flash of the wrong theme that a `useEffect` would cause.
- */
+// Resolves the theme before the first paint.
 export function ThemeScript() {
   const script = `
 (function () {

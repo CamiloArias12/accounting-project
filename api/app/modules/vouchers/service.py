@@ -1,13 +1,3 @@
-"""Business rules for accounting vouchers.
-
-The service owns the session and therefore the transaction, like the accounts
-one: it decides what a unit of work is and commits once.
-
-Three things happen here that cannot happen anywhere else, because each needs
-the database to answer: whether an account may be posted to, whether a line's
-third party exists, and what the next consecutive number is.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -39,16 +29,14 @@ from app.modules.vouchers.schemas import (
 )
 from app.shared.pagination import count_of
 
-#: How many times a posting retries when two of them race for the same number.
-#: The unique index is what makes the collision safe; this only makes it rare.
 _NUMBER_ATTEMPTS = 5
 
 
 class VoucherService:
+    """Business rules for accounting vouchers."""
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    # --- reads ------------------------------------------------------------
 
     async def get(self, voucher_id: int) -> Voucher:
         voucher = await self._session.get(Voucher, voucher_id)
@@ -68,7 +56,6 @@ class VoucherService:
         skip: int = 0,
         limit: int = 50,
     ) -> tuple[Sequence[Voucher], int]:
-        """The slice and the total, so a caller can page through it."""
         query: Select[tuple[Voucher]] = select(Voucher)
 
         if status is not None:
@@ -86,25 +73,16 @@ class VoucherService:
 
         total = await count_of(self._session, query)
         result = await self._session.execute(
-            # Newest first, and drafts — which have no number — before the
-            # posted ones of the same day.
             query.order_by(Voucher.date.desc(), Voucher.id.desc())
             .offset(skip)
             .limit(limit)
         )
         return result.scalars().all(), total
 
-    # --- writes -----------------------------------------------------------
 
     async def create(
         self, payload: VoucherCreate, *, user_id: int | None = None
     ) -> Voucher:
-        """Write a draft.
-
-        The entry is checked as a whole here rather than at posting time, so the
-        person typing it finds out immediately that it does not balance. Posting
-        checks it again: the lines can change in between.
-        """
         voucher = Voucher.open(
             date=payload.date,
             description=payload.description,
@@ -132,9 +110,6 @@ class VoucherService:
             voucher.period_month = payload.period_month
 
         if payload.lines is not None:
-            # Replaced wholesale, never patched row by row: the reference
-            # project assigns by position, so removing one line silently
-            # rewrites every line after it.
             voucher.lines = await self._build_lines(payload.lines)
 
         voucher.require_balanced()
@@ -144,7 +119,6 @@ class VoucherService:
         return voucher
 
     async def delete(self, voucher_id: int) -> None:
-        """Only a draft can be deleted; a posted voucher is a record."""
         voucher = await self.get(voucher_id)
         voucher.require_editable()
 
@@ -152,13 +126,6 @@ class VoucherService:
         await self._session.commit()
 
     async def post(self, voucher_id: int, *, user_id: int | None = None) -> Voucher:
-        """Put the voucher in the books.
-
-        Everything is checked again here, not only when the draft was written.
-        A draft can sit for days: an account may have been deactivated and the
-        period may have been closed since, and both decide whether these figures
-        may enter the books at all.
-        """
         voucher = await self.get(voucher_id)
         if voucher.is_posted:
             raise VoucherAlreadyPosted(voucher_id)
@@ -172,8 +139,6 @@ class VoucherService:
             try:
                 await self._session.commit()
             except IntegrityError:
-                # Another posting took the number first. The unique index is
-                # what keeps the series honest; this just tries again.
                 await self._session.rollback()
                 voucher = await self.get(voucher_id)
                 if attempt == _NUMBER_ATTEMPTS - 1:
@@ -192,12 +157,6 @@ class VoucherService:
         *,
         user_id: int | None = None,
     ) -> Voucher:
-        """Undo a posted voucher by writing the entry that cancels it.
-
-        The reversal is posted in the same operation, not left as a draft: a
-        posted mistake with an unposted correction is worse than either, because
-        the books show only the mistake until someone remembers to finish.
-        """
         original = await self.get(voucher_id)
         original.require_reversible()
 
@@ -220,22 +179,13 @@ class VoucherService:
         undo.require_balanced()
         undo.post(await self._next_number(), user_id=user_id)
 
-        # One commit for the whole thing: the reversal and its posting either
-        # both happen or neither does.
         self._session.add(undo)
         await self._session.commit()
         await self._session.refresh(undo)
         return undo
 
-    # --- plumbing ---------------------------------------------------------
 
     async def _require_open_period(self, period: AccountingPeriod) -> None:
-        """Refuse a closed period.
-
-        Checked against the voucher's period rather than the date on the
-        document: the two can differ, and it is the period the figures belong
-        to that a close is meant to freeze.
-        """
         if await PeriodService(self._session).status_of(period) is PeriodStatus.CLOSED:
             raise PeriodClosed(str(period))
 
@@ -244,7 +194,6 @@ class VoucherService:
         return (result.scalar_one() or 0) + 1
 
     async def _build_lines(self, inputs: list[VoucherLineInput]) -> list[VoucherLine]:
-        """Turn the payload into lines, checking each against the chart."""
         lines: list[VoucherLine] = []
 
         for position, line in enumerate(inputs, start=1):
@@ -276,8 +225,6 @@ class VoucherService:
         if not account.is_active:
             raise AccountNotPostable(code, "it is inactive")
         if await self._has_children(account.code):
-            # Its balance is the sum of its children; a figure of its own would
-            # be counted twice.
             raise AccountNotPostable(code, "it is a heading, not a leaf")
 
         return account
@@ -300,7 +247,6 @@ class VoucherService:
 def _period_of(
     year: int | None, month: int | None, day: date
 ) -> AccountingPeriod | None:
-    """An explicit period, or none so the model derives it from the date."""
     if year is None or month is None:
         return None
     return AccountingPeriod(year=year, month=month)

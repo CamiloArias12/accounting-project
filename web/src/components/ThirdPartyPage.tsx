@@ -19,7 +19,7 @@ interface Props {
   loadError: string | null;
 }
 
-/** The shell both the new and the detail routes render the form inside. */
+// The shell both the new and the detail routes render the form inside.
 export function ThirdPartyPage({
   thirdParty,
   countries,
@@ -36,8 +36,6 @@ export function ThirdPartyPage({
         variant="ghost"
         size="sm"
         className="-ml-2 self-start text-muted-foreground"
-        // `nativeButton={false}`: this renders an <a>, and Base UI warns when a
-        // component styled as a button is not one — the semantics differ.
         nativeButton={false}
         render={<Link href="/third-parties" />}
       >

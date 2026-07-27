@@ -1,13 +1,3 @@
-"""The stored state of an accounting period.
-
-Only closed periods have a row. A period nobody has closed is open, which is
-what makes the books usable from the first day: otherwise every month would have
-to be created by hand before anything could be posted into it.
-
-That means absence is meaningful here, and the service answers `status` for any
-month rather than looking one up.
-"""
-
 from __future__ import annotations
 
 import datetime as dt
@@ -20,6 +10,7 @@ from app.shared.database import Base, TimestampMixin
 
 
 class Period(Base, TimestampMixin):
+    """The stored state of an accounting period."""
     __tablename__ = "accounting_periods"
     __table_args__ = (
         UniqueConstraint("year", "month", name="uq_accounting_periods_month"),
@@ -36,8 +27,6 @@ class Period(Base, TimestampMixin):
         index=True,
     )
 
-    #: Who closed it and when. Reopening overwrites these with the reopening,
-    #: so the row always describes the change that produced its current state.
     changed_at: Mapped[dt.datetime | None] = mapped_column(default=None)
     changed_by_user_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), default=None
@@ -67,11 +56,6 @@ class Period(Base, TimestampMixin):
         self.changed_by_user_id = user_id
 
     def reopen(self, *, user_id: int | None = None) -> None:
-        """Undo a close.
-
-        The row is kept rather than deleted: that a period was once closed and
-        then reopened is exactly the kind of thing an audit asks about.
-        """
         self.status = PeriodStatus.OPEN
         self.changed_at = _now()
         self.changed_by_user_id = user_id
@@ -81,5 +65,4 @@ class Period(Base, TimestampMixin):
 
 
 def _now() -> dt.datetime:
-    # Naive, to match the other timestamp columns.
     return dt.datetime.now(dt.UTC).replace(tzinfo=None)

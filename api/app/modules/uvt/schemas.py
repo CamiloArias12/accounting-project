@@ -1,5 +1,3 @@
-"""Pydantic at the edge: what the UVT looks like over HTTP."""
-
 from __future__ import annotations
 
 import datetime as dt
@@ -12,6 +10,7 @@ from app.modules.uvt.provider import MAX_YEAR, MIN_YEAR
 
 
 class UvtValueRead(BaseModel):
+    """Pydantic at the edge: what the UVT looks like over HTTP."""
     model_config = ConfigDict(from_attributes=True)
 
     year: int

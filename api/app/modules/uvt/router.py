@@ -35,16 +35,6 @@ Year = Annotated[int, Path(ge=MIN_YEAR, le=MAX_YEAR)]
 
 
 def get_provider() -> UvtProvider:
-    """The source the refresh talks to, chosen by configuration.
-
-    `http` by default, reading a published table over the network. The DIAN
-    itself publishes the UVT only as a resolution — a PDF in the normograma —
-    and Datos Abiertos carries no dataset for it, so there is no official
-    machine-readable endpoint to point at; see `provider.DEFAULT_SOURCE_URL`.
-
-    `simulated` answers from a hardcoded table and is what the tests use, so a
-    suite never depends on somebody else's uptime.
-    """
     if settings.UVT_SOURCE == "simulated":
         return SimulatedUvtProvider(
             failure_rate=settings.UVT_SOURCE_FAILURE_RATE,
@@ -77,11 +67,6 @@ async def list_runs(
     service: ServiceDep,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
 ) -> list[UvtFetchRun]:
-    """Every attempt to refresh, successful or not.
-
-    The failures are the point: a threshold that quietly used a stale UVT
-    because a fetch died is what this list makes visible.
-    """
     return list(await service.runs(limit=limit))
 
 
@@ -95,12 +80,6 @@ async def refresh(
     background: BackgroundTasks,
     provider: ProviderDep,
 ) -> UvtRefreshAccepted:
-    """Ask for a year to be refreshed and answer immediately.
-
-    202, not 200: the source is a third party that may be slow or down, and
-    three attempts with backoff is not something a caller should hold a
-    connection open for. The outcome shows up under `/uvt/runs`.
-    """
     background.add_task(_refresh_in_background, payload.year, provider)
     return UvtRefreshAccepted(year=payload.year)
 
@@ -114,20 +93,9 @@ async def read_value(year: Year, service: ServiceDep) -> UvtValue:
 
 @router.put("/{year}", response_model=UvtValueRead)
 async def set_value(year: Year, payload: UvtValueSet, service: ServiceDep) -> UvtValue:
-    """Type in a value the source does not carry yet.
-
-    A later refresh will not overwrite it: a figure read off the resolution
-    outranks whatever the source makes of it.
-    """
     return await service.set_manually(year, payload.value)
 
 
 async def _refresh_in_background(year: int, provider: UvtProvider) -> None:
-    """Runs after the response has gone out, on a session of its own.
-
-    The request's session is closed by then, so this opens another; and it
-    swallows nothing — the outcome, including the failure, lands in
-    `uvt_fetch_runs`.
-    """
     async with SessionFactory() as session:
         await UvtService(session).refresh(year, provider)

@@ -52,12 +52,7 @@ export default async function VoucherDetailPage({ params }: Props) {
   );
 }
 
-/**
- * The names behind the third party ids on the lines.
- *
- * The voucher stores ids; the pickers show names. Resolving them here keeps the
- * form from opening with a row of bare numbers.
- */
+// The names behind the third party ids on the lines.
 async function namesOf(voucher: Voucher): Promise<Record<number, string>> {
   const ids = [
     ...new Set(

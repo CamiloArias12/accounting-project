@@ -32,11 +32,7 @@ function PopoverContent({
         alignOffset={alignOffset}
         side={side}
         sideOffset={sideOffset}
-        // `fixed`, not the default `absolute`. The positioner is a portal at
-        // the top of <body> that places its popup with a transform; when the
-        // popup takes focus, the browser scrolls that *untransformed* origin
-        // into view, which throws a scrolled page back to the top. Positioned
-        // against the viewport there is nothing left to scroll to.
+        // `fixed`, not the default `absolute`.
         positionMethod="fixed"
         className="isolate z-50"
       >

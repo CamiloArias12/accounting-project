@@ -1,9 +1,8 @@
-"""Account business errors. The web layer maps them to status codes."""
-
 from app.shared.errors import DomainError
 
 
 class AccountNotFound(DomainError):
+    """Account business errors."""
     def __init__(self, code: str) -> None:
         super().__init__(f"Account {code} does not exist")
         self.code = code

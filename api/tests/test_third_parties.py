@@ -21,7 +21,6 @@ from app.modules.third_parties.models import ThirdParty
 
 
 async def seed_place(session: AsyncSession) -> tuple[int, int, int]:
-    """One country, department and city, to hang the foreign keys off."""
     colombia = Country(iso_code="CO", name="Colombia")
     session.add(colombia)
     await session.flush()
@@ -84,8 +83,6 @@ def a_legal_entity(*, country_id: int, **overrides: object) -> ThirdParty:
 
 
 async def test_the_check_digit_is_derived_and_verified(session: AsyncSession) -> None:
-    # Real NIT/DV pairs, so the weight table is checked against something other
-    # than itself: 800197268 is the DIAN, 890903938 is Bancolombia.
     assert compute_check_digit("800197268") == 4
     assert compute_check_digit("890903938") == 8
 
@@ -95,7 +92,6 @@ async def test_the_check_digit_is_derived_and_verified(session: AsyncSession) ->
     assert company.check_digit == 4
     assert company.formatted_document == "800197268-4"
 
-    # A typed digit that disagrees is a different company.
     with pytest.raises(InvalidDocument, match="is 4, not 9"):
         a_legal_entity(country_id=country_id, check_digit=9)
 
@@ -106,7 +102,6 @@ async def test_the_document_identifies_the_person_for_good(
     assert normalize_document("  1.020.304  ", DocumentType.CITIZEN_ID) == "1020304"
     with pytest.raises(InvalidDocument, match="digits only"):
         normalize_document("AB123456", DocumentType.CITIZEN_ID)
-    # Silently splitting it would store a different number than the one typed.
     with pytest.raises(InvalidDocument, match="must not include the check digit"):
         normalize_document("900123456-7", DocumentType.NIT)
 
@@ -121,8 +116,6 @@ async def test_the_document_identifies_the_person_for_good(
     person.mark_deleted()
     await session.flush()
 
-    # A document already named in an accounting entry must not be reused by
-    # somebody else, so the unique constraint covers deleted rows too.
     session.add(a_natural_person(country_id=country_id, city_id=city_id))
     with pytest.raises(IntegrityError):
         await session.flush()

@@ -11,10 +11,7 @@ interface Props {
   nodes: AccountNode[];
   selectedCode: string | null;
   onSelect: (account: AccountNode) => void;
-  /**
-   * Open every branch. Set while searching: a match buried under collapsed
-   * ancestors would otherwise look like no result at all.
-   */
+  // Open every branch.
   expandAll?: boolean;
 }
 
@@ -66,9 +63,6 @@ function TreeItem({
   expandAll,
 }: ItemProps) {
   const t = useTranslations("accounts");
-  // Classes start open; everything else collapsed, or a 2,446-account tree
-  // would be unreadable at a glance. While searching everything opens, and the
-  // parent remounts the tree so this initial value is re-evaluated.
   const [expanded, setExpanded] = useState(expandAll || depth === 0);
 
   const hasChildren = node.children.length > 0;
@@ -78,9 +72,6 @@ function TreeItem({
   return (
     <li>
       <div
-        // The indent comes from the nested lists below, not from a computed
-        // padding: one rule instead of one per level, and the guide line lands
-        // exactly where the children start.
         className={cn(
           "group flex items-center gap-1 rounded-lg pl-1 pr-2 text-sm transition-colors",
           isSelected ? "bg-primary/10 text-primary" : "hover:bg-muted",
@@ -137,8 +128,6 @@ function TreeItem({
 
       {hasChildren && expanded && (
         <ul
-          // The guide line: at four levels deep, indentation alone stops being
-          // enough to tell which parent a row belongs to.
           className="ml-[0.85rem] border-l border-border/70"
         >
           {node.children.map((child) => (

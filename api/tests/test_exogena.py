@@ -2,17 +2,17 @@ from decimal import Decimal
 from typing import Any
 from xml.etree import ElementTree as ET
 
+import pytest
 from httpx import AsyncClient, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.exogena.report import Filer, InvalidFiler
 from tests.test_third_parties_api import natural_payload, seed_places
 from tests.test_vouchers import a_posted_voucher
 
 BASE = "/api/v1/exogena"
 ACCOUNTS = "/api/v1/accounts"
 
-#: 5002 is the concept the payment and its withholding both report under, which
-#: is what puts `valorBruto` and `valorRetencion` on the same `Registro`.
 CHART: list[dict[str, Any]] = [
     {"code": "1", "name": "ACTIVOS", "nature": "Debito"},
     {"code": "11", "name": "DISPONIBLE", "nature": "Debito"},
@@ -49,8 +49,6 @@ async def seed_chart(auth_client: AsyncClient) -> None:
 async def a_supplier(
     auth_client: AsyncClient, places: dict[str, int], **overrides: Any
 ) -> int:
-    """The places are seeded once and passed in: seeding them twice trips the
-    unique on the DANE codes, which is the catalogue doing its job."""
     created = await auth_client.post(
         "/api/v1/third-parties", json=natural_payload(places, **overrides)
     )
@@ -66,13 +64,10 @@ async def a_payment(
     *,
     year: int = 2025,
 ) -> None:
-    """Fees paid to a supplier, with the withholding taken off."""
     net = Decimal(gross) - Decimal(withheld)
     lines: list[dict[str, Any]] = [
         {"account_code": "511005", "debit": gross, "third_party_id": supplier},
     ]
-    # A line carrying neither a debit nor a credit is refused, so a payment
-    # with nothing withheld simply has no withholding line.
     if Decimal(withheld) > 0:
         lines.append(
             {
@@ -94,16 +89,18 @@ async def a_payment(
 
 
 async def generate(client: AsyncClient, payload: dict[str, Any]) -> Response:
-    """Generate a report and fetch the file it produced.
-
-    Two calls, because the endpoint answers with the record rather than the
-    bytes: what a person needs to see before filing is how many third parties
-    made the cut, and an attachment shows none of it.
-    """
     created = await client.post(BASE + "/generate", json=payload)
     assert created.status_code == 201, created.text
 
     return await client.get(f"{BASE}/history/{created.json()['id']}/file")
+
+
+def test_the_filers_own_nit_is_verified_before_it_is_filed() -> None:
+    with pytest.raises(InvalidFiler, match="is 5, not 9"):
+        Filer.of(nit="900000000-9", legal_name="Acme", year=2025)
+
+    assert Filer.of(nit="900000000-5", legal_name="Acme", year=2025).check_digit == 5
+    assert Filer.of(nit="900000000", legal_name="Acme", year=2025).check_digit == 5
 
 
 async def test_the_xml_carries_one_row_per_third_party_and_concept(
@@ -114,8 +111,6 @@ async def test_the_xml_carries_one_row_per_third_party_and_concept(
     supplier = await a_supplier(auth_client, places)
     await a_payment(auth_client, supplier, "1000000.00", "100000.00")
     await a_payment(auth_client, supplier, "500000.00", "50000.00")
-    # A draft is not in the books, and 110505 carries no concept, so neither
-    # the unposted entry nor the cash side is reportable.
     await auth_client.post(
         "/api/v1/vouchers",
         json={
@@ -140,16 +135,12 @@ async def test_the_xml_carries_one_row_per_third_party_and_concept(
     root = ET.fromstring(generated.text)
     assert root.tag == "InformacionExogena"
 
-    # The tags stay Spanish: they are the file format the DIAN mandates, not a
-    # naming choice of ours.
     filer = root.find("Informante")
     assert filer is not None
     assert set(filer.attrib) == {"nit", "dv", "razonSocial", "anioGravable"}
     assert filer.attrib["anioGravable"] == "2025"
 
     registros = root.findall("Registros/Registro")
-    # Two payments, one third party, one concept: one row, and the draft's
-    # 900.000 nowhere in it.
     assert len(registros) == 1
     assert set(registros[0].attrib) == {
         "tipoDoc",
@@ -159,8 +150,6 @@ async def test_the_xml_carries_one_row_per_third_party_and_concept(
         "valorBruto",
         "valorRetencion",
     }
-    # 13 is the DIAN's code for a cédula de ciudadanía. The file carries the
-    # code, not our label: "Citizen ID" would be rejected.
     assert registros[0].attrib["tipoDoc"] == "13"
     assert registros[0].attrib["concepto"] == "5002"
     assert registros[0].attrib["valorBruto"] == "1500000"
@@ -184,7 +173,6 @@ async def test_the_threshold_needs_the_uvt_of_that_year(
     small = await a_supplier(
         auth_client, places, document_number="80808080", first_name="Beto"
     )
-    # 100 UVT is 4.979.900 pesos.
     await a_payment(auth_client, big, "6000000.00", "0.00")
     await a_payment(auth_client, small, "1000000.00", "0.00")
 
@@ -193,23 +181,18 @@ async def test_the_threshold_needs_the_uvt_of_that_year(
     registros = ET.fromstring(generated.text).findall("Registros/Registro")
     assert [r.attrib["valorBruto"] for r in registros] == ["6000000"]
 
-    # The filing is recorded with what it was generated from.
     history = (await auth_client.get(BASE + "/history")).json()
     assert history[0]["threshold_pesos"] == "4979900.00"
     assert history[0]["excluded_count"] == 1
     assert history[0]["uvt_value"] == "49799.00"
     assert history[0]["generated_by_user_id"] is not None
 
-    # Falling back to a neighbouring year would move the threshold by thousands
-    # of pesos without anybody noticing.
     refused = await auth_client.post(
         BASE + "/generate", json={"year": 2019, "threshold_uvt": "100"}
     )
     assert refused.status_code == 409
     assert "needs the UVT of 2019" in refused.json()["detail"]
 
-    # A threshold of zero needs no UVT at all, which keeps the report usable
-    # for a year nobody has published one for.
     no_uvt_needed = await generate(auth_client, {"year": 2019, "threshold_uvt": "0"})
     assert no_uvt_needed.status_code == 200
 
@@ -217,7 +200,6 @@ async def test_the_threshold_needs_the_uvt_of_that_year(
 async def test_the_file_comes_back_byte_for_byte(
     auth_client: AsyncClient, session: AsyncSession
 ) -> None:
-    """What was filed, not what the books would produce today."""
     await seed_chart(auth_client)
     places = await seed_places(session)
     supplier = await a_supplier(auth_client, places)
@@ -226,7 +208,16 @@ async def test_the_file_comes_back_byte_for_byte(
     first = await generate(auth_client, {"year": 2025, "threshold_uvt": "0"})
     generation_id = (await auth_client.get(BASE + "/history")).json()[0]["id"]
 
-    # The books move underneath it.
+    straight = await auth_client.post(
+        BASE + "/generate",
+        params={"download": "true"},
+        json={"year": 2025, "threshold_uvt": "0"},
+    )
+    assert straight.status_code == 201
+    assert straight.headers["content-type"].startswith("application/xml")
+    assert "attachment" in straight.headers["content-disposition"]
+    assert straight.text == first.text
+
     await a_payment(auth_client, supplier, "9999999.00", "0.00")
 
     again = await auth_client.get(f"{BASE}/history/{generation_id}/file")

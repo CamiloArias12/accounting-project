@@ -33,12 +33,9 @@ import type {
 } from "@/types/voucher";
 
 // Resolved on the server, so it points at the service inside the Compose
-// network. Not being NEXT_PUBLIC_* it never reaches the browser nor gets baked
-// into the bundle: changing it does not require rebuilding the image.
 const BASE_URL = process.env.API_URL ?? "http://api:8000";
 const API = `${BASE_URL}/api/v1`;
 
-/** An API failure carrying the backend's own message, not a generic one. */
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -51,8 +48,6 @@ export class ApiError extends Error {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API}${path}`, {
-    // The chart changes as it is edited; caching is governed by the server
-    // actions' revalidation, not by the fetch cache.
     cache: "no-store",
     ...init,
     headers: await buildHeaders(init),
@@ -67,10 +62,6 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     : ((await response.json()) as T);
 }
 
-/**
- * FormData must not carry a Content-Type: the runtime sets it with the
- * multipart boundary, and overriding it makes the upload unparseable.
- */
 async function buildHeaders(init?: RequestInit): Promise<HeadersInit> {
   const headers: Record<string, string> = init?.body instanceof FormData
     ? {}
@@ -82,7 +73,6 @@ async function buildHeaders(init?: RequestInit): Promise<HeadersInit> {
   return { ...headers, ...(init?.headers as Record<string, string> | undefined) };
 }
 
-/** FastAPI uses `detail`, which is either text or a list of validation errors. */
 async function readErrorMessage(response: Response): Promise<string> {
   try {
     const body = await response.json();
@@ -93,14 +83,12 @@ async function readErrorMessage(response: Response): Promise<string> {
       return detail.map((item) => item.msg ?? String(item)).join("; ");
     }
   } catch {
-    // Empty or non-JSON body: fall through to the default message.
   }
   return `Error ${response.status}`;
 }
 
 export interface TreeOptions {
   rootCode?: string;
-  /** Levels below the root; omit for the whole subtree. */
   maxDepth?: number;
   includeDeleted?: boolean;
 }
@@ -110,7 +98,6 @@ export interface ListParams {
   parent_code?: string;
   search?: string;
   only_active?: boolean;
-  /** Only accounts entries may be posted to: the leaves of the chart. */
   only_postable?: boolean;
   include_deleted?: boolean;
   skip?: number;
@@ -135,7 +122,6 @@ export interface CurrentUser {
 }
 
 export const authApi = {
-  /** The OAuth2 password flow is form-encoded, not JSON. */
   login(credentials: Credentials): Promise<Session> {
     const body = new URLSearchParams({
       username: credentials.email,
@@ -193,7 +179,6 @@ export const accountsApi = {
     });
   },
 
-  /** Soft delete: the account is kept and stamped with `deleted_at`. */
   remove(code: string): Promise<Account> {
     return request<Account>(`/accounts/${code}`, { method: "DELETE" });
   },
@@ -212,7 +197,6 @@ export const accountsApi = {
   },
 };
 
-/** Turns a params object into a query string, dropping empty values. */
 function toQuery(params: Record<string, unknown>): string {
   const query = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
@@ -235,7 +219,6 @@ export interface CityParams {
   limit?: number;
 }
 
-/** Read-only: the catalogs are seeded by migration, so there is nothing to write. */
 export const locationsApi = {
   countries(search?: string): Promise<Country[]> {
     return request<Country[]>(`/locations/countries${toQuery({ search })}`);
@@ -249,7 +232,6 @@ export const locationsApi = {
     return request<City[]>(`/locations/cities${toQuery({ ...params })}`);
   },
 
-  /** Resolves which department a stored city id belongs to. */
   city(id: number): Promise<City> {
     return request<City>(`/locations/cities/${id}`);
   },
@@ -279,7 +261,6 @@ export const thirdPartiesApi = {
     });
   },
 
-  /** Soft delete: the row is kept and stamped with `deleted_at`. */
   remove(id: number): Promise<ThirdParty> {
     return request<ThirdParty>(`/third-parties/${id}`, { method: "DELETE" });
   },
@@ -292,7 +273,6 @@ export const thirdPartiesApi = {
 };
 
 export const vouchersApi = {
-  /** The company the books belong to. Configuration, not a record. */
   company(): Promise<Company> {
     return request<Company>("/vouchers/company");
   },
@@ -319,12 +299,10 @@ export const vouchersApi = {
     });
   },
 
-  /** Takes the next consecutive number and makes the voucher read-only. */
   post(id: number): Promise<Voucher> {
     return request<Voucher>(`/vouchers/${id}/post`, { method: "POST" });
   },
 
-  /** Writes and posts the entry that cancels this one. */
   reverse(id: number, payload: VoucherReverse = {}): Promise<Voucher> {
     return request<Voucher>(`/vouchers/${id}/reverse`, {
       method: "POST",
@@ -332,7 +310,6 @@ export const vouchersApi = {
     });
   },
 
-  /** Discards a draft. A posted voucher cannot be deleted. */
   remove(id: number): Promise<void> {
     return request<void>(`/vouchers/${id}`, { method: "DELETE" });
   },
@@ -358,17 +335,10 @@ export const periodsApi = {
 
 export interface GenerateRequest {
   year: number;
-  /** Zero means no threshold, and then the year's UVT is not needed at all. */
   threshold_uvt: string;
 }
 
 export const exogenaApi = {
-  /**
-   * Builds the report and answers with the record, not the bytes.
-   *
-   * How many third parties made the cut and how many fell below the threshold
-   * is what a person needs before filing anything; the file is a click away.
-   */
   generate(payload: GenerateRequest): Promise<Generation> {
     return request<Generation>("/exogena/generate", {
       method: "POST",
@@ -380,13 +350,6 @@ export const exogenaApi = {
     return request<Generation[]>(`/exogena/history?limit=${limit}`);
   },
 
-  /**
-   * The stored file, untouched.
-   *
-   * The raw `Response` rather than a parsed body: this one is XML, and it is on
-   * its way to a browser that will save it, not to a component that will read
-   * it. The route handler passes it straight through.
-   */
   async file(id: number): Promise<Response> {
     return fetch(`${API}/exogena/history/${id}/file`, {
       cache: "no-store",
@@ -404,7 +367,6 @@ export const uvtApi = {
     return request<UvtRun[]>(`/uvt/runs?limit=${limit}`);
   },
 
-  /** 202: the fetch runs after the response, and lands in `runs()`. */
   refresh(year: number): Promise<{ year: number; accepted: boolean }> {
     return request<{ year: number; accepted: boolean }>("/uvt/refresh", {
       method: "POST",
@@ -436,13 +398,6 @@ export const ledgerApi = {
     return request<AccountLedger>(`/ledger/${code}${toQuery({ ...params })}`);
   },
 
-  /**
-   * The auxiliary book as a spreadsheet.
-   *
-   * The raw `Response`: this one is a workbook on its way to a browser that
-   * will save it, not to a component that will read it. The route handler
-   * passes it straight through.
-   */
   async book(params: LedgerParams & { locale?: string } = {}): Promise<Response> {
     return fetch(`${API}/ledger/export${toQuery({ ...params })}`, {
       cache: "no-store",

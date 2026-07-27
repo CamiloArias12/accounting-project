@@ -30,11 +30,13 @@ def get_service(session: SessionDep) -> ExogenaService:
 ServiceDep = Annotated[ExogenaService, Depends(get_service)]
 
 
-#: The file is XML, and browsers will render it inline unless told otherwise.
-def _as_download(generation: ExogenaGeneration) -> Response:
+def _as_download(
+    generation: ExogenaGeneration, *, status_code: int = status.HTTP_200_OK
+) -> Response:
     return Response(
         content=generation.xml,
         media_type="application/xml",
+        status_code=status_code,
         headers={
             "Content-Disposition": f'attachment; filename="{generation.filename}"'
         },
@@ -42,27 +44,34 @@ def _as_download(generation: ExogenaGeneration) -> Response:
 
 
 @router.post(
-    "/generate", response_model=GenerationRead, status_code=status.HTTP_201_CREATED
+    "/generate",
+    response_model=GenerationRead,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        201: {
+            "content": {"application/xml": {}},
+            "description": "The record, or the file itself with `download=true`",
+        }
+    },
 )
 async def generate(
-    payload: GenerateRequest, service: ServiceDep, user: CurrentUser
-) -> ExogenaGeneration:
-    """Build the report for a taxable year and report what came out.
-
-    The record, not the bytes: how many third parties made the cut and how many
-    fell below the threshold is what a person needs to see before filing
-    anything, and a browser handed an attachment shows none of it. The file
-    itself is one request away at `/history/{id}/file`.
-
-    What is kept there is what was generated, not what the books would produce
-    today — a reversal or a correction may have landed since.
-    """
-    return await service.generate(
+    payload: GenerateRequest,
+    service: ServiceDep,
+    user: CurrentUser,
+    download: Annotated[
+        bool,
+        Query(description="Answer with the XML as an attachment instead"),
+    ] = False,
+) -> ExogenaGeneration | Response:
+    generation = await service.generate(
         payload,
         nit=settings.COMPANY_NIT,
         legal_name=settings.COMPANY_LEGAL_NAME,
         user_id=user.id,
     )
+    if download:
+        return _as_download(generation, status_code=status.HTTP_201_CREATED)
+    return generation
 
 
 @router.get("/history", response_model=list[GenerationRead])
@@ -70,17 +79,11 @@ async def history(
     service: ServiceDep,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
 ) -> list[ExogenaGeneration]:
-    """Every generation, with the parameters it ran with."""
     return list(await service.history(limit=limit))
 
 
 @router.get("/history/{generation_id}/file")
 async def download(generation_id: int, service: ServiceDep) -> Response:
-    """The file exactly as it was generated.
-
-    Not rebuilt: the vouchers behind it may have moved since — a reversal, a
-    correction — and a filed document has to come back byte for byte.
-    """
     return _as_download(await service.get(generation_id))
 
 

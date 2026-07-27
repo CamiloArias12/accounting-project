@@ -10,11 +10,6 @@ ACCOUNTS = "/api/v1/accounts"
 
 
 async def seed_chart(auth_client: AsyncClient) -> None:
-    """A branch down to two postable leaves, one of which wants a third party.
-
-    1 > 11 > 1105 > 110505  CAJA GENERAL          (no third party)
-    2 > 22 > 2205 > 220505  PROVEEDORES NACIONALES (third party required)
-    """
     branch: list[dict[str, Any]] = [
         {"code": "1", "name": "ACTIVOS", "nature": "Debito"},
         {"code": "11", "name": "DISPONIBLE", "nature": "Debito"},
@@ -29,6 +24,13 @@ async def seed_chart(auth_client: AsyncClient) -> None:
             "nature": "Crédito",
             "requires_third_party": True,
         },
+        {"code": "24", "name": "IMPUESTOS", "nature": "Crédito"},
+        {"code": "2408", "name": "IVA", "nature": "Crédito"},
+        {"code": "240805", "name": "IVA DESCONTABLE", "nature": "Crédito"},
+        {"code": "5", "name": "GASTOS", "nature": "Debito"},
+        {"code": "51", "name": "OPERACIONALES", "nature": "Debito"},
+        {"code": "5135", "name": "SERVICIOS", "nature": "Debito"},
+        {"code": "513595", "name": "OTROS SERVICIOS", "nature": "Debito"},
     ]
     for payload in branch:
         response = await auth_client.post(ACCOUNTS, json=payload)
@@ -45,7 +47,6 @@ async def a_third_party(auth_client: AsyncClient, session: AsyncSession) -> int:
 
 
 def entry(**overrides: Any) -> dict[str, Any]:
-    """A balanced two-line voucher: cash in, payable down."""
     payload: dict[str, Any] = {
         "date": "2026-07-26",
         "description": "Pago a proveedor",
@@ -67,20 +68,46 @@ async def a_posted_voucher(
     return dict(posted.json())
 
 
-async def test_writing_a_draft(auth_client: AsyncClient) -> None:
+async def test_writing_and_posting_a_purchase(
+    auth_client: AsyncClient, session: AsyncSession
+) -> None:
     await seed_chart(auth_client)
+    supplier = await a_third_party(auth_client, session)
 
-    created = await auth_client.post(BASE, json=entry())
+    created = await auth_client.post(
+        BASE,
+        json=entry(
+            description="Compra de servicios",
+            lines=[
+                {
+                    "account_code": "513595",
+                    "debit": "1000000.00",
+                    "description": "Servicio contratado",
+                },
+                {"account_code": "240805", "debit": "190000.00"},
+                {
+                    "account_code": "220505",
+                    "credit": "1190000.00",
+                    "third_party_id": supplier,
+                },
+            ],
+        ),
+    )
 
     assert created.status_code == 201, created.text
     body = created.json()
     assert body["status"] == "Draft"
-    # A draft takes no consecutive number: the series must have no gaps.
     assert body["number"] is None
-    assert body["total_debit"] == "150000.00"
+    assert (body["total_debit"], body["total_credit"]) == (
+        "1190000.00",
+        "1190000.00",
+    )
     assert body["is_balanced"] is True
-    # The period follows the date unless it is given.
     assert (body["period_year"], body["period_month"]) == (2026, 7)
+
+    posted = await auth_client.post(f"{BASE}/{body['id']}/post")
+    assert posted.status_code == 200, posted.text
+    assert posted.json()["status"] == "Posted"
 
 
 async def test_an_entry_that_does_not_balance_is_refused(
@@ -101,7 +128,6 @@ async def test_an_entry_that_does_not_balance_is_refused(
     assert refused.status_code == 422
     assert "off by 70000.00" in refused.json()["detail"]
 
-    # And the same rule holds when the lines are replaced on a draft.
     draft = (await auth_client.post(BASE, json=entry())).json()
     patched = await auth_client.patch(
         f"{BASE}/{draft['id']}",
@@ -115,7 +141,6 @@ async def test_a_line_names_a_leaf_and_its_third_party(
 ) -> None:
     await seed_chart(auth_client)
 
-    # 1105 has 110505 under it; its balance is the sum of its children.
     heading = await auth_client.post(
         BASE,
         json=entry(
@@ -171,7 +196,6 @@ async def test_posting_numbers_the_voucher_and_freezes_it(
     assert posted.json()["posted_at"] is not None
     assert (await auth_client.post(f"{BASE}/{second['id']}/post")).json()["number"] == 2
 
-    # An accounting record, not a document somebody is still writing.
     changed = await auth_client.patch(
         f"{BASE}/{first['id']}", json={"description": "Otra cosa"}
     )
@@ -180,7 +204,6 @@ async def test_posting_numbers_the_voucher_and_freezes_it(
     assert (await auth_client.delete(f"{BASE}/{first['id']}")).status_code == 409
     assert (await auth_client.post(f"{BASE}/{first['id']}/post")).status_code == 409
 
-    # A draft is the opposite: editable and disposable.
     draft = (await auth_client.post(BASE, json=entry())).json()
     assert (await auth_client.delete(f"{BASE}/{draft['id']}")).status_code == 204
 
@@ -189,8 +212,6 @@ async def test_a_closed_period_refuses_the_posting_but_still_takes_drafts(
     auth_client: AsyncClient,
 ) -> None:
     await seed_chart(auth_client)
-    # Dated in July, belonging to June: the close follows the period, not the
-    # date on the paper.
     created = (
         await auth_client.post(BASE, json=entry(period_year=2026, period_month=6))
     ).json()
@@ -200,7 +221,6 @@ async def test_a_closed_period_refuses_the_posting_but_still_takes_drafts(
     assert refused.status_code == 409
     assert "2026-06 is closed" in refused.json()["detail"]
 
-    # A draft alters nothing, so it is still allowed in.
     draft = await auth_client.post(
         BASE, json=entry(period_year=2026, period_month=6)
     )
@@ -213,8 +233,6 @@ async def test_a_closed_period_refuses_the_posting_but_still_takes_drafts(
 async def test_an_account_deactivated_after_the_draft_blocks_the_posting(
     auth_client: AsyncClient,
 ) -> None:
-    # The gap this closes: the chart is checked when the lines are written, and
-    # a draft can sit for days before anyone posts it.
     await seed_chart(auth_client)
     created = (await auth_client.post(BASE, json=entry())).json()
     await auth_client.patch(f"{ACCOUNTS}/110505", json={"is_active": False})
@@ -235,20 +253,15 @@ async def test_reversing_swaps_the_columns_and_leaves_the_original(
 
     assert reversal.status_code == 201, reversal.text
     body = reversal.json()
-    # Same accounts, columns the other way round.
     assert [(line["debit"], line["credit"]) for line in original["lines"]] == [
         (line["credit"], line["debit"]) for line in body["lines"]
     ]
-    # Posted in the same operation and in the same period, so the month nets
-    # out where the mistake was made.
     assert body["status"] == "Posted"
     assert body["number"] == original["number"] + 1
     assert body["reverses_voucher_id"] == original["id"]
     assert (body["period_year"], body["period_month"]) == (2026, 6)
 
     after = (await auth_client.get(f"{BASE}/{original['id']}")).json()
-    # It keeps its number, its date and its lines; only that it was reversed is
-    # new. A gap in the numbering is what deleting it would have left.
     assert after["number"] == original["number"]
     assert after["lines"] == original["lines"]
     assert after["is_reversed"] is True
@@ -270,7 +283,6 @@ async def test_what_cannot_be_reversed(auth_client: AsyncClient) -> None:
     assert undo_the_undo.status_code == 409
     assert "itself a reversal" in undo_the_undo.json()["detail"]
 
-    # A draft was never in the books: there is nothing to undo.
     draft = (await auth_client.post(BASE, json=entry())).json()
     nothing_to_undo = await auth_client.post(f"{BASE}/{draft['id']}/reverse", json={})
     assert nothing_to_undo.status_code == 409

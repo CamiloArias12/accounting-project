@@ -3,21 +3,12 @@ import { cn } from "@/lib/utils";
 interface Props {
   title: string;
   subtitle?: React.ReactNode;
-  /** Buttons and filters that belong to the page as a whole. */
+  // Buttons and filters that belong to the page as a whole.
   actions?: React.ReactNode;
-  /** A short label above the title — the section this page belongs to. */
   eyebrow?: string;
   className?: string;
 }
 
-/**
- * The top of every page.
- *
- * Six screens had each grown their own header, all nearly the same and none
- * quite matching: different gaps, different weights, actions sometimes aligned
- * to the baseline and sometimes to the top. Consistency at the top of the page
- * is most of what makes a set of screens read as one product.
- */
 export function PageHeader({
   title,
   subtitle,
@@ -53,10 +44,6 @@ export function PageHeader({
   );
 }
 
-/**
- * The framing every page shares: centred column, room for the mobile menu
- * button above `lg`, and one gap size between the blocks stacked inside it.
- */
 export function PageShell({
   children,
   className,
@@ -76,7 +63,6 @@ export function PageShell({
   );
 }
 
-/** An error the page could not render around — a failed load, mostly. */
 export function LoadError({ message }: { message: string }) {
   return (
     <p

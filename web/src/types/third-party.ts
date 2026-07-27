@@ -1,8 +1,4 @@
-/**
- * The English values are the contract with the API, which ships them verbatim.
- * Only the labels shown to the user are translated, keyed by these values in
- * `messages/*.json`.
- */
+// The English values are the contract with the API, which ships them verbatim.
 
 export const PERSON_TYPES = ["Natural person", "Legal entity"] as const;
 export type PersonType = (typeof PERSON_TYPES)[number];
@@ -71,7 +67,6 @@ export const COMPANY_TYPES = [
 ] as const;
 export type CompanyType = (typeof COMPANY_TYPES)[number];
 
-/** Only a NIT carries a check digit, so only it shows that field. */
 export const DOCUMENT_WITH_CHECK_DIGIT: DocumentType = "NIT";
 
 export interface Country {
@@ -147,10 +142,6 @@ export interface ThirdParty {
   updated_at: string;
 }
 
-/**
- * Creation is two shapes, not one with everything optional — the same
- * discriminated union the API exposes.
- */
 interface ContactFields {
   address: string;
   country_id: number;

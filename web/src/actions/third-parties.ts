@@ -43,14 +43,11 @@ export async function createThirdParty(
       return t("thirdPartySuccess.created", { name: created.full_name });
     });
 
-    // A new third party has its own page from here on. `redirect` throws by
-    // design, so it stays outside the try/catch inside `run`.
+    // A new third party has its own page from here on.
     if (createdId !== null) redirect(`${PATH}/${createdId}`);
 
     return state;
   } catch (caught) {
-    // Thrown by the builders below when a required field is missing; the API's
-    // own errors are handled inside `run`.
     return failure(describe(caught, t));
   }
 }
@@ -64,8 +61,6 @@ export async function updateThirdParty(
   if (id === null) return failure(t("thirdPartyErrors.missingId"));
 
   try {
-    // Everything editable is sent, so clearing a field actually clears it.
-    // `person_type` is not among them: a person does not become a company.
     const payload = buildFields(formData);
 
     return await run(async () => {
@@ -77,11 +72,6 @@ export async function updateThirdParty(
   }
 }
 
-/**
- * Delete and restore share one action, for the same reason the accounts ones
- * do: they are two directions of the same toggle, and separate states would
- * discard the confirmation the moment it was earned.
- */
 export async function changeThirdPartyState(
   _previous: FormState,
   formData: FormData,
@@ -102,9 +92,6 @@ export async function changeThirdPartyState(
       : t("thirdPartySuccess.deleted", { name: changed.full_name });
   });
 
-  // A deleted third party leaves the default list, which would unmount the form
-  // mid-flight. Switching to the deleted view keeps it on screen, now offering
-  // Restore. `redirect` throws by design, so it stays outside try/catch.
   if (!restoring && state.status === "success") {
     redirect(`${PATH}?deleted=1`);
   }
@@ -112,7 +99,6 @@ export async function changeThirdPartyState(
   return state;
 }
 
-// --- payload building -------------------------------------------------------
 
 class MissingField extends Error {}
 
@@ -133,10 +119,6 @@ function isLegal(formData: FormData): boolean {
 type NaturalFields = Omit<NaturalPersonCreate, "person_type">;
 type LegalFields = Omit<LegalEntityCreate, "person_type">;
 
-/**
- * Every field except `person_type`, which is what an update may change.
- * Creation adds the discriminator on top.
- */
 function buildFields(formData: FormData): NaturalFields | LegalFields {
   const contact = {
     address: required(formData, "address"),
@@ -248,7 +230,6 @@ function checked(formData: FormData, key: string): boolean {
   return formData.get(key) === "on";
 }
 
-/** Rejects anything outside the closed list, so a tampered select cannot pass. */
 function pick(
   formData: FormData,
   key: string,
@@ -259,7 +240,6 @@ function pick(
   return value;
 }
 
-// --- plumbing ---------------------------------------------------------------
 
 type Translator = Awaited<ReturnType<typeof getTranslations>>;
 
@@ -279,11 +259,6 @@ function failure(message: string): FormState {
   return { status: "error", message };
 }
 
-/**
- * Business errors carry the backend's own message, which is already specific
- * (wrong check digit, city outside its department…). Only a missing field and
- * an unreachable API are localized here.
- */
 function describe(caught: unknown, t: Translator): string {
   if (caught instanceof MissingField) {
     return t("thirdPartyErrors.missingField", { field: caught.message });

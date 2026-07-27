@@ -9,11 +9,6 @@ BASE = "/api/v1/third-parties"
 
 
 async def seed_places(session: AsyncSession) -> dict[str, int]:
-    """Two departments with a city each, plus a second country.
-
-    Enough to tell "this city is in that department" apart from "this city
-    exists", which is the whole point of the consistency check.
-    """
     colombia = Country(iso_code="CO", name="Colombia")
     peru = Country(iso_code="PE", name="Perú")
     session.add_all([colombia, peru])
@@ -110,12 +105,9 @@ async def test_registering_verifies_the_nit_and_the_places(
     assert person.json()["full_name"] == "Ana Restrepo"
     assert person.json()["check_digit"] is None
 
-    # The same document twice is the same person.
     twice = await auth_client.post(BASE, json=natural_payload(places))
     assert twice.status_code == 409
 
-    # Medellín is in Antioquia, not Cundinamarca, and Antioquia is not in Perú.
-    # No foreign key notices either of these.
     wrong_department = await auth_client.post(
         BASE,
         json=natural_payload(

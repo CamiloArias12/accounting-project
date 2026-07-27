@@ -19,8 +19,6 @@ async def register(payload: RegisterRequest, service: ServiceDep) -> User:
 async def login(
     form: Annotated[OAuth2PasswordRequestForm, Depends()], service: ServiceDep
 ) -> TokenResponse:
-    """Form-encoded because that is what the OAuth2 password flow expects, and
-    what makes the Swagger "Authorize" button work."""
     token = await service.log_in(form.username, form.password)
     return TokenResponse(access_token=token)
 

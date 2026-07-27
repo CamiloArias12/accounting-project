@@ -1,7 +1,4 @@
-/**
- * The Spanish values are the contract with the API and the source spreadsheet,
- * which ship them verbatim. Only the labels shown to the user are translated.
- */
+// The Spanish values are the contract with the API and the source spreadsheet, which ship them verbatim.
 export const NATURES = ["Debito", "Crédito"] as const;
 export type Nature = (typeof NATURES)[number];
 
@@ -34,7 +31,6 @@ export interface Account {
   level: AccountLevel;
   parent_code: string | null;
   is_active: boolean;
-  /** Whether every entry on this account must name a third party. */
   requires_third_party: boolean;
   deleted_at: string | null;
   created_at: string;

@@ -7,7 +7,7 @@ from sqlalchemy.pool import NullPool
 
 from alembic import context
 from app.shared.config import settings
-from app.shared.models import Base  # imports every model
+from app.shared.models import Base
 
 config = context.config
 config.set_main_option("sqlalchemy.url", str(settings.DATABASE_URL))

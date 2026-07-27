@@ -1,18 +1,3 @@
-"""Rules of the Colombian chart of accounts (PUC).
-
-The innermost layer: no database, no HTTP, no framework. Everything here can be
-reasoned about and tested on its own.
-
-An account's level is not declared, it is derived from the length of its code,
-and the parent is always its prefix:
-
-    1        Class       ACTIVOS
-    11       Group         DISPONIBLE
-    1105     Account         CAJA
-    110505   Subaccount        CAJA GENERAL
-    11050501 Auxiliary           (any longer code)
-"""
-
 from __future__ import annotations
 
 import enum
@@ -21,11 +6,7 @@ from typing import Final
 
 
 class Nature(enum.StrEnum):
-    """Accounting nature: the side the account increases on.
-
-    The values are Spanish because they are the contract with the source
-    spreadsheet, which ships them verbatim.
-    """
+    """Accounting nature: the side the account increases on."""
 
     DEBIT = "Debito"
     CREDIT = "Crédito"
@@ -41,8 +22,6 @@ class AccountLevel(enum.StrEnum):
     AUXILIARY = "Auxiliar"
 
 
-# Exact code length of each level. Auxiliary is the open-ended case: any code
-# longer than a subaccount.
 _LENGTH_TO_LEVEL: Final[dict[int, AccountLevel]] = {
     1: AccountLevel.CLASS,
     2: AccountLevel.GROUP,
@@ -61,7 +40,6 @@ class InvalidAccountCode(ValueError):
 
 
 def validate_code(code: str) -> str:
-    """Normalize and validate a code, returning it ready to persist."""
     normalized = code.strip()
 
     if not normalized:
@@ -81,13 +59,11 @@ def validate_code(code: str) -> str:
 
 
 def level_of(code: str) -> AccountLevel:
-    """The level a code belongs to, given its length."""
     validate_code(code)
     return _LENGTH_TO_LEVEL.get(len(code), AccountLevel.AUXILIARY)
 
 
 def parent_code_of(code: str) -> str | None:
-    """The parent's code, or None for a class, which is a root of the tree."""
     level = level_of(code)
 
     if level is AccountLevel.CLASS:
@@ -99,7 +75,6 @@ def parent_code_of(code: str) -> str | None:
 
 
 def _parent_length_of(level: AccountLevel) -> int:
-    """Code length of the parent, for levels that have a fixed length."""
     lengths = sorted(_LENGTH_TO_LEVEL)
     current = lengths.index(_length_of(level))
     return lengths[current - 1]
@@ -113,7 +88,6 @@ def _length_of(level: AccountLevel) -> int:
 
 
 def ancestors_of(code: str) -> list[str]:
-    """Codes of every ancestor, from the class down to the direct parent."""
     chain: list[str] = []
     current = parent_code_of(code)
 
@@ -125,17 +99,10 @@ def ancestors_of(code: str) -> list[str]:
 
 
 def depth_of(code: str) -> int:
-    """Depth in the tree; 0 for classes. Used to order bulk inserts."""
     return len(ancestors_of(code))
 
 
 def code_lengths_up_to(max_depth: int) -> list[int]:
-    """Code lengths at or above a depth, to bound a subtree query in SQL.
-
-    Depth 0 is a class (1 digit), depth 1 a group (2), and so on. Auxiliaries
-    have no fixed length, so anything deeper than a subaccount is expressed as
-    the lengths a code may take rather than an open range.
-    """
     fixed = sorted(_LENGTH_TO_LEVEL)
     if max_depth < len(fixed):
         return fixed[: max_depth + 1]

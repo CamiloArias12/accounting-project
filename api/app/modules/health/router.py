@@ -23,13 +23,11 @@ class HealthStatus(BaseModel):
 
 @router.get("/health", status_code=status.HTTP_200_OK)
 async def health() -> dict[str, str]:
-    """Liveness: answers without touching external dependencies."""
     return {"status": "ok"}
 
 
 @router.get("/health/ready", response_model=HealthStatus)
 async def readiness(session: SessionDep, redis: RedisDep) -> HealthStatus:
-    """Readiness: checks Postgres and Redis."""
     try:
         await session.execute(text("SELECT 1"))
         database = "ok"

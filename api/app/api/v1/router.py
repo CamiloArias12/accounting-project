@@ -1,4 +1,4 @@
-"""Mounts each module's router. Adding a module is one import and one line."""
+"""Mounts each module's router."""
 
 from fastapi import APIRouter
 

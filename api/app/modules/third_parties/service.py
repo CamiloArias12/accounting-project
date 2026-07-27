@@ -1,9 +1,3 @@
-"""Business rules for third parties.
-
-The service owns the session and therefore the transaction, like the accounts
-one: it decides what a unit of work is and commits once. Queries live here too.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -34,16 +28,14 @@ from app.modules.third_parties.schemas import (
 )
 from app.shared.pagination import count_of
 
-#: Never copied when reviving a soft-deleted row: they belong to the stored row,
-#: not to the payload that revived it.
 _KEEP_ON_REVIVE = frozenset({"id", "created_at", "updated_at", "deleted_at"})
 
 
 class ThirdPartyService:
+    """Business rules for third parties."""
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    # --- reads ------------------------------------------------------------
 
     async def get(
         self, third_party_id: int, *, include_deleted: bool = False
@@ -64,7 +56,6 @@ class ThirdPartyService:
         skip: int = 0,
         limit: int = 50,
     ) -> tuple[Sequence[ThirdParty], int]:
-        """The slice and the total, so a caller can page through it."""
         query = self._visible(include_deleted)
 
         if person_type is not None:
@@ -76,25 +67,16 @@ class ThirdPartyService:
         if search:
             query = query.where(_matching(search))
 
-        # Counted before slicing: the total is of everything the filters
-        # match, which is what a pager needs.
         total = await count_of(self._session, query)
         result = await self._session.execute(
             query.order_by(ThirdParty.document_number).offset(skip).limit(limit)
         )
         return result.scalars().all(), total
 
-    # --- writes -----------------------------------------------------------
 
     async def create(
         self, payload: NaturalPersonCreate | LegalEntityCreate
     ) -> ThirdParty:
-        """Register a third party.
-
-        A document that exists but was soft-deleted is revived with the new
-        data: the same document is the same person, and reusing the row is what
-        the caller means by registering them again.
-        """
         candidate = _build(payload)
         await self._check_places(candidate)
 
@@ -123,8 +105,6 @@ class ThirdPartyService:
         for field, value in changes.items():
             setattr(third_party, field, value)
 
-        # Re-derive after assignment: either half of the pair may have moved,
-        # and a stale check digit is worse than none.
         if {"document_type", "document_number", "check_digit"} & changes.keys():
             _renormalize_document(
                 third_party, given_check_digit="check_digit" in changes
@@ -142,7 +122,6 @@ class ThirdPartyService:
         return await self._commit(third_party)
 
     async def delete(self, third_party_id: int) -> ThirdParty:
-        """Soft delete: the row is kept so old entries stay resolvable."""
         third_party = await self.get(third_party_id)
         third_party.mark_deleted()
         return await self._commit(third_party)
@@ -156,15 +135,8 @@ class ThirdPartyService:
         third_party.restore()
         return await self._commit(third_party)
 
-    # --- plumbing ---------------------------------------------------------
 
     async def _check_places(self, third_party: ThirdParty) -> None:
-        """Both places a third party has, checked level by level.
-
-        The foreign keys guarantee each id exists; nothing but this guarantees
-        they belong together. Storing Medellín under Cundinamarca would make
-        every report by region wrong, and no constraint would notice.
-        """
         await self._check_place(
             country_id=third_party.country_id,
             department_id=third_party.department_id,
@@ -221,7 +193,6 @@ class ThirdPartyService:
     async def _find_by_document(
         self, document_type: DocumentType, document_number: str
     ) -> ThirdParty | None:
-        # Deleted rows included: they still occupy the unique constraint.
         result = await self._session.execute(
             select(ThirdParty).where(
                 ThirdParty.document_type == document_type,
@@ -239,7 +210,6 @@ class ThirdPartyService:
 
 
 def _build(payload: NaturalPersonCreate | LegalEntityCreate) -> ThirdParty:
-    """Hand the payload to the constructor that knows its rules."""
     fields = payload.model_dump(exclude={"person_type"})
 
     if isinstance(payload, LegalEntityCreate):
@@ -270,7 +240,6 @@ def _renormalize_document(third_party: ThirdParty, *, given_check_digit: bool) -
 
 
 def _matching(search: str) -> ColumnElement[bool]:
-    """Match a document number or any of the name columns."""
     pattern = f"%{search.strip()}%"
     return or_(
         ThirdParty.document_number.like(pattern),

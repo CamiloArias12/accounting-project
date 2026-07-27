@@ -21,11 +21,7 @@ interface Props {
   showDeleted: boolean;
 }
 
-/**
- * Only interaction lives on the client: selection, search and which panel is
- * open. Data arrives already resolved from the server and every mutation goes
- * through a server action.
- */
+// Only interaction lives on the client: selection, search and which panel is open.
 export function AccountsWorkspace({ tree, loadError, showDeleted }: Props) {
   const t = useTranslations("accounts");
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
@@ -104,7 +100,6 @@ export function AccountsWorkspace({ tree, loadError, showDeleted }: Props) {
 
           <div className="scrollbar-slim max-h-[65vh] overflow-y-auto">
             <AccountTree
-              // Remounting on a new query re-evaluates each item's expansion.
               key={query}
               nodes={visible}
               expandAll={query !== ""}
@@ -122,7 +117,6 @@ export function AccountsWorkspace({ tree, loadError, showDeleted }: Props) {
             <ImportForm />
           ) : (
             <AccountForm
-              // Remounting on a different account resets the form without effects.
               key={selected?.code ?? "new"}
               account={selected}
               onCancel={() => setSelectedCode(null)}
@@ -134,11 +128,6 @@ export function AccountsWorkspace({ tree, loadError, showDeleted }: Props) {
   );
 }
 
-/**
- * Prunes the tree down to the branches matching the query.
- * A node survives if it matches or any descendant does, so results are never
- * torn out of their hierarchical context.
- */
 function filterTree(nodes: AccountNode[], query: string): AccountNode[] {
   if (!query) return nodes;
 
@@ -158,7 +147,6 @@ function countNodes(nodes: AccountNode[]): number {
   return nodes.reduce((total, node) => total + 1 + countNodes(node.children), 0);
 }
 
-/** Re-locates the selected account after a revalidation, to avoid stale data. */
 function findNode(nodes: AccountNode[], code: string): AccountNode | null {
   for (const node of nodes) {
     if (node.code === code) return node;

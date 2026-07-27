@@ -32,13 +32,7 @@ interface Props {
   search: string;
 }
 
-/**
- * The list on its own page.
- *
- * Writing a voucher used to happen in a panel beside the list, which left the
- * entry — the part with six columns and any number of rows — in a third of the
- * screen. It has its own route now, and this page only lists.
- */
+// The list on its own page.
 export function VoucherList({
   vouchers,
   total,
@@ -56,8 +50,6 @@ export function VoucherList({
     const next = new URLSearchParams(params.toString());
     if (value) next.set(key, value);
     else next.delete(key);
-    // Any filter change goes back to the first page: page four of the old
-    // list is not page four of the new one.
     if (key !== "skip") next.delete("skip");
     router.push(`/vouchers?${next}`);
   }
@@ -69,8 +61,6 @@ export function VoucherList({
         title={t("title")}
         subtitle={t("count", { count: total })}
         actions={
-          /* `nativeButton={false}`: this renders an <a>, and Base UI warns when
-             something styled as a button is not one — the semantics differ. */
           <Button nativeButton={false} render={<Link href="/vouchers/new" />}>
             <Plus />
             {t("newVoucher")}
@@ -97,8 +87,6 @@ export function VoucherList({
         <SearchableSelect
           className="w-48"
           value={status || "all"}
-          // "all" is the stand-in for no filter; an empty string clears the
-          // query param rather than writing `status=all` into the URL.
           onChange={(value) => go("status", value === "all" ? "" : value)}
           options={[
             { value: "all", label: t("allStatuses") },

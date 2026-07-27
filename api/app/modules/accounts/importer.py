@@ -1,13 +1,3 @@
-"""Import of the chart of accounts from a spreadsheet.
-
-The sheet holds one row per account with the columns `Codigo, Nombre, Tipo,
-Naturaleza`. `Tipo` is redundant — the level is derived from the code — so it is
-only used to flag inconsistencies, never as the source of truth.
-
-The whole file is one transaction: a chart of accounts committed halfway is
-worse than one not imported at all.
-"""
-
 from __future__ import annotations
 
 import enum
@@ -34,7 +24,6 @@ from app.shared.errors import DomainError
 
 _HEADER_ROWS: Final = 1
 _COLUMNS: Final = 4
-#: Bounds the parameter count of the existence lookup.
 _CHUNK: Final = 500
 
 
@@ -70,8 +59,6 @@ class AccountImporter:
     ) -> ImportResult:
         rows, errors = _parse(file)
 
-        # Shallowest first, so a parent always lands before its children
-        # whatever order the file happens to use.
         rows.sort(key=lambda row: (depth_of(row.code), row.code))
 
         known = await self._known_codes([row.code for row in rows])
@@ -102,8 +89,6 @@ class AccountImporter:
                 account = stored[row.code]
                 account.name = row.name
                 account.nature = row.nature
-                # Re-importing an account restores it: the file is the authority
-                # on which accounts the chart contains.
                 account.restore()
                 updated += 1
                 continue
@@ -113,7 +98,6 @@ class AccountImporter:
             )
             created += 1
 
-        # One commit for the whole file.
         await self._session.commit()
         if created or updated:
             await self._cache.clear()
@@ -123,10 +107,6 @@ class AccountImporter:
         )
 
     async def _known_codes(self, codes: list[str]) -> set[str]:
-        """Which codes are already stored, chunked to bound the IN() size.
-
-        Soft-deleted rows count: they still occupy the primary key.
-        """
         found: set[str] = set()
 
         for start in range(0, len(codes), _CHUNK):
@@ -211,7 +191,6 @@ def _iter_rows(file: IO[bytes]) -> list[tuple[int, tuple[object, ...]]]:
     try:
         worksheet = workbook.worksheets[0]
         return [
-            # Padded so short rows still unpack into the four columns.
             (number, (*values, None, None, None, None)[:_COLUMNS])
             for number, values in enumerate(
                 worksheet.iter_rows(min_row=_HEADER_ROWS + 1, values_only=True),
@@ -226,8 +205,6 @@ def _parse_nature(raw: object) -> Nature | None:
     if raw is None:
         return None
 
-    # The file ships "Debito" and "Crédito"; any accent or casing is accepted so
-    # hand-edited sheets keep working.
     normalized = str(raw).strip().lower().replace("é", "e").replace("í", "i")
 
     if normalized.startswith("deb"):
@@ -238,7 +215,6 @@ def _parse_nature(raw: object) -> Nature | None:
 
 
 def _level_mismatch(code: str, raw_type: object) -> str | None:
-    """Flag a `Tipo` column that contradicts the code, which is authoritative."""
     if raw_type is None or str(raw_type).strip() == "":
         return None
 

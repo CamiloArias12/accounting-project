@@ -22,8 +22,6 @@ from app.shared.database import get_session
 from app.shared.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page
 from app.shared.redis import get_redis
 
-# Applied to the whole router: an endpoint added later is protected by being
-# here, instead of by remembering to annotate it.
 router = APIRouter(
     prefix="/accounts",
     tags=["accounts"],
@@ -90,11 +88,6 @@ async def account_tree(
     max_depth: Annotated[int | None, Query(ge=0, description="Levels below")] = None,
     include_deleted: IncludeDeleted = False,
 ) -> list[AccountNode]:
-    """The chart of accounts, or one branch of it.
-
-    `root_code` and `max_depth` bound the query itself, so rendering two levels
-    does not read the whole chart.
-    """
     return await service.tree(
         root_code=root_code, max_depth=max_depth, include_deleted=include_deleted
     )
@@ -133,7 +126,6 @@ async def update_account(
 
 @router.delete("/{code}", response_model=AccountRead)
 async def delete_account(code: str, service: ServiceDep) -> Account:
-    """Soft delete: the row is kept and stamped with `deleted_at`."""
     return await service.delete(code)
 
 

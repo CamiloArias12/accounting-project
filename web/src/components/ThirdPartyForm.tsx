@@ -37,7 +37,7 @@ import {
   type ThirdParty,
 } from "@/types/third-party";
 
-/** Lists resolved on the server, so an edit form shows its selection at once. */
+// Lists resolved on the server, so an edit form shows its selection at once.
 export interface Preloaded {
   addressDepartments: Department[];
   addressCities: City[];
@@ -48,15 +48,8 @@ export interface Preloaded {
 }
 
 interface Props {
-  /**
-   * The third party being edited; absent when registering a new one.
-   *
-   * The parent remounts this with `key` when the selection changes, so plain
-   * `defaultValue`s are enough — no effect syncing state to props.
-   */
   thirdParty: ThirdParty | null;
   countries: Country[];
-  /** Colombian departments, for the issue-city cascade. */
   departments: Department[];
   preloaded: Preloaded;
   onCancel: () => void;
@@ -82,7 +75,6 @@ export function ThirdPartyForm({
   );
 
   const isLegal = personType === "Legal entity";
-  // A legal entity is always a NIT, so its check digit is always in play.
   const hasCheckDigit = isLegal || documentType === DOCUMENT_WITH_CHECK_DIGIT;
 
   const [state, submit] = useActionState<FormState, FormData>(
@@ -133,7 +125,6 @@ export function ThirdPartyForm({
           </p>
         )}
 
-        {/* A person does not become a company: the choice is made once. */}
         {!isEditing && (
           <Section title={t("personType")}>
             <div
@@ -182,8 +173,6 @@ export function ThirdPartyForm({
         )}
 
         <Section title={t("identification")}>
-          {/* Uneven columns: a document type label is long ("Cédula de
-              ciudadanía"), a check digit is one character. */}
           <div className="grid gap-3 sm:grid-cols-[1.5fr_1fr_0.5fr]">
             <div className="flex flex-col gap-1.5">
               <Label>{t("documentType")}</Label>
@@ -339,8 +328,6 @@ export function ThirdPartyForm({
           defaultChecked={thirdParty?.is_active ?? true}
         />
 
-        {/* Sticky, because this form is long enough that the save button was
-            a scroll away from whatever field was just filled in. */}
         <div className="sticky bottom-0 -mx-4 flex flex-wrap gap-2 border-t border-border bg-card/85 px-4 py-3 backdrop-blur-sm sm:-mx-6 sm:px-6">
           <SubmitButton label={t("save")} pendingLabel={t("saving")} />
           <Button type="button" variant="outline" onClick={onCancel}>
@@ -539,13 +526,6 @@ function LegalFields({ thirdParty }: { thirdParty: ThirdParty | null }) {
   );
 }
 
-/**
- * One block of the form.
- *
- * The heading sits in its own column above `md`, which turns a 40-field wall
- * into a document with a margin: the eye can find "Contact" without reading
- * the fields on the way there.
- */
 function Section({
   title,
   hint,
@@ -616,8 +596,6 @@ function Choice({
   return (
     <div className="flex flex-col gap-1.5">
       <Label>{label}</Label>
-      {/* A real `<select>` rides along inside SearchableSelect: the server
-          action reads `FormData`, which a listbox on its own does not fill. */}
       <SearchableSelect
         name={name}
         defaultValue={value ?? values[0]}
@@ -652,10 +630,6 @@ function Check({
   );
 }
 
-/**
- * Surfaces an action's outcome as a toast rather than a paragraph under the
- * form, which on a form this long meant scrolling to find out what happened.
- */
 function useAnnounce(state: FormState) {
   useEffect(() => {
     if (state.status === "success") toast.success(state.message);

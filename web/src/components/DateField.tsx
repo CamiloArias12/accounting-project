@@ -15,30 +15,14 @@ import { cn } from "@/lib/utils";
 
 interface Props {
   name: string;
-  /** ISO `yyyy-mm-dd`, which is what the API speaks. */
+  // ISO `yyyy-mm-dd`, which is what the API speaks.
   defaultValue?: string;
   placeholder: string;
   required?: boolean;
   readOnly?: boolean;
-  /**
-   * Notified with the ISO value when a day is picked.
-   *
-   * For the fields that filter rather than submit: a ledger range applies as
-   * soon as it is chosen, so there is no form to carry the hidden input.
-   */
   onChange?: (value: string) => void;
 }
 
-/**
- * A date field that reads in the user's language.
- *
- * The native `<input type="date">` renders in the *browser's* locale, so a
- * Spanish app on an English machine shows `mm/dd/yyyy` — which for 03/04 is
- * not a formatting quibble but a different day.
- *
- * The value still travels as ISO in a hidden input: what the user reads and
- * what the server parses are deliberately not the same string.
- */
 export function DateField({
   name,
   defaultValue = "",
@@ -93,12 +77,6 @@ export function DateField({
   );
 }
 
-/**
- * Parsed as local time, not UTC.
- *
- * `new Date("2026-07-26")` is midnight UTC, which west of Greenwich is the
- * 25th — the calendar would highlight the wrong day.
- */
 function parseIso(value: string): Date | undefined {
   const [year, month, day] = value.split("-").map(Number);
   if (!year || !month || !day) return undefined;

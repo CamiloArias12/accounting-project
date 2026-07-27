@@ -3,7 +3,7 @@
 import { ArrowLeft, Download } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback } from "react";
+import { useCallback, useTransition } from "react";
 
 import { searchAccounts, searchThirdParties } from "@/actions/lookups";
 import { AsyncCombobox, type Option } from "@/components/AsyncCombobox";
@@ -30,7 +30,7 @@ interface Props {
   detail: AccountLedger | null;
   dateFrom: string;
   dateTo: string;
-  /** The account being read, and its name, so the picker reads well on load. */
+  // The account being read, and its name, so the picker reads well on load.
   account: string;
   accountLabel: string;
   thirdParty: string;
@@ -50,8 +50,10 @@ export function LedgerView({
   loadError,
 }: Props) {
   const t = useTranslations("ledger");
+  const status = useTranslations("status");
   const router = useRouter();
   const params = useSearchParams();
+  const [isLoading, startNavigation] = useTransition();
 
   function go(changes: Record<string, string>) {
     const next = new URLSearchParams(params.toString());
@@ -59,7 +61,7 @@ export function LedgerView({
       if (value) next.set(key, value);
       else next.delete(key);
     }
-    router.push(`/ledger?${next}`);
+    startNavigation(() => router.push(`/ledger?${next}`));
   }
 
   const accountOptions = useCallback(
@@ -88,19 +90,9 @@ export function LedgerView({
         title={t("title")}
         subtitle={t("subtitle")}
         actions={
-          // A link carrying the current filters, not a fetch: the browser saves
-          // the file and the token never leaves the server.
-          //
-          // Styled with `buttonVariants` rather than rendered through `Button`,
-          // which puts `role="button"` on whatever it renders — correct for a
-          // div, wrong for an anchor that navigates. A download announced as a
-          // button is a download a screen reader describes wrongly.
           <a
             href={`/ledger/export?${params}`}
             download
-            // `cn`, not the bare variants: cva concatenates, so the base
-            // `border-transparent` would otherwise sit alongside the outline
-            // variant's `border-border` and win on stylesheet order.
             className={cn(buttonVariants({ variant: "outline" }))}
           >
             <Download />
@@ -112,9 +104,6 @@ export function LedgerView({
       {loadError && <LoadError message={loadError} />}
 
       <div className="flex flex-wrap items-end gap-3 rounded-xl bg-card p-3 shadow-xs ring-1 ring-border">
-        {/* Not `<input type="date">`: that renders in the browser's locale, so
-            a Spanish app on an English machine shows mm/dd/yyyy — which for
-            03/04 is a different day, not a formatting quibble. */}
         <div className="flex w-40 flex-col gap-1.5">
           <Label>{t("from")}</Label>
           <DateField
@@ -167,11 +156,23 @@ export function LedgerView({
         )}
       </div>
 
-      {detail ? (
-        <AccountDetail detail={detail} />
-      ) : (
-        <Report report={report} onOpen={(code) => go({ account: code })} />
-      )}
+      <div
+        aria-busy={isLoading}
+        className={cn(
+          "flex flex-col gap-6 transition-opacity",
+          isLoading && "pointer-events-none opacity-50",
+        )}
+      >
+        <span role="status" aria-live="polite" className="sr-only">
+          {isLoading ? status("loading") : ""}
+        </span>
+
+        {detail ? (
+          <AccountDetail detail={detail} />
+        ) : (
+          <Report report={report} onOpen={(code) => go({ account: code })} />
+        )}
+      </div>
     </PageShell>
   );
 }
@@ -195,9 +196,6 @@ function Report({
 
   return (
     <div className="flex flex-col gap-2">
-      {/* The chart and the movements live one click inside a row, and nothing
-          on this screen said so — which reads as a missing feature rather than
-          as a table you are meant to open. */}
       <p className="text-xs text-muted-foreground">{t("openAnAccount")}</p>
 
       <TableCard minWidth="44rem">
@@ -237,8 +235,6 @@ function Report({
             <Money value={report.totals.debit} strong />
             <Money value={report.totals.credit} strong />
             <TableCell className="pr-4 text-right">
-              {/* The one check that covers every voucher behind it: if each
-                entry balanced, the books as a whole add up to nothing. */}
               <span
                 className={cn(
                   "font-medium tabular-nums",
@@ -317,8 +313,6 @@ function AccountDetail({ detail }: { detail: AccountLedger }) {
               </TableCell>
               <TableCell>{entry.description}</TableCell>
               <TableCell className="text-muted-foreground">
-                {/* A dash rather than a blank: most lines name nobody, and an
-                    empty cell reads as missing data. */}
                 {entry.third_party_name ?? "—"}
               </TableCell>
               <Money value={entry.debit} />
@@ -332,7 +326,6 @@ function AccountDetail({ detail }: { detail: AccountLedger }) {
   );
 }
 
-/** The card a table sits in: one elevation, one scroll container, one radius. */
 function TableCard({
   minWidth,
   children,

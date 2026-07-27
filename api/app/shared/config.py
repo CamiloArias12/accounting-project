@@ -18,68 +18,46 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     LOG_LEVEL: str = "INFO"
 
-    # CORS: allowed origins
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
 
-    # The company whose books these are.
-    #
-    # Configuration, not a table: this deployment keeps one set of books, so the
-    # company is the same on every voucher and storing it per row would be a
-    # column with one value in it. A voucher shows it; nothing selects it.
-    # The check digit is real: exógena verifies the informante's own NIT
-    # before writing a file, and 900000000 checks out to 5.
     COMPANY_NIT: str = "900000000-5"
     COMPANY_LEGAL_NAME: str = "Mi Empresa S.A.S."
     COMPANY_ADDRESS: str | None = None
     COMPANY_PHONE: str | None = None
     COMPANY_EMAIL: str | None = None
 
-    # Where the UVT comes from. `http` reads a published table; `simulated`
-    # answers from a hardcoded one and is what the tests use, so they never
-    # depend on somebody else's uptime.
     UVT_SOURCE: Literal["http", "simulated"] = "http"
     UVT_SOURCE_URL: str = "https://www.gerencie.com/uvt.html"
     UVT_SOURCE_TIMEOUT_SECONDS: float = 10.0
 
-    # Only for the simulated source: a failure rate makes the retry and the run
-    # log visible in a deployment, not only in tests.
     UVT_SOURCE_FAILURE_RATE: float = 0.0
     UVT_SOURCE_LATENCY_SECONDS: float = 0.0
 
-    # Postgres
     POSTGRES_HOST: str = "localhost"
     POSTGRES_PORT: int = 5432
     POSTGRES_USER: str = "postgres"
     POSTGRES_PASSWORD: str = "postgres"
     POSTGRES_DB: str = "accounting"
 
-    # Connection pool. Total connections per replica is POOL_SIZE +
-    # MAX_OVERFLOW; multiply by the replica count and keep it under Postgres
-    # `max_connections` (100 by default).
     DB_POOL_SIZE: int = 10
     DB_MAX_OVERFLOW: int = 5
     DB_POOL_TIMEOUT: int = 30
     DB_POOL_RECYCLE: int = 1800
 
-    # Redis
     REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379
     REDIS_DB: int = 0
     REDIS_PASSWORD: str | None = None
-    #: How long a cached chart of accounts stays valid if nothing invalidates it.
     CACHE_TTL_SECONDS: int = 300
 
-    # Auth. The default is a throwaway for local runs; production refuses it.
     JWT_SECRET: str = "local-development-secret-not-for-production"
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_TTL_MINUTES: int = 60
 
-    #: HMAC-SHA256 wants at least this much key material (RFC 7518 §3.2).
     MIN_SECRET_BYTES: ClassVar[int] = 32
 
     @model_validator(mode="after")
     def secret_must_be_strong_outside_local(self) -> "Settings":
-        """Fails at startup rather than shipping a guessable signing key."""
         if self.ENVIRONMENT == "local":
             return self
 

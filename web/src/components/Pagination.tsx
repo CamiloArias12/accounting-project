@@ -12,13 +12,7 @@ interface Props {
   onChange: (skip: number) => void;
 }
 
-/**
- * Previous and next over a `skip`/`limit` window.
- *
- * Not numbered pages: those need the page count on screen and a decision about
- * what to do with page 47 of 900. Two buttons and a count of what you are
- * looking at answers the question people actually have — is there more?
- */
+// Previous and next over a `skip`/`limit` window.
 export function Pagination({ total, skip, limit, onChange }: Props) {
   const t = useTranslations("pagination");
 
@@ -27,7 +21,6 @@ export function Pagination({ total, skip, limit, onChange }: Props) {
   const hasPrevious = skip > 0;
   const hasNext = last < total;
 
-  // Nothing to page through: the controls would be furniture.
   if (total <= limit && !hasPrevious) return null;
 
   return (

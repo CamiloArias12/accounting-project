@@ -15,8 +15,6 @@ from app.modules.third_parties.service import ThirdPartyService
 from app.shared.database import get_session
 from app.shared.pagination import DEFAULT_LIMIT, MAX_LIMIT, Page
 
-# Applied to the whole router: an endpoint added later is protected by being
-# here, instead of by remembering to annotate it.
 router = APIRouter(
     prefix="/third-parties",
     tags=["third parties"],
@@ -64,12 +62,6 @@ async def list_third_parties(
 async def create_third_party(
     payload: Annotated[ThirdPartyCreate, Body()], service: ServiceDep
 ) -> ThirdParty:
-    """Register a third party.
-
-    The body is one of two shapes, chosen by `person_type`: a natural person
-    carries names and a birthplace, a legal entity a legal name and its
-    representative.
-    """
     return await service.create(payload)
 
 
@@ -89,7 +81,6 @@ async def update_third_party(
 
 @router.delete("/{third_party_id}", response_model=ThirdPartyRead)
 async def delete_third_party(third_party_id: int, service: ServiceDep) -> ThirdParty:
-    """Soft delete: the row is kept and stamped with `deleted_at`."""
     return await service.delete(third_party_id)
 
 

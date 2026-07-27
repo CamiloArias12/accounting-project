@@ -1,9 +1,4 @@
-"""Maps business errors to HTTP responses.
-
-The only place in the codebase that knows both a domain error and a status
-code. Registering handlers here keeps every endpoint free of try/except blocks
-whose sole job is choosing a number.
-"""
+"""Maps business errors to HTTP responses."""
 
 from collections.abc import Awaitable, Callable
 
@@ -63,7 +58,6 @@ from app.modules.vouchers.posting import PostingError
 Handler = Callable[[Request, Exception], Awaitable[JSONResponse]]
 
 _STATUS_BY_ERROR: dict[type[Exception], int] = {
-    # accounts
     AccountNotFound: status.HTTP_404_NOT_FOUND,
     AccountAlreadyExists: status.HTTP_409_CONFLICT,
     AccountHasChildren: status.HTTP_409_CONFLICT,
@@ -71,15 +65,11 @@ _STATUS_BY_ERROR: dict[type[Exception], int] = {
     ParentAccountMissing: status.HTTP_422_UNPROCESSABLE_CONTENT,
     ParentAccountDeleted: status.HTTP_422_UNPROCESSABLE_CONTENT,
     SpreadsheetError: status.HTTP_400_BAD_REQUEST,
-    # third parties
     ThirdPartyNotFound: status.HTTP_404_NOT_FOUND,
     ThirdPartyAlreadyExists: status.HTTP_409_CONFLICT,
     ThirdPartyNotDeleted: status.HTTP_409_CONFLICT,
     IncompleteThirdParty: status.HTTP_422_UNPROCESSABLE_CONTENT,
-    # Not a Pydantic error: the check digit and the format of a document depend
-    # on its type, which only the domain knows.
     InvalidDocument: status.HTTP_422_UNPROCESSABLE_CONTENT,
-    # vouchers
     VoucherNotFound: status.HTTP_404_NOT_FOUND,
     VoucherNotEditable: status.HTTP_409_CONFLICT,
     VoucherAlreadyPosted: status.HTTP_409_CONFLICT,
@@ -89,34 +79,25 @@ _STATUS_BY_ERROR: dict[type[Exception], int] = {
     AccountNotPostable: status.HTTP_422_UNPROCESSABLE_CONTENT,
     ThirdPartyRequired: status.HTTP_422_UNPROCESSABLE_CONTENT,
     UnknownThirdParty: status.HTTP_422_UNPROCESSABLE_CONTENT,
-    # Not a Pydantic error: whether an entry balances is a property of the
-    # whole voucher, which no field validator can see.
     PostingError: status.HTTP_422_UNPROCESSABLE_CONTENT,
-    # accounting periods
     PeriodClosed: status.HTTP_409_CONFLICT,
     PeriodAlreadyClosed: status.HTTP_409_CONFLICT,
     PeriodAlreadyOpen: status.HTTP_409_CONFLICT,
     InvalidPeriod: status.HTTP_422_UNPROCESSABLE_CONTENT,
-    # exógena
     GenerationNotFound: status.HTTP_404_NOT_FOUND,
     ThresholdNeedsUvt: status.HTTP_409_CONFLICT,
     UvtValueNotFound: status.HTTP_404_NOT_FOUND,
-    # Not a Pydantic error: whether the informante's own NIT checks out is a
-    # rule about the document, which no field validator knows.
     ExogenaError: status.HTTP_422_UNPROCESSABLE_CONTENT,
-    # locations
     CountryNotFound: status.HTTP_404_NOT_FOUND,
     DepartmentNotFound: status.HTTP_404_NOT_FOUND,
     CityNotFound: status.HTTP_404_NOT_FOUND,
     InconsistentPlace: status.HTTP_422_UNPROCESSABLE_CONTENT,
-    # auth
     InvalidCredentials: status.HTTP_401_UNAUTHORIZED,
     InvalidToken: status.HTTP_401_UNAUTHORIZED,
     InactiveUser: status.HTTP_403_FORBIDDEN,
     EmailAlreadyRegistered: status.HTTP_409_CONFLICT,
 }
 
-#: 401s must advertise the scheme, or a client cannot know how to retry.
 _AUTH_CHALLENGE = {InvalidCredentials, InvalidToken}
 
 

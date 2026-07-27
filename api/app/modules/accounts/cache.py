@@ -1,12 +1,3 @@
-"""Redis cache for the account tree.
-
-The tree is the expensive read — thousands of rows, hit on every page load —
-and the chart changes rarely, so any write clears the namespace wholesale.
-
-Every call swallows Redis failures: a cache outage must degrade to slow, never
-to a failed request.
-"""
-
 from __future__ import annotations
 
 import logging
@@ -23,6 +14,7 @@ _logger = logging.getLogger(__name__)
 
 
 class AccountTreeCache:
+    """Redis cache for the account tree."""
     def __init__(self, redis: Redis, ttl: int) -> None:
         self._redis = redis
         self._ttl = ttl
@@ -62,7 +54,6 @@ class AccountTreeCache:
             _logger.warning("account cache unavailable on write", exc_info=True)
 
     async def clear(self) -> None:
-        """Drops every cached tree. Called after any write."""
         try:
             keys = [key async for key in self._redis.scan_iter(f"{_NAMESPACE}:*")]
             if keys:
@@ -93,7 +84,6 @@ class NullAccountTreeCache:
 
 
 def _key(root_code: str | None, max_depth: int | None, include_deleted: bool) -> str:
-    # Must stay under the namespace prefix, or `clear` would not match it.
     root = root_code or "*"
     depth = "*" if max_depth is None else max_depth
     return f"{_NAMESPACE}:{root}:{depth}:{int(include_deleted)}"

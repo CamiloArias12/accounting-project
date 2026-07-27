@@ -32,7 +32,7 @@ interface Props {
   personType: string;
 }
 
-/** The list on its own page; the form lives at `/third-parties/new` and `/[id]`. */
+// The list on its own page; the form lives at `/third-parties/new` and `/[id]`.
 export function ThirdPartyList({
   thirdParties,
   total,
@@ -51,8 +51,6 @@ export function ThirdPartyList({
     const next = new URLSearchParams(params.toString());
     if (value) next.set(key, value);
     else next.delete(key);
-    // Any filter change goes back to the first page: page four of the old
-    // list is not page four of the new one.
     if (key !== "skip") next.delete("skip");
     router.push(`/third-parties?${next}`);
   }
@@ -77,8 +75,6 @@ export function ThirdPartyList({
               {showDeleted ? <EyeOff /> : <Eye />}
               {showDeleted ? t("hideDeleted") : t("showDeleted")}
             </Button>
-            {/* `nativeButton={false}`: this renders an <a>, and Base UI warns
-                when something styled as a button is not one. */}
             <Button
               nativeButton={false}
               render={<Link href="/third-parties/new" />}

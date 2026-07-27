@@ -448,6 +448,8 @@
     "subtitle": "The simplified XML filing, built from the posted vouchers",
     "generateTitle": "Generate the file",
     "generateHelp": "Groups the taxable year's movements by third party and DIAN concept.",
+    "company": "Filing company",
+    "companyUnknown": "Not configured",
     "year": "Year",
     "thresholdUvt": "Threshold in UVT",
     "thresholdHelp": "A threshold of zero excludes nobody, and then the year's UVT is not needed.",
@@ -497,5 +499,8 @@
     "generated": "File generated: {records} record(s), {excluded} excluded.",
     "refreshQueued": "Asked for the UVT of {year}. The outcome shows up under recent attempts.",
     "uvtSet": "UVT for {year} saved."
+  },
+  "status": {
+    "loading": "Loading…"
   }
 }

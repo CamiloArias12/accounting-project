@@ -7,7 +7,7 @@ import { ApiError, authApi } from "@/lib/api";
 import { endSession, startSession } from "@/lib/session";
 import { getTranslations } from "next-intl/server";
 
-/** Must not outlive the API token, or the UI would look logged in and 401. */
+// Must not outlive the API token, or the UI would look logged in and 401.
 const SESSION_MAX_AGE = 60 * 60;
 
 export async function logIn(
@@ -33,8 +33,6 @@ export async function logIn(
     };
   }
 
-  // Outside the try: `redirect` works by throwing, and catching it here would
-  // swallow the navigation.
   redirect("/accounts");
 }
 

@@ -1,5 +1,3 @@
-"""Pydantic at the edge: what comes in and what goes out over HTTP."""
-
 from __future__ import annotations
 
 import datetime as dt
@@ -12,11 +10,7 @@ from app.modules.vouchers.posting import ZERO, VoucherStatus
 
 
 class CompanyRead(BaseModel):
-    """The company the books belong to, read back from configuration.
-
-    Not a stored record: this deployment keeps one set of books, so the company
-    is the same on every voucher and a table would hold exactly one row.
-    """
+    """The company the books belong to, read back from configuration."""
 
     nit: str = Field(examples=["900123456-7"])
     legal_name: str
@@ -37,7 +31,6 @@ class VoucherLineInput(BaseModel):
 
     @model_validator(mode="after")
     def one_column_only(self) -> VoucherLineInput:
-        """A line is a debit or a credit, never both and never neither."""
         if self.debit == ZERO and self.credit == ZERO:
             raise ValueError("A line must carry either a debit or a credit")
         if self.debit != ZERO and self.credit != ZERO:
@@ -48,7 +41,6 @@ class VoucherLineInput(BaseModel):
 class VoucherCreate(BaseModel):
     date: dt.date
     description: str = Field(min_length=1, max_length=255)
-    #: Defaults to the period the date falls in.
     period_year: int | None = Field(
         default=None, ge=MIN_PERIOD_YEAR, le=MAX_PERIOD_YEAR
     )
@@ -63,12 +55,7 @@ class VoucherCreate(BaseModel):
 
 
 class VoucherUpdate(BaseModel):
-    """Only a draft can be updated, and `lines` replaces the whole entry.
-
-    Patching lines one by one would let a voucher pass through states where
-    debits and credits do not match; replacing them keeps the entry the unit
-    that gets validated.
-    """
+    """Only a draft can be updated, and `lines` replaces the whole entry."""
 
     date: dt.date | None = None
     description: str | None = Field(default=None, min_length=1, max_length=255)
@@ -80,12 +67,7 @@ class VoucherUpdate(BaseModel):
 
 
 class VoucherReverse(BaseModel):
-    """What to write on the reversing entry.
-
-    Both fields are optional. The date defaults to the original's, which lands
-    the reversal in the same period so the month nets out — but that period may
-    be closed, and then a date inside an open one has to be given.
-    """
+    """What to write on the reversing entry."""
 
     date: dt.date | None = None
     description: str | None = Field(default=None, min_length=1, max_length=255)
@@ -107,7 +89,6 @@ class VoucherRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    #: Null while it is a draft: only posting takes a consecutive number.
     number: int | None
     date: dt.date
     period_year: int
@@ -117,9 +98,7 @@ class VoucherRead(BaseModel):
     posted_at: dt.datetime | None
     created_by_user_id: int | None
     posted_by_user_id: int | None
-    #: Set on a reversing entry, pointing at what it undoes.
     reverses_voucher_id: int | None
-    #: Set on an entry that has been reversed. Both stay in the ledger.
     is_reversal: bool
     is_reversed: bool
     total_debit: Decimal

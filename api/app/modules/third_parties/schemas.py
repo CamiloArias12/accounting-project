@@ -1,12 +1,3 @@
-"""Pydantic at the edge: what comes in and what goes out over HTTP.
-
-Creation is a discriminated union rather than one schema with everything
-optional. A natural person and a legal entity require different fields, and a
-single flat schema could only express that in prose — this way the API rejects
-a company without a legal representative before any of it reaches the database,
-and the generated OpenAPI shows two distinct request bodies.
-"""
-
 from __future__ import annotations
 
 from datetime import date, datetime
@@ -27,16 +18,10 @@ from app.modules.third_parties.documents import (
 
 
 class _Contact(BaseModel):
-    """What both kinds of person carry.
-
-    Address and contact details are here, not only on the natural person: the
-    reference project left companies without any, which makes it impossible to
-    invoice one.
-    """
+    """What both kinds of person carry."""
 
     address: str = Field(min_length=1, max_length=120)
     country_id: int
-    #: Null outside Colombia, where the DANE catalog does not reach.
     department_id: int | None = None
     city_id: int | None = None
     mobile_phone: str = Field(min_length=1, max_length=20)
@@ -56,7 +41,6 @@ class NaturalPersonCreate(_Contact):
 
     document_type: DocumentType = Field(examples=[DocumentType.CITIZEN_ID])
     document_number: str = Field(min_length=1, max_length=20, examples=["1020304050"])
-    #: Only a NIT has one, and it is derived when left out.
     check_digit: int | None = Field(default=None, ge=0, le=9)
 
     first_name: str = Field(min_length=1, max_length=50)
@@ -81,7 +65,6 @@ class NaturalPersonCreate(_Contact):
 class LegalEntityCreate(_Contact):
     person_type: Literal[PersonType.LEGAL]
 
-    #: Not a choice: a company registered in Colombia is identified by its NIT.
     document_number: str = Field(min_length=1, max_length=15, examples=["800197268"])
     check_digit: int | None = Field(default=None, ge=0, le=9)
 
@@ -99,12 +82,7 @@ ThirdPartyCreate = Annotated[
 
 
 class ThirdPartyUpdate(BaseModel):
-    """Everything editable, all optional.
-
-    `person_type` is not here: a person does not become a company. The document
-    is, because a mistyped one has to be fixable — which is why the primary key
-    is a surrogate and not the document itself.
-    """
+    """Everything editable, all optional."""
 
     document_type: DocumentType | None = None
     document_number: str | None = Field(default=None, min_length=1, max_length=20)
@@ -157,9 +135,7 @@ class ThirdPartyRead(BaseModel):
     document_type: DocumentType
     document_number: str
     check_digit: int | None
-    #: The number as people write it, check digit included.
     formatted_document: str
-    #: The given names joined, or the legal name for a company.
     full_name: str
 
     first_name: str | None

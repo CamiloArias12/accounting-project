@@ -1,10 +1,3 @@
-"""Reads over the location catalogs.
-
-Read-only on purpose: the rows come from the DANE and are seeded by migration,
-so there is no endpoint to create a country. Correcting one is a migration, not
-a request.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -22,6 +15,7 @@ from app.modules.locations.models import City, Country, Department
 
 
 class LocationService:
+    """Reads over the location catalogs."""
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
@@ -61,11 +55,6 @@ class LocationService:
         skip: int = 0,
         limit: int = 100,
     ) -> Sequence[City]:
-        """Municipalities, always paged.
-
-        There are 1122 of them, so a picker has to either filter by department
-        or search by name; returning the whole list is never the right answer.
-        """
         query = _matching(select(City), City.name, City.dane_code, search)
         if department_id is not None:
             query = query.where(City.department_id == department_id)
@@ -100,7 +89,6 @@ def _matching[T](
     code: InstrumentedAttribute[str],
     search: str | None,
 ) -> Select[tuple[T]]:
-    """Filter by name or code, both case-insensitive."""
     if not search:
         return query
 

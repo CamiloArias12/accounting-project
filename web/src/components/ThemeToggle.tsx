@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { THEMES, THEME_COOKIE, type Theme } from "@/lib/theme";
 
 interface Props {
-  /** Choice stored in the cookie, so the first render matches the server. */
+  // Choice stored in the cookie, so the first render matches the server.
   initialTheme: Theme;
 }
 
@@ -27,9 +27,6 @@ export function ThemeToggle({ initialTheme }: Props) {
   function choose(next: Theme) {
     setTheme(next);
     persistPreference(THEME_COOKIE, next);
-    // Applied straight to the DOM rather than through a server round trip: a
-    // theme switch should be instant, and the cookie only needs to be right by
-    // the next server render.
     applyTheme(next);
   }
 

@@ -34,15 +34,9 @@ import { formatMoney } from "@/lib/money";
 import type { Company, Voucher } from "@/types/voucher";
 
 interface Props {
-  /**
-   * The voucher being worked on; absent when writing a new one.
-   *
-   * The parent remounts this with `key` when the selection changes, so plain
-   * `defaultValue`s are enough — no effect syncing state to props.
-   */
+  // The voucher being worked on; absent when writing a new one.
   voucher: Voucher | null;
   company: Company;
-  /** Names of the third parties named on the lines, so the pickers read well. */
   thirdPartyLabels: Record<number, string>;
   today: string;
   onCancel: () => void;
@@ -58,7 +52,6 @@ export function VoucherForm({
   const t = useTranslations("voucherForm");
 
   const isEditing = voucher !== null;
-  // A posted voucher is an accounting record: it is shown, never edited.
   const readOnly = voucher?.status === "Posted";
 
   const [state, submit] = useActionState<FormState, FormData>(saveVoucher, IDLE);
@@ -93,8 +86,6 @@ export function VoucherForm({
                   : t("editTitle")
                 : t("createTitle")}
             </h2>
-            {/* The company is configuration, not a field: there is nothing to
-                choose, so it is printed rather than asked for. */}
             <p className="text-xs text-muted-foreground">
               {company.legal_name} · {company.nit}
             </p>
@@ -228,10 +219,6 @@ export function VoucherForm({
   );
 }
 
-/**
- * Reversing writes into the books, and there is no undoing it: the correction
- * would itself need correcting. That is worth one confirmation.
- */
 function ReverseDialog({
   voucher,
   action,
@@ -280,12 +267,6 @@ function ReverseDialog({
   );
 }
 
-/**
- * Surfaces an action's outcome as a toast.
- *
- * The messages used to sit inline under whichever form produced them, which
- * meant scrolling to find out whether a posting went through.
- */
 function useAnnounce(state: FormState) {
   useEffect(() => {
     if (state.status === "success") toast.success(state.message);

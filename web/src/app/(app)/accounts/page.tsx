@@ -10,10 +10,7 @@ interface Props {
   searchParams: Promise<{ deleted?: string }>;
 }
 
-/**
- * Server Component: the tree is fetched on the server, so the browser never
- * talks to the API nor needs to know its URL.
- */
+// Server Component: the tree is fetched on the server, so the browser never talks to the API nor needs to know its URL.
 export default async function AccountsPage({ searchParams }: Props) {
   const showDeleted = (await searchParams).deleted === "1";
 

@@ -53,13 +53,7 @@ function blank(): DraftLine {
   };
 }
 
-/**
- * The entry itself: rows in, two totals out.
- *
- * The totals are added in cents, never as floating point numbers — the server
- * refuses an entry that is off by a hundredth, so the figure the user is
- * watching has to be the same one it will check.
- */
+// The entry itself: rows in, two totals out.
 export function VoucherLines({ initial, readOnly, labels }: Props) {
   const t = useTranslations("voucherForm");
 
@@ -112,7 +106,6 @@ export function VoucherLines({ initial, readOnly, labels }: Props) {
     );
   }
 
-  // The payload the action reads: only what the API wants, none of the labels.
   const payload = lines
     .filter((line) => line.account_code)
     .map((line) => ({
@@ -188,8 +181,6 @@ export function VoucherLines({ initial, readOnly, labels }: Props) {
                     placeholder="0.00"
                     className="text-right tabular-nums"
                     onChange={(event) =>
-                      // One column or the other, never both: the server refuses
-                      // a line that carries two.
                       update(line.key, {
                         debit: event.target.value,
                         credit: "",

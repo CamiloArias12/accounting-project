@@ -37,7 +37,6 @@ ServiceDep = Annotated[PeriodService, Depends(get_service)]
 
 @router.get("/{year}", response_model=list[PeriodRead])
 async def year_of_periods(year: Year, service: ServiceDep) -> list[PeriodRead]:
-    """The twelve months of a year and whether each accepts entries."""
     return await service.year(year)
 
 
@@ -50,12 +49,6 @@ async def read_period(year: Year, month: Month, service: ServiceDep) -> PeriodRe
 async def close_period(
     year: Year, month: Month, service: ServiceDep, user: CurrentUser
 ) -> PeriodRead:
-    """Close a month.
-
-    From here on nothing can be posted into it. Drafts already written against
-    it stay as they are — they are not in the books — but they can no longer be
-    posted.
-    """
     return await service.close(
         AccountingPeriod(year=year, month=month), user_id=user.id
     )
@@ -65,7 +58,6 @@ async def close_period(
 async def reopen_period(
     year: Year, month: Month, service: ServiceDep, user: CurrentUser
 ) -> PeriodRead:
-    """Undo a close, recording who did it."""
     return await service.reopen(
         AccountingPeriod(year=year, month=month), user_id=user.id
     )

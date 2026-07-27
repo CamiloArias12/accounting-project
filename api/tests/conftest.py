@@ -14,7 +14,6 @@ from app.shared.models import Base
 
 @pytest.fixture
 async def session() -> AsyncGenerator[AsyncSession, None]:
-    """An in-memory SQLite session, with the schema rebuilt per test."""
     engine = create_async_engine(
         "sqlite+aiosqlite:///:memory:",
         connect_args={"check_same_thread": False},
@@ -34,8 +33,6 @@ async def session() -> AsyncGenerator[AsyncSession, None]:
 
 @pytest.fixture
 async def client(session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
-    """HTTP client against the app, on the test session and without Redis."""
-
     async def override_get_session() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
@@ -51,7 +48,6 @@ async def client(session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
 
 @pytest.fixture
 async def auth_client(client: AsyncClient) -> AsyncClient:
-    """A client carrying a bearer token, for endpoints that require one."""
     await client.post(
         "/api/v1/auth/register",
         json={

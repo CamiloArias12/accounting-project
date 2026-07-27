@@ -1,10 +1,3 @@
-"""Opening and closing accounting periods.
-
-Only closed periods are stored, so `status_of` answers for any month rather
-than looking one up — which is what lets the books be used before anyone has
-created a single period.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -19,11 +12,11 @@ from app.modules.periods.schemas import PeriodRead
 
 
 class PeriodService:
+    """Opening and closing accounting periods."""
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
     async def status_of(self, period: AccountingPeriod) -> PeriodStatus:
-        """Whether a month accepts entries. Absent means open."""
         stored = await self._find(period)
         return stored.status if stored else PeriodStatus.OPEN
 
@@ -44,7 +37,6 @@ class PeriodService:
         )
 
     async def year(self, year: int) -> list[PeriodRead]:
-        """The twelve months of a year, whether or not they have a row."""
         stored = {row.month: row for row in await self._of_year(year)}
 
         return [
@@ -63,11 +55,6 @@ class PeriodService:
     async def close(
         self, period: AccountingPeriod, *, user_id: int | None = None
     ) -> PeriodRead:
-        """Close a month.
-
-        Drafts already written into it are left alone: they are not in the
-        books, so they alter nothing. They simply can no longer be posted.
-        """
         stored = await self._find(period)
 
         if stored is None:

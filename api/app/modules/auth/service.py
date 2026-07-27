@@ -1,5 +1,3 @@
-"""Registration and sign-in."""
-
 from __future__ import annotations
 
 from sqlalchemy import select
@@ -17,6 +15,7 @@ from app.modules.auth.security import hash_password, issue_token, verify_passwor
 
 
 class AuthService:
+    """Registration and sign-in."""
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
@@ -39,8 +38,6 @@ class AuthService:
     async def log_in(self, email: str, password: str) -> str:
         user = await self._by_email(email.strip().lower())
 
-        # The hash is verified even when the user is missing, so the response
-        # time does not reveal which emails exist.
         stored = user.hashed_password if user else hash_password("no-such-user")
         matches = verify_password(password, stored)
 
@@ -52,7 +49,6 @@ class AuthService:
         return issue_token(user.email)
 
     async def identify(self, email: str) -> User:
-        """Resolves a token's subject into the user behind it."""
         user = await self._by_email(email)
 
         if user is None:

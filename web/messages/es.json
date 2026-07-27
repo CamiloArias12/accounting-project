@@ -448,6 +448,8 @@
     "subtitle": "Formato simplificado en XML, a partir de los comprobantes contabilizados",
     "generateTitle": "Generar el archivo",
     "generateHelp": "Agrupa por tercero y concepto DIAN los movimientos del año gravable.",
+    "company": "Empresa declarante",
+    "companyUnknown": "Sin configurar",
     "year": "Año",
     "thresholdUvt": "Tope en UVT",
     "thresholdHelp": "Con tope 0 no se excluye a nadie y no hace falta la UVT del año.",
@@ -497,5 +499,8 @@
     "generated": "Archivo generado: {records} registro(s), {excluded} excluido(s).",
     "refreshQueued": "Se pidió la UVT de {year}. El resultado aparece en los últimos intentos.",
     "uvtSet": "UVT de {year} guardada."
+  },
+  "status": {
+    "loading": "Cargando…"
   }
 }

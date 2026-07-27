@@ -23,16 +23,11 @@ import { cn } from "@/lib/utils";
 export interface SelectOption {
   value: string;
   label: string;
-  /** Secondary line under the label — a code, a document number. */
+  // Secondary line under the label — a code, a document number.
   hint?: string;
 }
 
 interface Props {
-  /**
-   * Field name. When given, a real `<select>` carries the value so the form
-   * still posts and still validates; omit it for filters that only drive the
-   * URL and have no form behind them.
-   */
   name?: string;
   value?: string;
   defaultValue?: string;
@@ -44,31 +39,11 @@ interface Props {
   disabled?: boolean;
   required?: boolean;
   className?: string;
-  /**
-   * Number of options from which the search box appears. Below it, searching
-   * is friction: four options are read faster than they are typed.
-   */
   searchFrom?: number;
 }
 
-/** Beyond this the list is cut and the search box is the way through. */
 const MAX_VISIBLE = 100;
 
-/**
- * A select you can type into.
- *
- * The problem it solves is that half the lists in this app are catalogs, not
- * choices: 1,122 municipalities and 250 countries in a native dropdown are
- * navigable only by scrolling. The problem it must not create is a control
- * that posts nothing — every form here is a Server Action reading `FormData`.
- *
- * So the visible control is a listbox and the value lives in a real `<select>`
- * parked behind it: `FormData` picks it up, `required` is enforced by the
- * browser, and the form still works with JavaScript off. The select is
- * transparent rather than hidden because a `display:none` control is exempt
- * from validation, and the browser refuses to report an error it cannot point
- * at — the submit would fail silently instead.
- */
 export function SearchableSelect({
   name,
   value,
@@ -98,8 +73,6 @@ export function SearchableSelect({
     const needle = normalize(query);
     if (!needle) return options;
 
-    // Every word has to appear somewhere, in any order: "bogota cundi" finds
-    // the row whichever way round the user remembers it.
     const words = needle.split(/\s+/);
     return options.filter((option) => {
       const haystack = normalize(
@@ -144,8 +117,6 @@ export function SearchableSelect({
         open={open}
         onOpenChange={(next) => {
           setOpen(next);
-          // Cleared on close rather than on open, so the list is never seen
-          // filtered by last time's query for a frame.
           if (!next) setQuery("");
         }}
       >
@@ -171,12 +142,8 @@ export function SearchableSelect({
         <PopoverContent
           className="w-(--anchor-width) min-w-56 p-0"
           align="start"
-          // Without this Base UI focuses the popup itself and the first
-          // keystroke goes nowhere — the search box has to be live on open.
           initialFocus={searchable ? searchRef : undefined}
         >
-          {/* `shouldFilter={false}`: the matching above is accent-insensitive,
-              which cmdk's own is not — "Boyaca" has to find "Boyacá". */}
           <Command shouldFilter={false}>
             {searchable && (
               <CommandInput
@@ -225,7 +192,6 @@ export function SearchableSelect({
   );
 }
 
-/** Lowercased and stripped of accents, so "Medellin" matches "Medellín". */
 function normalize(value: string): string {
   return value
     .trim()

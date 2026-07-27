@@ -1,10 +1,3 @@
-"""Business rules for the chart of accounts.
-
-The service owns the session and therefore the transaction: it decides what a
-unit of work is, and commits once. Queries live here too — a repository layer
-over a single table would only forward calls.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -39,11 +32,11 @@ from app.shared.pagination import count_of
 
 
 class AccountService:
+    """Business rules for the chart of accounts."""
     def __init__(self, session: AsyncSession, cache: AccountTreeCache) -> None:
         self._session = session
         self._cache = cache
 
-    # --- reads ------------------------------------------------------------
 
     async def get(self, code: str, *, include_deleted: bool = False) -> Account:
         account = await self._find(code, include_deleted=include_deleted)
@@ -63,7 +56,6 @@ class AccountService:
         skip: int = 0,
         limit: int = 50,
     ) -> tuple[Sequence[Account], int]:
-        """The slice and the total, so a caller can page through it."""
         query = self._visible(include_deleted)
 
         if level is not None:
@@ -71,9 +63,6 @@ class AccountService:
         if parent_code is not None:
             query = query.where(Account.parent_code == parent_code)
         if only_postable:
-            # Leaves, whatever their level: a six-digit subaccount with nothing
-            # under it takes entries, and a heading never does because its
-            # balance is already the sum of its children.
             child = aliased(Account)
             query = query.where(
                 ~select(child.code)
@@ -101,11 +90,6 @@ class AccountService:
         max_depth: int | None = None,
         include_deleted: bool = False,
     ) -> list[AccountNode]:
-        """The chart, or one branch of it, nested.
-
-        Served from cache when possible, and assembled in memory from a single
-        query: recursing per level would multiply the round trips.
-        """
         cached = await self._cache.get(root_code, max_depth, include_deleted)
         if cached is not None:
             return cached
@@ -120,13 +104,9 @@ class AccountService:
     ) -> Sequence[Account]:
         query = self._visible(include_deleted)
 
-        # Descendants share the root's code as a prefix, which the primary key
-        # index serves directly.
         if root_code is not None:
             query = query.where(Account.code.startswith(root_code))
 
-        # Bounded in SQL, not after loading: asking for the classes of a
-        # 2,446-row chart should not read 2,446 rows.
         if max_depth is not None:
             base = depth_of(root_code) if root_code else 0
             query = query.where(
@@ -136,15 +116,8 @@ class AccountService:
         result = await self._session.execute(query.order_by(Account.code))
         return result.scalars().all()
 
-    # --- writes -----------------------------------------------------------
 
     async def create(self, payload: AccountCreate) -> Account:
-        """Create an account.
-
-        A code that exists but was soft-deleted is revived with the new data:
-        the row still occupies the primary key, and reusing it is what the
-        caller means by "create this account again".
-        """
         existing = await self._find(payload.code, include_deleted=True)
         if existing is not None and not existing.is_deleted:
             raise AccountAlreadyExists(payload.code)
@@ -185,7 +158,6 @@ class AccountService:
         return await self._commit(account)
 
     async def delete(self, code: str) -> Account:
-        """Soft delete. Refused while live children hang off the account."""
         account = await self.get(code)
 
         if await self._has_children(code):
@@ -207,7 +179,6 @@ class AccountService:
         account.restore()
         return await self._commit(account)
 
-    # --- plumbing ---------------------------------------------------------
 
     async def _commit(self, account: Account) -> Account:
         await self._session.commit()
@@ -239,9 +210,6 @@ class AccountService:
 
 
 def _assemble(rows: Sequence[Account], root_code: str | None) -> list[AccountNode]:
-    # Built through AccountRead on purpose: validating AccountNode against the
-    # model would make Pydantic read the `children` relationship, triggering a
-    # lazy load that is illegal in async context.
     nodes = {
         row.code: AccountNode(**AccountRead.model_validate(row).model_dump())
         for row in rows
@@ -252,8 +220,6 @@ def _assemble(rows: Sequence[Account], root_code: str | None) -> list[AccountNod
         parent_code = parent_code_of(row.code)
         parent = nodes.get(parent_code) if parent_code else None
 
-        # An account whose parent is outside the requested slice becomes a root,
-        # so the result never silently hides rows.
         if parent is None or row.code == root_code:
             roots.append(nodes[row.code])
         else:

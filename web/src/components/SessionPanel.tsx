@@ -9,7 +9,7 @@ import { logOut } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 
 interface Props {
-  /** Null when nobody is signed in; reads stay public either way. */
+  // Null when nobody is signed in; reads stay public either way.
   email: string | null;
 }
 
@@ -31,8 +31,6 @@ export function SessionPanel({ email }: Props) {
 
   return (
     <form action={logOut} className="flex items-center gap-2">
-      {/* Initials rather than a photo: there is nowhere to upload one, and an
-          empty avatar circle looks like something failed to load. */}
       <span
         aria-hidden
         className="grid size-8 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-semibold uppercase text-primary ring-1 ring-primary/15"

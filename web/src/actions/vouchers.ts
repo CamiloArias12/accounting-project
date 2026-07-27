@@ -48,19 +48,11 @@ export async function saveVoucher(
   });
 
   // A new draft has its own page from here on; an edit stays where it is.
-  // `redirect` throws by design, so it lives outside the try/catch in `run`.
   if (created !== null) redirect(`${PATH}/${created}`);
 
   return state;
 }
 
-/**
- * Posting and reversing share one action.
- *
- * Both turn a voucher into something the books stand on, both are refused for
- * the same handful of reasons, and both leave the caller on the same screen —
- * so one state and one message is all it takes.
- */
 export async function postOrReverseVoucher(
   _previous: FormState,
   formData: FormData,
@@ -80,16 +72,12 @@ export async function postOrReverseVoucher(
 
     const reversal = await vouchersApi.reverse(id, {
       date: readText(formData, "date") || null,
-      // Localized here rather than left to the server default: the description
-      // is data the user will read back, not a label.
       description: readText(formData, "description") || null,
     });
     reversalId = reversal.id;
     return t("voucherSuccess.reversed", { number: reversal.number ?? "" });
   });
 
-  // The reversal is a new voucher, and it is the one worth looking at: it is
-  // what now stands in the books.
   if (reversalId !== null) redirect(`${PATH}/${reversalId}`);
 
   return state;
@@ -144,15 +132,7 @@ export async function changePeriodState(
   }
 }
 
-// --- plumbing ---------------------------------------------------------------
 
-/**
- * The lines travel as JSON in a hidden field.
- *
- * They are already client state — the editor has to add and remove rows and
- * keep the two totals in step as you type — so encoding them as indexed form
- * fields would mean writing and parsing that shape twice for nothing.
- */
 function readLines(formData: FormData): VoucherLineInput[] | null {
   const raw = formData.get("lines");
   if (typeof raw !== "string") return null;
@@ -195,11 +175,6 @@ function failure(message: string): FormState {
   return { status: "error", message };
 }
 
-/**
- * Business errors carry the backend's own message, which is already specific:
- * how much the entry is off by, which period is closed, which account is a
- * heading. Only the transport failure is localized.
- */
 function describe(caught: unknown, t: Translator): string {
   if (caught instanceof ApiError) return caught.message;
   return t("errors.apiUnreachable");

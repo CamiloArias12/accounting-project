@@ -9,19 +9,12 @@ import { Label } from "@/components/ui/label";
 import type { City, Department } from "@/types/third-party";
 
 interface Props {
-  /** Colombian departments; a document is issued inside the country. */
+  // Colombian departments; a document is issued inside the country.
   departments: Department[];
   initialCity: City | null;
   initialCities?: City[];
 }
 
-/**
- * The city a document was issued in.
- *
- * Narrowed by department rather than searched free-text: 1,122 municipalities
- * in one list is a scroll, not a choice, and the stored value is only the city,
- * so an edit has to resolve its department to preselect the first field.
- */
 export function IssueCityField({
   departments,
   initialCity,
@@ -35,7 +28,6 @@ export function IssueCityField({
   const [cityId, setCityId] = useState<number | "">(initialCity?.id ?? "");
   const [cities, setCities] = useState<City[]>(initialCities);
 
-  // Loading only; the handler clears the list when the department changes.
   useEffect(() => {
     if (departmentId === "") return;
 

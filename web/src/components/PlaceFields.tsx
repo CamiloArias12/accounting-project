@@ -22,23 +22,14 @@ export interface PlaceValue {
 
 interface Props {
   countries: Country[];
-  /** Field names, so the same component serves the address and the birthplace. */
+  // Field names, so the same component serves the address and the birthplace.
   names: PlaceNames;
   initial: PlaceValue;
-  /** Preloaded so an edit form shows its selection before any fetch resolves. */
   initialDepartments?: Department[];
   initialCities?: City[];
   requireCountry?: boolean;
 }
 
-/**
- * Country → department → city, each list narrowed by the one above it.
- *
- * Department and city stay optional on purpose: the DANE catalog only covers
- * Colombia, so a foreign address stops at the country. The API refuses a city
- * whose department does not match, which is the check this UI cannot enforce
- * on its own.
- */
 export function PlaceFields({
   countries,
   names,
@@ -56,15 +47,11 @@ export function PlaceFields({
   const [departments, setDepartments] = useState<Department[]>(initialDepartments);
   const [cities, setCities] = useState<City[]>(initialCities);
 
-  // Only loading happens here. Clearing is done by the handlers below, where
-  // the choice that invalidated the list was made: emptying it from an effect
-  // would be a second render nobody asked for.
   useEffect(() => {
     if (countryId === "") return;
 
     let current = true;
     fetchDepartments(Number(countryId)).then((loaded) => {
-      // Ignore a response that arrived after the country changed again.
       if (current) setDepartments(loaded);
     });
     return () => {
@@ -100,7 +87,6 @@ export function PlaceFields({
           }))}
           onChange={(next) => {
             setCountryId(next);
-            // Whatever was chosen below no longer belongs to this country.
             setDepartments([]);
             setDepartmentId("");
             setCities([]);

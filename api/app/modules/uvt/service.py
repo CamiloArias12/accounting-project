@@ -1,11 +1,3 @@
-"""Keeping the UVT up to date.
-
-The refresh never runs inside the request that asked for it: the endpoint hands
-the work to a background task and answers straight away. A source that takes
-four seconds to time out three times over must not be four seconds a caller
-waits for.
-"""
-
 from __future__ import annotations
 
 import datetime as dt
@@ -26,13 +18,12 @@ from app.modules.uvt.provider import (
 
 
 class UvtService:
+    """Keeping the UVT up to date."""
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    # --- reads ------------------------------------------------------------
 
     async def value_for(self, year: int) -> Decimal:
-        """The UVT of a year, or a refusal to guess one."""
         stored = await self._find(year)
         if stored is None:
             raise UvtValueNotFound(year)
@@ -50,14 +41,8 @@ class UvtService:
         )
         return result.scalars().all()
 
-    # --- writes -----------------------------------------------------------
 
     async def set_manually(self, year: int, value: Decimal) -> UvtValue:
-        """Type in a value the source does not have yet.
-
-        Marked `MANUAL` so a later fetch leaves it alone: a figure a person read
-        off the resolution outranks whatever a scraper makes of the page.
-        """
         stored = await self._find(year)
 
         if stored is None:
@@ -74,12 +59,6 @@ class UvtService:
         return stored
 
     async def refresh(self, year: int, provider: UvtProvider) -> UvtFetchRun:
-        """Fetch a year and record what happened, whatever happened.
-
-        Idempotent by construction: the year is unique, so the second run
-        updates the row the first one wrote instead of adding another. Running
-        it every night is safe.
-        """
         started = _now()
         stored = await self._find(year)
 
@@ -110,8 +89,6 @@ class UvtService:
                 provider=provider.name,
                 status=RunStatus.FAILED,
                 started=started,
-                # What it actually spent, not zero: this column is the whole
-                # point of keeping the failures.
                 attempts=exc.attempts,
                 detail=str(exc),
             )
@@ -135,7 +112,6 @@ class UvtService:
             value=value,
         )
 
-    # --- plumbing ---------------------------------------------------------
 
     async def _find(self, year: int) -> UvtValue | None:
         result = await self._session.execute(
@@ -165,13 +141,10 @@ class UvtService:
             finished_at=_now(),
         )
         self._session.add(run)
-        # The value and its run are written together: a stored figure with no
-        # record of where it came from is the thing this table exists to stop.
         await self._session.commit()
         await self._session.refresh(run)
         return run
 
 
 def _now() -> dt.datetime:
-    # Naive, to match the other timestamp columns.
     return dt.datetime.now(dt.UTC).replace(tzinfo=None)

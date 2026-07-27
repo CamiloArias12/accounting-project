@@ -1,9 +1,4 @@
-/**
- * The English values are the contract with the API, which ships them verbatim.
- * Only the labels shown to the user are translated.
- *
- * Every amount is a string, never a number: see `lib/money`.
- */
+// The English values are the contract with the API, which ships them verbatim.
 
 export const VOUCHER_STATUSES = ["Draft", "Posted"] as const;
 export type VoucherStatus = (typeof VOUCHER_STATUSES)[number];
@@ -31,7 +26,6 @@ export interface VoucherLine {
 
 export interface Voucher {
   id: number;
-  /** Null while it is a draft: only posting takes a consecutive number. */
   number: number | null;
   date: string;
   period_year: number;
@@ -73,15 +67,8 @@ export interface VoucherReverse {
   description?: string | null;
 }
 
-/**
- * The envelope every list endpoint returns.
- *
- * A bare array cannot be paged: the client has no way to tell whether it is
- * looking at everything or at the first fifty of nine hundred.
- */
 export interface Page<T> {
   items: T[];
-  /** Rows matching the filters, not rows in this page. */
   total: number;
   skip: number;
   limit: number;
@@ -139,7 +126,6 @@ export interface LedgerEntry {
   description: string;
   third_party_id: number | null;
   third_party_name: string | null;
-  /** The document as people write it, check digit included. */
   third_party_document: string | null;
   debit: string;
   credit: string;

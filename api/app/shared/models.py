@@ -1,7 +1,4 @@
-"""Registry of every table, imported by Alembic to populate the metadata.
-
-A module's tables are invisible to autogenerate until they are listed here.
-"""
+"""Registry of every table, imported by Alembic to populate the metadata."""
 
 from app.modules.accounts.models import Account
 from app.modules.auth.models import User

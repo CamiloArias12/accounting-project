@@ -16,12 +16,7 @@ export const metadata: Metadata = {
   description: "Accounting platform",
 };
 
-/**
- * Only what every page needs: the document, the theme and the translations.
- *
- * The sidebar lives in the `(app)` group instead, so signing in is a page of
- * its own rather than a form framed by navigation the visitor cannot use yet.
- */
+// Only what every page needs: the document, the theme and the translations.
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -30,14 +25,6 @@ export default async function RootLayout({
   const locale = await getLocale();
 
   return (
-    // suppressHydrationWarning: ThemeScript writes `data-theme` before React
-    // hydrates, so the server markup deliberately differs on this attribute.
-    //
-    // The font class belongs on <html>, not <body>. Tailwind resolves
-    // `--font-sans` at `:root`, and a custom property that references one
-    // declared further down the tree computes to nothing — which makes
-    // `font-family: var(--font-sans)` invalid and drops the whole app back to
-    // the browser's default serif.
     <html
       lang={locale}
       className={`${inter.variable} font-sans antialiased`}

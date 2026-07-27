@@ -7,8 +7,6 @@ class AuthError(DomainError):
 
 class InvalidCredentials(AuthError):
     def __init__(self) -> None:
-        # Deliberately vague: saying which half was wrong tells an attacker
-        # which emails exist.
         super().__init__("Incorrect email or password")
 
 

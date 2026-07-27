@@ -7,12 +7,7 @@ import { ApiError, authApi } from "@/lib/api";
 import { readToken } from "@/lib/session";
 import { DEFAULT_THEME, THEME_COOKIE, isTheme } from "@/lib/theme";
 
-/**
- * The signed-in shell.
- *
- * The guard lives here rather than on each page: a route added to this group
- * is protected by being in it, and cannot be forgotten.
- */
+// The signed-in shell.
 export default async function AppLayout({
   children,
 }: Readonly<{
@@ -28,21 +23,11 @@ export default async function AppLayout({
     <>
       <Sidebar initialTheme={theme} userEmail={email} />
       <div className="lg:pl-64">{children}</div>
-      {/* One mount for the whole signed-in shell: an action's outcome shows up
-          wherever the user happens to be looking, not buried under the form
-          that produced it. */}
       <Toaster position="bottom-right" />
     </>
   );
 }
 
-/**
- * The signed-in user, or null.
- *
- * The token is verified against the API rather than merely being present: an
- * expired or revoked one must send the visitor back to the login screen, not
- * render a shell whose every request then fails.
- */
 async function currentUserEmail(): Promise<string | null> {
   if (!(await readToken())) return null;
 

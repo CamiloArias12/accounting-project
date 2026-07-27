@@ -69,14 +69,6 @@ export default async function ThirdPartyDetailPage({ params }: Props) {
   );
 }
 
-/**
- * The lists behind the cascades.
- *
- * Resolved here rather than fetched by the form on mount, so an edit shows its
- * departments and municipalities already selected instead of blanking them for
- * a moment. The issue city is looked up on its own because only the city is
- * stored — its department has to be read back off it.
- */
 async function preload(thirdParty: ThirdParty): Promise<Preloaded> {
   const [
     addressDepartments,

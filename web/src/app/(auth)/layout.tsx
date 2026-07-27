@@ -4,12 +4,7 @@ import { LocaleToggle } from "@/components/LocaleToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { DEFAULT_THEME, THEME_COOKIE, isTheme } from "@/lib/theme";
 
-/**
- * The signed-out shell: no navigation, since none of it is reachable yet.
- *
- * The preference toggles stay, or someone landing here in the wrong language
- * or an unreadable theme would have no way out.
- */
+// The signed-out shell: no navigation, since none of it is reachable yet.
 export default async function AuthLayout({
   children,
 }: Readonly<{

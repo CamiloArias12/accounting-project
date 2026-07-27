@@ -17,7 +17,6 @@ export function LocaleToggle() {
   function choose(next: Locale) {
     persistPreference(LOCALE_COOKIE, next);
     // Unlike the theme, messages are resolved on the server, so the page has to
-    // be re-rendered for the new language to take effect.
     startTransition(() => router.refresh());
   }
 

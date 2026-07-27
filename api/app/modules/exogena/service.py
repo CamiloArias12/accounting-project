@@ -1,11 +1,3 @@
-"""Building the exógena report out of what is in the books.
-
-Only posted vouchers count, and only lines that name a third party on an
-account carrying a DIAN concept. Everything else is somebody else's business:
-a draft is not in the books, a line with no third party has nobody to report,
-and an account with no concept is not reportable.
-"""
-
 from __future__ import annotations
 
 import datetime as dt
@@ -34,6 +26,7 @@ logger = logging.getLogger("app.exogena")
 
 
 class ExogenaService:
+    """Building the exógena report out of what is in the books."""
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
@@ -45,12 +38,6 @@ class ExogenaService:
         legal_name: str,
         user_id: int | None = None,
     ) -> ExogenaGeneration:
-        """Build the file and keep it.
-
-        The filer's own NIT is verified first: a report filed under a
-        mistyped NIT is filed against somebody else, and it is cheaper to
-        refuse than to explain.
-        """
         filer = Filer.of(nit=nit, legal_name=legal_name, year=payload.year)
         threshold = await self._threshold_in_pesos(payload)
 
@@ -103,15 +90,8 @@ class ExogenaService:
             raise GenerationNotFound(generation_id)
         return generation
 
-    # --- plumbing ---------------------------------------------------------
 
     async def _threshold_in_pesos(self, payload: GenerateRequest) -> _Threshold:
-        """Turn a threshold in UVT into pesos, or refuse to guess.
-
-        Zero means no threshold, and then the UVT is not needed at all — which
-        is what makes the feature usable for a year the DIAN has not published
-        yet.
-        """
         if payload.threshold_uvt == ZERO:
             return _Threshold(uvt=None, pesos=ZERO)
 
@@ -123,20 +103,12 @@ class ExogenaService:
         return _Threshold(uvt=uvt, pesos=uvt * payload.threshold_uvt)
 
     async def _movements(self, year: int) -> Sequence[Row[Any]]:
-        """One row per third party, concept and side of the report.
-
-        Grouped in SQL rather than in Python: the year of a real set of books
-        is more rows than there is any reason to carry into memory.
-        """
         return (
             await self._session.execute(
                 select(
                     ThirdParty.id,
                     ThirdParty.document_type,
                     ThirdParty.document_number,
-                    # The name is assembled from columns, not read off
-                    # `full_name`: that is a Python property and SQL cannot
-                    # group by it.
                     ThirdParty.first_name,
                     ThirdParty.middle_name,
                     ThirdParty.first_surname,
@@ -152,9 +124,6 @@ class ExogenaService:
                 .join(ThirdParty, ThirdParty.id == VoucherLine.third_party_id)
                 .where(
                     Voucher.status == VoucherStatus.POSTED,
-                    # The taxable year is the accounting period, not the date
-                    # typed on the document: an adjustment written in January
-                    # belonging to December is December's business.
                     Voucher.period_year == year,
                     Account.dian_concept.is_not(None),
                 )
@@ -188,21 +157,12 @@ def _assemble(
     movements: Sequence[Row[Any]],
     threshold: Decimal,
 ) -> tuple[Report, list[tuple[str, str, Decimal]]]:
-    """Fold the grouped movements into rows, dropping who falls short.
-
-    The threshold applies to a third party as a whole, not to each concept:
-    somebody paid under three concepts is reportable on the sum, and testing
-    each concept on its own would leave them out of a file they belong in.
-    """
-    #: (third party, concept) -> [gross, withheld]
     buckets: dict[tuple[int, str], list[Decimal]] = {}
     names: dict[int, tuple[str, str, str]] = {}
 
     for row in movements:
         key = (row.id, row.dian_concept)
         amounts = buckets.setdefault(key, [ZERO, ZERO])
-        # Signed sums come back with the account's nature; the report shows
-        # magnitudes, so a payment and a withholding both read as positive.
         amounts[1 if row.is_withholding else 0] += abs(row.amount or ZERO)
         names[row.id] = (
             dian_code(row.document_type),
@@ -248,7 +208,6 @@ def _assemble(
 
 
 def _display_name(row: Row[Any]) -> str:
-    """The legal name for a company, the given names joined for a person."""
     if row.legal_name:
         return str(row.legal_name)
 
@@ -262,5 +221,4 @@ def _display_name(row: Row[Any]) -> str:
 
 
 def _now() -> dt.datetime:
-    # Naive, to match the other timestamp columns.
     return dt.datetime.now(dt.UTC).replace(tzinfo=None)

@@ -51,14 +51,7 @@ export async function updateAccount(
   });
 }
 
-/**
- * Delete and restore share one action on purpose.
- *
- * They are the two directions of the same toggle, and each one flips the
- * condition that would pick between two separate `useActionState`s — so the
- * confirmation would vanish the instant it was earned. One action, one state,
- * one message.
- */
+// Delete and restore share one action on purpose.
 export async function changeAccountState(
   _previous: FormState,
   formData: FormData,
@@ -78,10 +71,6 @@ export async function changeAccountState(
     return t("success.deleted", { code });
   });
 
-  // A deleted account leaves the default tree, which would unmount the form
-  // mid-flight. Switching to the deleted view keeps it on screen, now offering
-  // Restore. Doing it here avoids racing a client effect against the
-  // revalidation; `redirect` throws by design, so it stays outside try/catch.
   if (!restoring && state.status === "success") {
     redirect(`${ACCOUNTS_PATH}?deleted=1`);
   }
@@ -139,7 +128,6 @@ function validate(fields: AccountFields, t: Translator): FormState | null {
   return null;
 }
 
-/** Runs the mutation, revalidates the page and turns failures into messages. */
 async function run(mutation: () => Promise<string>): Promise<FormState> {
   const t = await getTranslations();
 
@@ -156,10 +144,6 @@ function failure(message: string): FormState {
   return { status: "error", message };
 }
 
-/**
- * Business errors carry the backend's own message, which is already specific
- * (missing parent, has children…). Only the transport failure is localized.
- */
 function describe(caught: unknown, t: Translator): string {
   if (caught instanceof ApiError) return caught.message;
   return t("errors.apiUnreachable");

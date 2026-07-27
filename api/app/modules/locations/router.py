@@ -9,7 +9,6 @@ from app.modules.locations.schemas import CityRead, CountryRead, DepartmentRead
 from app.modules.locations.service import LocationService
 from app.shared.database import get_session
 
-# Read-only: the catalogs are seeded by migration, so there is nothing to POST.
 router = APIRouter(
     prefix="/locations",
     tags=["locations"],
@@ -61,11 +60,6 @@ async def list_cities(
     skip: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=200)] = 100,
 ) -> list[City]:
-    """Municipalities, always paged.
-
-    There are 1122 of them, so a picker filters by department or searches by
-    name; the endpoint never returns the whole catalog at once.
-    """
     return list(
         await service.cities(
             department_id=department_id, search=search, skip=skip, limit=limit
@@ -75,9 +69,4 @@ async def list_cities(
 
 @router.get("/cities/{city_id}", response_model=CityRead)
 async def get_city(city_id: int, service: ServiceDep) -> City:
-    """One municipality, to resolve which department a stored id belongs to.
-
-    A third party keeps the city its document was issued in, but not the
-    department, so an edit form has nothing to preselect its cascade with.
-    """
     return await service.get_city(city_id)

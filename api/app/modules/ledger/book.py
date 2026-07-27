@@ -1,18 +1,4 @@
-"""The auxiliary book as a spreadsheet.
-
-The innermost layer, like `exogena.report`: no database, no HTTP, no framework.
-Given the accounts and their movements, this builds the workbook and nothing
-else.
-
-It is a spreadsheet rather than a PDF because of what people do with it: an
-auxiliary book gets filtered, totalled and pasted into a working paper. openpyxl
-is already a dependency — the chart of accounts is imported from a workbook —
-so this adds no third-party code to the project.
-
-The reference project writes its book to a fixed path on disk and streams it
-back, which means two people downloading at once overwrite each other's file.
-This returns bytes; nothing is written anywhere.
-"""
+"""The auxiliary book as a spreadsheet."""
 
 from __future__ import annotations
 
@@ -30,10 +16,6 @@ from app.modules.ledger.schemas import AccountLedger
 
 Locale = Literal["es", "en"]
 
-#: The columns, in the order the reference project prints them. Two of its
-#: columns are dropped: it carries a document *type* the model here does not
-#: have (one consecutive series, not one per book), and its "saldo anterior"
-#: repeats on every row where it belongs once per account.
 HEADERS: Final[dict[Locale, list[str]]] = {
     "es": [
         "FECHA",
@@ -88,8 +70,6 @@ LABELS: Final[dict[Locale, dict[str, str]]] = {
     },
 }
 
-#: Widths in characters, one per column. A book whose account names are cut off
-#: is a book somebody has to widen by hand before reading it.
 WIDTHS: Final[list[int]] = [12, 13, 40, 14, 34, 22, 34, 16, 16, 18]
 
 MONEY_FORMAT: Final = "#,##0.00;[Red]-#,##0.00"
@@ -110,7 +90,6 @@ def build_auxiliary_book(
     generated_at: dt.datetime,
     locale: Locale = "es",
 ) -> bytes:
-    """The workbook, as bytes ready to be sent."""
     labels = LABELS[locale]
 
     workbook = Workbook()
@@ -135,8 +114,6 @@ def build_auxiliary_book(
             _write_account(sheet, account, labels)
         _write_grand_total(sheet, accounts, labels)
 
-    # The header row stays visible while scrolling a book of a few thousand
-    # lines, which is the length these reach.
     sheet.freeze_panes = f"A{_HEADER_ROW + 1}"
     sheet.auto_filter.ref = (
         f"A{_HEADER_ROW}:{get_column_letter(len(WIDTHS))}{sheet.max_row}"
@@ -147,7 +124,6 @@ def build_auxiliary_book(
     return buffer.getvalue()
 
 
-#: Row the column headings sit on: four lines of masthead above them.
 _HEADER_ROW: Final = 5
 
 
@@ -160,12 +136,6 @@ def _write_masthead(
     date_to: dt.date | None,
     generated_at: dt.datetime,
 ) -> None:
-    """Who the book belongs to and what it covers.
-
-    Printed on the sheet rather than left to the filename: a spreadsheet gets
-    renamed, forwarded and pasted into another one, and a book of movements with
-    no date range on it cannot be checked against anything.
-    """
     title = sheet.cell(row=1, column=1, value=labels["title"])
     title.font = Font(name="Arial", size=14, bold=True)
 
@@ -200,13 +170,6 @@ def _write_header(sheet: Worksheet, headers: list[str]) -> None:
 def _write_account(
     sheet: Worksheet, account: AccountLedger, labels: dict[str, str]
 ) -> None:
-    """One account: what it carried in, what moved, where it ended.
-
-    The opening balance is a row of its own at the top of the block, not a
-    column repeated on every line. The reference project prints it as a column
-    and then writes zero into it on every movement row, which makes the column
-    say nothing at all.
-    """
     opening = sheet.max_row + 1
     sheet.cell(row=opening, column=4, value=account.code)
     sheet.cell(row=opening, column=5, value=account.name)
@@ -222,9 +185,6 @@ def _write_account(
         row = sheet.max_row + 1
         date = sheet.cell(row=row, column=1, value=entry.date)
         date.number_format = DATE_FORMAT
-        # A draft has no number, but a draft is not in the books — so anything
-        # reaching here is posted and numbered. The fallback is for the reader,
-        # not for a case that happens.
         sheet.cell(row=row, column=2, value=entry.voucher_number or entry.voucher_id)
         sheet.cell(row=row, column=3, value=entry.description)
         sheet.cell(row=row, column=4, value=account.code)
@@ -250,11 +210,6 @@ def _write_account(
 def _write_grand_total(
     sheet: Worksheet, accounts: list[AccountLedger], labels: dict[str, str]
 ) -> None:
-    """The one line that says whether the book is sound.
-
-    Signed balances sum to zero when every voucher behind them balanced, so this
-    is the same check the ledger screen makes, carried into the file.
-    """
     row = sheet.max_row + 2
     sheet.cell(row=row, column=7, value=labels["grand_total"])
     _money_cell(sheet, row, 8, sum((a.debit for a in accounts), Decimal(0)))
@@ -266,10 +221,5 @@ def _write_grand_total(
 
 
 def _money_cell(sheet: Worksheet, row: int, column: int, value: Decimal) -> None:
-    """Written as a number, never as a formatted string.
-
-    A book whose amounts are text cannot be summed in the spreadsheet it was
-    exported for, which is most of the reason to export a spreadsheet.
-    """
     cell = sheet.cell(row=row, column=column, value=value)
     cell.number_format = MONEY_FORMAT

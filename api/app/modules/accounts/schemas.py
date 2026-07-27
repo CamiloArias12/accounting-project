@@ -1,5 +1,3 @@
-"""Pydantic at the edge: what comes in and what goes out over HTTP."""
-
 from __future__ import annotations
 
 from datetime import datetime
@@ -15,6 +13,7 @@ from app.modules.accounts.puc import (
 
 
 class AccountCreate(BaseModel):
+    """Pydantic at the edge: what comes in and what goes out over HTTP."""
     code: str = Field(examples=["110505"])
     name: str = Field(min_length=1, max_length=255, examples=["CAJA GENERAL"])
     nature: Nature = Field(examples=[Nature.DEBIT])

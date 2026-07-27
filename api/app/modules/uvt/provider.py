@@ -1,15 +1,3 @@
-"""Where the UVT comes from.
-
-The UVT (unidad de valor tributario) is republished by the DIAN every year and
-is what turns a threshold expressed in UVT into pesos. It is not ours to
-compute — it has to be fetched.
-
-The port is a protocol with one method, so the simulated provider and a real
-HTTP one are interchangeable and the service never learns which it got.
-
-Nothing here touches the database or FastAPI.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -20,9 +8,6 @@ from typing import Final, Protocol
 
 import httpx
 
-#: Values published by the DIAN. They are hardcoded rather than guessed for
-#: years that have not been published: inventing a UVT would silently move
-#: every threshold that depends on it.
 PUBLISHED: Final[dict[int, Decimal]] = {
     2021: Decimal("36308"),
     2022: Decimal("38004"),
@@ -40,11 +25,7 @@ class UvtError(Exception):
 
 
 class UvtNotPublished(UvtError):
-    """The year is valid but nobody has published a value for it yet.
-
-    Not a transient failure: retrying will not make the DIAN publish sooner, so
-    the caller is told to set it by hand instead.
-    """
+    """The year is valid but nobody has published a value for it yet."""
 
     def __init__(self, year: int) -> None:
         super().__init__(
@@ -54,11 +35,7 @@ class UvtNotPublished(UvtError):
 
 
 class UvtSourceUnavailable(UvtError):
-    """The source failed in a way that might work on the next try.
-
-    Carries how many attempts were spent, so the run record can say three
-    rather than leaving the count to be read out of the message.
-    """
+    """The source failed in a way that might work on the next try."""
 
     def __init__(self, detail: str, *, attempts: int = 1) -> None:
         super().__init__(f"The UVT source is unavailable: {detail}")
@@ -76,14 +53,7 @@ class UvtProvider(Protocol):
 
 
 class SimulatedUvtProvider:
-    """Stands in for the DIAN.
-
-    A real integration would scrape or call an API. This one answers from the
-    published table and fails at a configurable rate, because what the code has
-    to get right is the failure — the retry, the fact that a repeated run does
-    not duplicate anything, and the record of what happened. A source that
-    always answers exercises none of it.
-    """
+    """Stands in for the DIAN."""
 
     def __init__(
         self,
@@ -121,15 +91,6 @@ async def fetch_with_retry(
     attempts: int = 3,
     base_delay_seconds: float = 0.2,
 ) -> tuple[Decimal, int]:
-    """Fetch, retrying only what is worth retrying.
-
-    A source that timed out may answer next time; a year the DIAN has not
-    published will not appear because we asked again, so `UvtNotPublished`
-    stops the loop at once.
-
-    Returns the value and how many attempts it took, which is what the run
-    record reports.
-    """
     last: Exception | None = None
 
     for attempt in range(1, attempts + 1):
@@ -140,7 +101,6 @@ async def fetch_with_retry(
         except UvtError as exc:
             last = exc
             if attempt < attempts:
-                # Backing off, so a source that is merely busy is not hammered.
                 await asyncio.sleep(base_delay_seconds * 2 ** (attempt - 1))
 
     raise UvtSourceUnavailable(
@@ -148,39 +108,15 @@ async def fetch_with_retry(
     ) from last
 
 
-#: Where the real provider reads from, and why it is not the DIAN.
-#:
-#: The DIAN publishes the UVT as a resolution — a PDF in the normograma — and
-#: has no page that states the current value in a stable, parseable place;
-#: `dian.gov.co/dian/cifras/Paginas/UVT.aspx` is a 404. Datos Abiertos carries
-#: no UVT dataset either: a catalogue search returns nothing on the subject.
-#:
-#: What is left is a published table on a public site. It is a real HTTP call
-#: against a real page, which is the point; it is also somebody else's markup,
-#: which is why the parser is deliberate about what it accepts and the whole
-#: thing degrades to a recorded failure rather than a wrong number.
 DEFAULT_SOURCE_URL: Final = "https://www.gerencie.com/uvt.html"
 
-#: A year followed, within a short distance, by a figure in thousands. The
-#: distance is bounded on purpose: letting it run would happily pair a year in
-#: one paragraph with an amount three paragraphs down.
 _YEAR_AND_VALUE: Final = re.compile(r"(20[0-9]{2})\D{1,40}?(\d{2}\.\d{3})")
 
-#: The UVT has never been below this and will not be for a long time. A page
-#: that yields something smaller has been misparsed, and a misparsed threshold
-#: is worse than no threshold.
 _PLAUSIBLE_MINIMUM: Final = Decimal("20000")
 
 
 class HttpUvtProvider:
-    """Reads the UVT off a published table.
-
-    Everything that can go wrong with somebody else's page is treated as the
-    source being unavailable rather than as an answer: a timeout, a 500, a
-    redesign that breaks the parse. The one thing that is not a failure is a
-    page that simply has no row for the year — that is `UvtNotPublished`, and
-    retrying it would be pointless.
-    """
+    """Reads the UVT off a published table."""
 
     def __init__(
         self,
@@ -202,8 +138,6 @@ class HttpUvtProvider:
             ) as client:
                 response = await client.get(
                     self._url,
-                    # Some public sites answer 403 to a bare client. Saying who
-                    # we are is politer than pretending to be a browser.
                     headers={"User-Agent": "accounting-project/1.0 (+uvt-sync)"},
                 )
                 response.raise_for_status()
@@ -219,15 +153,6 @@ class HttpUvtProvider:
 
 
 def parse_uvt_table(html: str) -> dict[int, Decimal]:
-    """Pull the year/value pairs out of a page.
-
-    Separated from the fetching so it can be tested against a fixture instead
-    of against the internet — which is what makes the parsing verifiable at all
-    once the page inevitably changes.
-
-    Colombian thousands separators are dots, so `52.374` is fifty-two thousand
-    and not fifty-two point three.
-    """
     found: dict[int, Decimal] = {}
 
     for raw_year, raw_value in _YEAR_AND_VALUE.findall(html):
@@ -236,8 +161,6 @@ def parse_uvt_table(html: str) -> dict[int, Decimal]:
 
         if value < _PLAUSIBLE_MINIMUM:
             continue
-        # First occurrence wins: these pages tend to state the current year up
-        # top and repeat it further down, and the table is the authority.
         found.setdefault(year, value)
 
     return found

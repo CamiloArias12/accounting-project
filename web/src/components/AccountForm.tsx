@@ -18,12 +18,7 @@ import { Label } from "@/components/ui/label";
 import { NATURES, type Account } from "@/types/account";
 
 interface Props {
-  /**
-   * Account being edited; when absent the form creates a new one.
-   *
-   * The parent remounts this component with `key` when the selection changes,
-   * so plain `defaultValue`s are enough — no effect syncing state to props.
-   */
+  // Account being edited; when absent the form creates a new one.
   account: Account | null;
   onCancel: () => void;
 }

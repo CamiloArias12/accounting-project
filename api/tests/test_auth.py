@@ -6,9 +6,6 @@ REGISTRATION = {
     "full_name": "Someone",
 }
 
-#: One read endpoint per module. A router mounted without the dependency is how
-#: business data ends up public, and that is invisible in the router's own
-#: tests — hence the list, in one place, covering all of them.
 PROTECTED = [
     "/api/v1/auth/me",
     "/api/v1/accounts",
@@ -28,7 +25,6 @@ async def test_registering_and_logging_in(client: AsyncClient) -> None:
     registered = await client.post("/api/v1/auth/register", json=REGISTRATION)
 
     assert registered.status_code == 201
-    # The password never comes back out, in either spelling.
     assert "password" not in registered.json()
     assert "hashed_password" not in registered.json()
 
@@ -47,7 +43,6 @@ async def test_registering_and_logging_in(client: AsyncClient) -> None:
 
 
 async def test_a_bad_login_says_nothing_about_the_account(client: AsyncClient) -> None:
-    """The response must not reveal whether the email exists."""
     await client.post("/api/v1/auth/register", json=REGISTRATION)
 
     unknown = await client.post(
@@ -67,7 +62,6 @@ async def test_every_module_is_behind_the_login(client: AsyncClient) -> None:
     for path in PROTECTED:
         assert (await client.get(path)).status_code == 401, path
 
-    # And the writes, which is where an unprotected router does real damage.
     account = {"code": "1", "name": "ACTIVOS", "nature": "Debito"}
     assert (await client.post("/api/v1/accounts", json=account)).status_code == 401
     assert (await client.delete("/api/v1/accounts/1")).status_code == 401

@@ -3,7 +3,7 @@ export type Locale = (typeof LOCALES)[number];
 
 export const DEFAULT_LOCALE: Locale = "en";
 
-/** Cookie the user's language choice is stored in. */
+// Cookie the user's language choice is stored in.
 export const LOCALE_COOKIE = "locale";
 
 export function isLocale(value: string | undefined): value is Locale {

@@ -17,8 +17,7 @@ export async function generateExogena(
   const year = readNumber(formData, "year");
   if (year === null) return failure(t("exogenaErrors.yearRequired"));
 
-  // Blank means no threshold. Left as a string all the way to the API: a
-  // Number round-trip on money is how a hundredth goes missing.
+  // Blank means no threshold.
   const threshold = readText(formData, "threshold_uvt") || "0";
 
   return run(async () => {
@@ -44,9 +43,6 @@ export async function refreshUvt(
 
   return run(async () => {
     await uvtApi.refresh(year);
-    // Accepted, not done: the fetch runs after the response, and the outcome
-    // shows up in the run log. Saying "updated" here would be a lie whenever
-    // the source is down.
     return t("exogenaSuccess.refreshQueued", { year });
   });
 }
@@ -68,7 +64,6 @@ export async function setUvt(
   });
 }
 
-// --- plumbing ---------------------------------------------------------------
 
 type Translator = Awaited<ReturnType<typeof getTranslations>>;
 
@@ -88,10 +83,6 @@ function failure(message: string): FormState {
   return { status: "error", message };
 }
 
-/**
- * The backend's own message is already specific — which year has no UVT, which
- * check digit the NIT should carry. Only the transport failure is localized.
- */
 function describe(caught: unknown, t: Translator): string {
   if (caught instanceof ApiError) return caught.message;
   return t("errors.apiUnreachable");

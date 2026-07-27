@@ -35,8 +35,6 @@ engine: AsyncEngine = create_async_engine(
     str(settings.DATABASE_URL),
     echo=settings.DEBUG,
     pool_pre_ping=True,
-    # Sized explicitly: the default 5+10 multiplied by every replica is what
-    # exhausts Postgres `max_connections`.
     pool_size=settings.DB_POOL_SIZE,
     max_overflow=settings.DB_MAX_OVERFLOW,
     pool_timeout=settings.DB_POOL_TIMEOUT,
@@ -52,7 +50,6 @@ SessionFactory = async_sessionmaker(
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
-    """One session per request, rolled back on error."""
     async with SessionFactory() as session:
         try:
             yield session

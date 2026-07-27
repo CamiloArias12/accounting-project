@@ -20,7 +20,7 @@ interface Props {
   }>;
 }
 
-/** Server Component: the browser never talks to the API nor knows its URL. */
+// Server Component: the browser never talks to the API nor knows its URL.
 export default async function ThirdPartiesPage({ searchParams }: Props) {
   const params = await searchParams;
   const showDeleted = params.deleted === "1";
@@ -31,9 +31,6 @@ export default async function ThirdPartiesPage({ searchParams }: Props) {
 
   let thirdParties: ThirdParty[] = [];
   let total = 0;
-  // Read from the URL rather than fixed in code, so a page size is something
-  // a link can carry. Clamped, because the API refuses anything above 500 and
-  // a 422 on a mistyped query string is a poor way to find that out.
   const limit = Math.min(500, Math.max(1, Number(params.limit) || 50));
   const skip = Math.max(0, Number(params.skip) || 0);
   let loadError: string | null = null;

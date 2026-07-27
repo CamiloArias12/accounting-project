@@ -10,7 +10,6 @@ from pwdlib import PasswordHash
 from app.modules.auth.errors import InvalidToken
 from app.shared.config import settings
 
-#: Argon2id, the current password-hashing recommendation.
 _hasher = PasswordHash.recommended()
 
 
@@ -22,8 +21,6 @@ def verify_password(plain: str, hashed: str) -> bool:
     try:
         return _hasher.verify(plain, hashed)
     except Exception:
-        # A malformed stored hash must read as "wrong password", never as a 500
-        # that tells the caller something about the account.
         return False
 
 
