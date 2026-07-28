@@ -11,8 +11,8 @@ FastAPI + Next.js; todo corre en Docker.
 | -------- | ------------------------------------ | ------------------ |
 | `web`    | Next.js 16, React 19, Tailwind 4     | 3000               |
 | `api`    | FastAPI 0.140, SQLAlchemy 2, Alembic | 8000               |
-| postgres | Postgres 17                          | 5432 (solo en dev) |
-| redis    | Redis 7                              | 6379 (solo en dev) |
+| postgres | Postgres 17                          | 5432               |
+| redis    | Redis 7                              | 6379               |
 
 ## Inicio rápido
 
