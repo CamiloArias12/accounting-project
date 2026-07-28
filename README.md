@@ -16,7 +16,7 @@ FastAPI + Next.js; todo corre en Docker.
 
 ## Inicio rápido
 
-Requisito: Docker. Ni Node ni Python en la máquina.
+Requisito: Docker.
 
 ```bash
 cp .env.example .env
