@@ -84,91 +84,47 @@ Server Actions. Por eso `API_URL` no es `NEXT_PUBLIC_*`.
 
 ## Decisiones de diseño
 
-- **El código es la jerarquía.** Ver la sección siguiente: el nivel es la
-  longitud del código y el padre es su prefijo.
-- **Solo las hojas reciben movimientos.** Contabilizar en `1105` existiendo
-  `110505` contaría doble en todo reporte que recorra el árbol.
-- **Los saldos se calculan, nunca se guardan.** Una segunda copia se separa de
-  la primera en cuanto una escritura falla a medias; si se volviera lento, vista
-  materializada y no columna.
-- **El cuadre es precondición de contabilizar.** Débitos = créditos y mínimo dos
-  líneas antes de entrar a los libros, en el dominio y en la base.
-- **Un contabilizado no se altera: se reversa.** El asiento inverso se
-  contabiliza en la misma operación y el par queda visible y enlazado.
-- **Cierre por período, reapertura permitida.** Con quién y cuándo en cada
-  cambio; un cierre irreversible volvería permanente un mes mal digitado.
-- **La empresa es configuración.** Una sola empresa haría de `companies` una
-  tabla de una fila; con varias, sería una columna de tenant.
-- **Concurrencia sin bloqueos.** Ver la sección siguiente; lo demás es una
-  transacción por comprobante.
-- **Ningún float toca un importe.** `Numeric(18,2)` en Postgres, `Decimal` en
-  Python, cadenas decimales en HTTP y centavos enteros en el navegador.
+**El plan de cuentas.** En el PUC la jerarquía ya viene escrita en el propio
+código: `1` es la clase (Activo), `11` el grupo (Disponible), `1105` la cuenta
+(Caja), `110505` la subcuenta (Caja general) y de 7 dígitos en adelante los
+auxiliares de cada empresa. Por eso aquí solo se digita el código y de él sale
+todo lo demás: el nivel por la longitud (3 y 5 dígitos se rechazan porque no
+existen en el PUC) y el padre por el prefijo — el de `110505` es `1105`. No se
+puede crear una cuenta sin su padre ni borrar una que tenga hijas, y como nivel
+y padre se calculan en vez de digitarse, la jerarquía no puede quedar
+incoherente. Leer una rama completa es un simple `LIKE '11%'`. Los movimientos
+solo entran por las cuentas hoja: contabilizar en `1105` existiendo `110505`
+haría contar doble a cualquier reporte que sume el árbol.
 
-## Clase, grupo, cuenta y subcuenta: cómo vive la jerarquía
+**Los comprobantes.** Un comprobante no entra a los libros si no cuadra:
+débitos iguales a créditos y mínimo dos líneas, validado en el código y en la
+base de datos. Una vez contabilizado no se toca: si está mal, se reversa, y el
+asiento inverso queda contabilizado en la misma operación, visible y enlazado
+con el original. ¿Y si dos personas contabilizan al mismo tiempo? Ambas
+querrían el mismo consecutivo. El número se asigna solo al contabilizar (los
+borradores no lo gastan), se calcula como el mayor existente más uno, y un
+índice único hace que Postgres acepte solo a una; la que pierde recalcula y
+reintenta, hasta cinco veces. Así nunca hay dos comprobantes con el mismo
+número — lo garantiza la base de datos, no el código —, la numeración queda
+seguida y sin huecos, y el número y la contabilización se guardan en una misma
+transacción. Se descartó la secuencia de Postgres porque deja huecos cuando
+una transacción se cancela, y en un consecutivo contable eso es peor.
 
-El PUC ya trae la jerarquía escrita en el propio código: `1` es la clase
-(Activo), `11` el grupo (Disponible), `1105` la cuenta (Caja), `110505` la
-subcuenta (Caja general), y de 7 dígitos en adelante van los auxiliares que
-crea cada empresa. Cada código empieza con el código de su padre.
+**Los saldos y el dinero.** Los saldos no se guardan: se calculan sumando las
+líneas contabilizadas, porque una copia guardada se desactualiza en cuanto una
+escritura falla a medias (si se volviera lento, la salida sería una vista
+materializada, no una columna). Y ningún importe pasa por un float:
+`Numeric(18,2)` en Postgres, `Decimal` en Python, cadenas decimales en HTTP y
+centavos enteros en el navegador.
 
-Por eso no hay una tabla por nivel ni un padre que se elija a mano. Se digita
-solo el código, y de él sale todo lo demás:
+**Los períodos.** Los meses se cierran y se pueden reabrir, y cada cambio
+registra quién lo hizo y cuándo. Un cierre irreversible volvería permanente un
+mes mal digitado.
 
-- **El nivel es la longitud del código:** 1 dígito → clase, 2 → grupo,
-  4 → cuenta, 6 → subcuenta, 7 o más → auxiliar. Un código de 3 o 5 dígitos se
-  rechaza porque no corresponde a ningún nivel del PUC.
-- **El padre es el prefijo:** el padre de `110505` es `1105`, y el de `1105` es
-  `11`. Nadie escoge el padre en un formulario; sale del código.
-- **El padre debe existir primero:** no se puede crear `110505` si no existe
-  `1105`, ni borrar una cuenta que todavía tenga hijas vivas.
-
-El nivel y el padre sí se guardan como columnas — para filtrar y armar el árbol
-rápido — pero nunca los escribe el usuario: se calculan del código al crear la
-cuenta, así que no pueden contradecirlo.
-
-Qué garantiza:
-
-- **La jerarquía no puede quedar incoherente.** Como nivel y padre se derivan
-  del código, no existe forma de que `110505` termine colgada de `2105` o
-  marcada como grupo. El error simplemente no se puede digitar.
-- **Leer una rama es trivial:** todo lo que cuelga de `11` es todo código que
-  empieza por `11` — un `LIKE '11%'`, sin consultas recursivas.
-- **Los reportes no cuentan doble:** los movimientos solo entran por las hojas
-  (ver "Solo las hojas reciben movimientos"), y los niveles superiores se
-  obtienen sumando la rama.
-
-Se descartó lo complejo: tablas separadas por nivel, un `parent_id` digitado a
-mano o extensiones de árbol de Postgres. Habrían agregado piezas que pueden
-contradecirse entre sí para representar algo que el código de la cuenta ya
-dice solo.
-
-## ¿Y si dos personas contabilizan al mismo tiempo?
-
-Las dos querrían el mismo número de comprobante. Se resolvió sin bloqueos,
-con tres ideas simples:
-
-1. **Un borrador no tiene número.** El número se asigna solo al contabilizar,
-   así que los borradores abandonados no gastan consecutivo.
-2. **El número se calcula sin bloquear nada:** se mira el mayor que exista y se
-   le suma uno.
-3. **La base de datos es el árbitro.** Un índice único sobre el número hace que,
-   si dos peticiones llegan con el mismo, Postgres acepte una sola. La que
-   pierde recibe el error, recalcula con el número ya actualizado y vuelve a
-   intentar (hasta cinco veces).
-
-Qué garantiza:
-
-- **Nunca dos comprobantes con el mismo número**, aunque corran varias copias
-  de la API a la vez. Lo garantiza Postgres, no el código.
-- **Sin huecos:** como un contabilizado nunca se borra (se reversa), la
-  numeración queda 1, 2, 3… seguida.
-- **Todo o nada:** el número y la contabilización se guardan en la misma
-  transacción; no existe un comprobante "numerado pero sin contabilizar".
-
-El costo asumido: si una petición pierde cinco veces seguidas — algo que exige
-muchísima concurrencia para una empresa sola —, falla y el usuario reintenta.
-Se descartó usar una secuencia de Postgres porque deja huecos cuando una
-transacción se cancela, y en un consecutivo contable eso es peor.
+**La empresa.** Hay una sola, así que sus datos (NIT, razón social) viven en el
+`.env` y no en una tabla: una tabla `companies` tendría siempre una única fila,
+y si algún día hubiera varias empresas, lo que haría falta es una columna de
+tenant en todas las tablas, no esa tabla.
 
 ## Extras implementados
 
