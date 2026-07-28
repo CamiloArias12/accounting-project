@@ -1,6 +1,6 @@
 import { LedgerView } from "@/components/LedgerView";
 import { ApiError, accountsApi, ledgerApi, thirdPartiesApi } from "@/lib/api";
-import type { AccountLedger, LedgerReport } from "@/types/voucher";
+import type { AccountLedger } from "@/types/voucher";
 
 export const metadata = {
   title: "Ledger · Accounting Project",
@@ -15,13 +15,6 @@ interface Props {
   }>;
 }
 
-const EMPTY: LedgerReport = {
-  date_from: null,
-  date_to: null,
-  accounts: [],
-  totals: { debit: "0.00", credit: "0.00", balance: "0.00", is_balanced: true },
-};
-
 export default async function LedgerPage({ searchParams }: Props) {
   const params = await searchParams;
   const dateFrom = params.date_from ?? "";
@@ -29,20 +22,19 @@ export default async function LedgerPage({ searchParams }: Props) {
   const account = params.account ?? "";
   const thirdParty = params.third_party ?? "";
 
-  let report = EMPTY;
-  let detail: AccountLedger | null = null;
+  let book: AccountLedger[] = [];
   let loadError: string | null = null;
 
-  const filters = {
-    date_from: dateFrom || undefined,
-    date_to: dateTo || undefined,
-    third_party_id: thirdParty ? Number(thirdParty) : undefined,
-  };
-
   try {
-    // The detail replaces the report rather than sitting beside it: one account
-    if (account) detail = await ledgerApi.account(account, filters);
-    else report = await ledgerApi.report(filters);
+    // One view, always the book. Picking an account narrows it instead of
+    // switching to something else, and it comes from the same endpoint the
+    // spreadsheet is built from.
+    book = await ledgerApi.entries({
+      date_from: dateFrom || undefined,
+      date_to: dateTo || undefined,
+      third_party_id: thirdParty ? Number(thirdParty) : undefined,
+      account_code: account || undefined,
+    });
   } catch (caught) {
     loadError =
       caught instanceof ApiError ? caught.message : "Could not reach the API";
@@ -55,8 +47,7 @@ export default async function LedgerPage({ searchParams }: Props) {
 
   return (
     <LedgerView
-      report={report}
-      detail={detail}
+      book={book}
       dateFrom={dateFrom}
       dateTo={dateTo}
       account={account}

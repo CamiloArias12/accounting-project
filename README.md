@@ -293,18 +293,14 @@ docker compose -f docker-compose.local.yml up -d --build
 docker compose -f docker-compose.local.yml exec api alembic upgrade head
 docker compose -f docker-compose.local.yml exec api python -m app.seed
 ```
-
-La última línea deja la base utilizable: el usuario **`admin@local.dev`** /
-**`local-admin-2026`** y 142 cuentas del PUC en los cuatro niveles. Se puede
-repetir sin romper nada, el usuario se cambia con `SEED_EMAIL` y
-`SEED_PASSWORD`, y fuera de `ENVIRONMENT=local` se niega a correr.
+Inicia sesion **`admin@local.dev`** /
+**`local-admin-2026`**
 
 El plan viene de [`api/fixtures/puc.csv`](./api/fixtures/puc.csv), que además de
 código, nombre y naturaleza lleva el concepto DIAN y la marca de retención que
 la exógena necesita. El mismo plan está en
 [`api/fixtures/puc.xlsx`](./api/fixtures/puc.xlsx) con el formato de la planilla
-—código, nombre, tipo, naturaleza— para probar la importación desde
-`/accounts`.
+—código, nombre, tipo, naturaleza— 
 
 El `.env` copiado arranca tal cual; esto es lo que trae:
 

@@ -3,11 +3,10 @@
 import { ArrowLeft, Download } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useTransition } from "react";
+import { Fragment, useCallback, useTransition } from "react";
 
 import { searchAccounts, searchThirdParties } from "@/actions/lookups";
 import { AsyncCombobox, type Option } from "@/components/AsyncCombobox";
-import { BalanceChart } from "@/components/BalanceChart";
 import { DateField } from "@/components/DateField";
 import { LoadError, PageHeader, PageShell } from "@/components/PageHeader";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -21,13 +20,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, fromCents, sumCents } from "@/lib/money";
 import { cn } from "@/lib/utils";
-import type { AccountLedger, LedgerReport } from "@/types/voucher";
+import type { AccountLedger } from "@/types/voucher";
 
 interface Props {
-  report: LedgerReport;
-  detail: AccountLedger | null;
+  book: AccountLedger[];
   dateFrom: string;
   dateTo: string;
   // The account being read, and its name, so the picker reads well on load.
@@ -39,8 +37,7 @@ interface Props {
 }
 
 export function LedgerView({
-  report,
-  detail,
+  book,
   dateFrom,
   dateTo,
   account,
@@ -148,7 +145,7 @@ export function LedgerView({
           />
         </div>
 
-        {detail && (
+        {account && (
           <Button variant="outline" onClick={() => go({ account: "" })}>
             <ArrowLeft />
             {t("backToReport")}
@@ -167,26 +164,24 @@ export function LedgerView({
           {isLoading ? status("loading") : ""}
         </span>
 
-        {detail ? (
-          <AccountDetail detail={detail} />
-        ) : (
-          <Report report={report} onOpen={(code) => go({ account: code })} />
-        )}
+        <Book book={book} onOpen={(code) => go({ account: code })} />
       </div>
     </PageShell>
   );
 }
 
-function Report({
-  report,
+/** The whole book: every account with its movements, the same seven columns
+ *  and the same layout the spreadsheet has. */
+function Book({
+  book,
   onOpen,
 }: {
-  report: LedgerReport;
+  book: AccountLedger[];
   onOpen: (code: string) => void;
 }) {
   const t = useTranslations("ledger");
 
-  if (report.accounts.length === 0) {
+  if (book.length === 0) {
     return (
       <p className="rounded-xl bg-card p-12 text-center text-sm text-muted-foreground shadow-xs ring-1 ring-border">
         {t("empty")}
@@ -194,94 +189,21 @@ function Report({
     );
   }
 
-  return (
-    <div className="flex flex-col gap-2">
-      <p className="text-xs text-muted-foreground">{t("openAnAccount")}</p>
-
-      <TableCard minWidth="44rem">
-        <TableHeader>
-          <TableRow className="bg-muted/50 hover:bg-muted/50">
-            <TableHead className="pl-4">{t("account")}</TableHead>
-            <TableHead className="text-right">{t("opening")}</TableHead>
-            <TableHead className="text-right">{t("debit")}</TableHead>
-            <TableHead className="text-right">{t("credit")}</TableHead>
-            <TableHead className="pr-4 text-right">{t("closing")}</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {report.accounts.map((account) => (
-            <TableRow
-              key={account.code}
-              onClick={() => onOpen(account.code)}
-              className="cursor-pointer"
-            >
-              <TableCell className="pl-4">
-                <span className="font-mono text-xs text-muted-foreground">
-                  {account.code}
-                </span>
-                <span className="ml-2 font-medium">{account.name}</span>
-              </TableCell>
-              <Money value={account.opening_balance} />
-              <Money value={account.debit} />
-              <Money value={account.credit} />
-              <Money value={account.closing_balance} strong className="pr-4" />
-            </TableRow>
-          ))}
-        </TableBody>
-        <TableFooter>
-          <TableRow className="hover:bg-transparent">
-            <TableCell className="pl-4 font-medium">{t("totals")}</TableCell>
-            <TableCell />
-            <Money value={report.totals.debit} strong />
-            <Money value={report.totals.credit} strong />
-            <TableCell className="pr-4 text-right">
-              <span
-                className={cn(
-                  "font-medium tabular-nums",
-                  report.totals.is_balanced
-                    ? "text-success"
-                    : "text-destructive",
-                )}
-              >
-                {report.totals.is_balanced
-                  ? `✓ ${formatMoney(report.totals.balance)}`
-                  : formatMoney(report.totals.balance)}
-              </span>
-            </TableCell>
-          </TableRow>
-        </TableFooter>
-      </TableCard>
-    </div>
-  );
-}
-
-function AccountDetail({ detail }: { detail: AccountLedger }) {
-  const t = useTranslations("ledger");
+  const debit = sumCents(book.map((account) => account.debit));
+  const credit = sumCents(book.map((account) => account.credit));
+  const balance = debit - credit;
 
   return (
-    <section className="flex flex-col gap-4">
-      <header className="flex flex-wrap items-center justify-between gap-4 rounded-xl bg-card p-4 shadow-xs ring-1 ring-border">
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight">
-            <span className="font-mono text-sm text-muted-foreground">
-              {detail.code}
-            </span>{" "}
-            {detail.name}
-          </h2>
-        </div>
-        <dl className="flex gap-6">
-          <Figure label={t("opening")} value={detail.opening_balance} />
-          <Figure label={t("closing")} value={detail.closing_balance} strong />
-        </dl>
-      </header>
-
-      <BalanceChart detail={detail} />
+    <div className="flex flex-col gap-4">
+      {book.length > 1 && (
+        <p className="text-xs text-muted-foreground">{t("openAnAccount")}</p>
+      )}
 
       <TableCard minWidth="56rem">
         <TableHeader>
           <TableRow className="bg-muted/50 hover:bg-muted/50">
-            <TableHead className="pl-4">{t("voucher")}</TableHead>
-            <TableHead>{t("date")}</TableHead>
+            <TableHead className="pl-4">{t("date")}</TableHead>
+            <TableHead>{t("voucher")}</TableHead>
             <TableHead>{t("description")}</TableHead>
             <TableHead>{t("thirdParty")}</TableHead>
             <TableHead className="text-right">{t("debit")}</TableHead>
@@ -290,39 +212,73 @@ function AccountDetail({ detail }: { detail: AccountLedger }) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {detail.entries.length === 0 && (
-            <TableRow className="hover:bg-transparent">
-              <TableCell
-                colSpan={7}
-                className="py-14 text-center text-muted-foreground"
+          {book.map((account) => (
+            <Fragment key={account.code}>
+              <TableRow
+                onClick={() => onOpen(account.code)}
+                className="cursor-pointer bg-muted/30"
               >
-                {t("empty")}
-              </TableCell>
-            </TableRow>
-          )}
-          {detail.entries.map((entry, index) => (
-            <TableRow key={`${entry.voucher_id}-${index}`}>
-              <TableCell className="pl-4 font-mono text-xs text-muted-foreground">
-                #{entry.voucher_number}
-                {entry.reverses_voucher_id !== null && (
-                  <span className="ml-1">↩</span>
-                )}
-              </TableCell>
-              <TableCell className="text-muted-foreground">
-                {entry.date}
-              </TableCell>
-              <TableCell>{entry.description}</TableCell>
-              <TableCell className="text-muted-foreground">
-                {entry.third_party_name ?? "—"}
-              </TableCell>
-              <Money value={entry.debit} />
-              <Money value={entry.credit} />
-              <Money value={entry.running_balance} strong className="pr-4" />
-            </TableRow>
+                <TableCell colSpan={7} className="pl-4">
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {account.code}
+                  </span>
+                  <span className="ml-2 font-medium">{account.name}</span>
+                </TableCell>
+              </TableRow>
+
+              {account.entries.map((entry, index) => (
+                <TableRow key={`${account.code}-${entry.voucher_id}-${index}`}>
+                  <TableCell className="pl-4 text-muted-foreground">
+                    {entry.date}
+                  </TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground">
+                    #{entry.voucher_number}
+                    {entry.reverses_voucher_id !== null && (
+                      <span className="ml-1">↩</span>
+                    )}
+                  </TableCell>
+                  <TableCell>{entry.description}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {entry.third_party_name ?? "—"}
+                  </TableCell>
+                  <Money value={entry.debit} />
+                  <Money value={entry.credit} />
+                  <Money value={entry.running_balance} strong className="pr-4" />
+                </TableRow>
+              ))}
+
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={3} />
+                <TableCell className="font-medium">{t("totals")}</TableCell>
+                <Money value={account.debit} strong />
+                <Money value={account.credit} strong />
+                <Money value={account.closing_balance} strong className="pr-4" />
+              </TableRow>
+            </Fragment>
           ))}
         </TableBody>
+        <TableFooter>
+          <TableRow className="hover:bg-transparent">
+            <TableCell colSpan={3} className="pl-4" />
+            <TableCell className="font-medium">{t("grandTotal")}</TableCell>
+            <Money value={fromCents(debit)} strong />
+            <Money value={fromCents(credit)} strong />
+            <TableCell className="pr-4 text-right">
+              <span
+                className={cn(
+                  "font-medium tabular-nums",
+                  balance === 0 ? "text-success" : "text-destructive",
+                )}
+              >
+                {balance === 0
+                  ? `✓ ${formatMoney(0)}`
+                  : formatMoney(fromCents(balance))}
+              </span>
+            </TableCell>
+          </TableRow>
+        </TableFooter>
       </TableCard>
-    </section>
+    </div>
   );
 }
 
@@ -338,32 +294,6 @@ function TableCard({
       <div className="scrollbar-slim overflow-x-auto">
         <Table style={{ minWidth }}>{children}</Table>
       </div>
-    </div>
-  );
-}
-
-function Figure({
-  label,
-  value,
-  strong = false,
-}: {
-  label: string;
-  value: string;
-  strong?: boolean;
-}) {
-  return (
-    <div>
-      <dt className="text-[0.7rem] uppercase tracking-wide text-muted-foreground">
-        {label}
-      </dt>
-      <dd
-        className={cn(
-          "tabular-nums",
-          strong ? "text-base font-semibold" : "text-sm",
-        )}
-      >
-        {formatMoney(value)}
-      </dd>
     </div>
   );
 }

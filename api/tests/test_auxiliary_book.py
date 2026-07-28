@@ -11,7 +11,7 @@ from tests.test_vouchers import a_posted_voucher
 
 BASE = "/api/v1/ledger/export"
 
-HEADER_ROW = 5
+HEADER_ROW = 4
 
 
 async def test_the_book_is_a_workbook_that_adds_up(auth_client: AsyncClient) -> None:
@@ -33,9 +33,22 @@ async def test_the_book_is_a_workbook_that_adds_up(auth_client: AsyncClient) -> 
         tuple(row) for row in sheet.iter_rows(min_row=HEADER_ROW + 1, values_only=True)
     ]
 
-    cash = [row for row in rows if row[3] == "110505" and row[0] is not None]
-    assert [row[9] for row in cash] == [150000.0, 300000.0]
-    assert all(isinstance(row[7], int | float) for row in cash)
+    # Seven columns: date, voucher, description, third party, debit, credit,
+    # balance. The account is not one of them — it heads its own block, so its
+    # movements are the rows between that heading and the account's totals.
+    heading = next(
+        index
+        for index, row in enumerate(rows)
+        if str(row[0] or "").startswith("110505")
+    )
+    cash: list[tuple[Any, ...]] = []
+    for row in rows[heading + 1 :]:
+        if row[3] == "Totales cuenta":
+            break
+        cash.append(row)
 
-    grand = next(row for row in rows if row[6] == "Total general")
-    assert (grand[7], grand[8], grand[9]) == (300000.0, 300000.0, 0)
+    assert [row[6] for row in cash] == [150000.0, 300000.0]
+    assert all(isinstance(row[4], int | float) for row in cash)
+
+    grand = next(row for row in rows if row[3] == "Total general")
+    assert (grand[4], grand[5], grand[6]) == (300000.0, 300000.0, 0)

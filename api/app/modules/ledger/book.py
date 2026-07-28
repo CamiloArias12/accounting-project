@@ -8,7 +8,8 @@ from io import BytesIO
 from typing import Final, Literal
 
 from openpyxl import Workbook
-from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+from openpyxl.cell.cell import Cell
+from openpyxl.styles import Font
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 
@@ -16,15 +17,15 @@ from app.modules.ledger.schemas import AccountLedger
 
 Locale = Literal["es", "en"]
 
+#: The seven columns the ledger is specified to show, in that order. The
+#: account is not one of them: it heads its own block of rows instead of being
+#: repeated on every line.
 HEADERS: Final[dict[Locale, list[str]]] = {
     "es": [
         "FECHA",
         "COMPROBANTE",
-        "CONCEPTO",
-        "CÓDIGO CUENTA",
-        "NOMBRE CUENTA",
-        "IDENTIFICACIÓN TERCERO",
-        "NOMBRE TERCERO",
+        "DESCRIPCIÓN",
+        "TERCERO",
         "DÉBITO",
         "CRÉDITO",
         "SALDO",
@@ -33,10 +34,7 @@ HEADERS: Final[dict[Locale, list[str]]] = {
         "DATE",
         "VOUCHER",
         "DESCRIPTION",
-        "ACCOUNT CODE",
-        "ACCOUNT NAME",
-        "THIRD PARTY ID",
-        "THIRD PARTY NAME",
+        "THIRD PARTY",
         "DEBIT",
         "CREDIT",
         "BALANCE",
@@ -46,11 +44,6 @@ HEADERS: Final[dict[Locale, list[str]]] = {
 LABELS: Final[dict[Locale, dict[str, str]]] = {
     "es": {
         "title": "Libro auxiliar",
-        "sheet": "Libro auxiliar",
-        "company": "Empresa",
-        "range": "Período",
-        "generated": "Generado",
-        "opening": "Saldo anterior",
         "total": "Totales cuenta",
         "grand_total": "Total general",
         "unbounded": "Sin límite",
@@ -58,11 +51,6 @@ LABELS: Final[dict[Locale, dict[str, str]]] = {
     },
     "en": {
         "title": "Auxiliary ledger",
-        "sheet": "Auxiliary ledger",
-        "company": "Company",
-        "range": "Period",
-        "generated": "Generated",
-        "opening": "Opening balance",
         "total": "Account total",
         "grand_total": "Grand total",
         "unbounded": "Unbounded",
@@ -70,15 +58,16 @@ LABELS: Final[dict[Locale, dict[str, str]]] = {
     },
 }
 
-WIDTHS: Final[list[int]] = [12, 13, 40, 14, 34, 22, 34, 16, 16, 18]
+WIDTHS: Final[list[int]] = [12, 13, 46, 34, 16, 16, 18]
 
 MONEY_FORMAT: Final = "#,##0.00;[Red]-#,##0.00"
 DATE_FORMAT: Final = "yyyy-mm-dd"
 
-_HEADER_FILL: Final = PatternFill("solid", fgColor="10417B")
-_HEADER_FONT: Final = Font(name="Arial", size=10, bold=True, color="FFFFFF")
-_ACCOUNT_FILL: Final = PatternFill("solid", fgColor="EEF2F8")
-_THIN: Final = Side(style="thin", color="D6DEE8")
+#: Title, who the books belong to, and what range was asked for. The headings
+#: come next.
+_HEADER_ROW: Final = 4
+
+_BOLD: Final = Font(bold=True)
 
 
 def build_auxiliary_book(
@@ -95,91 +84,46 @@ def build_auxiliary_book(
     workbook = Workbook()
     sheet = workbook.active
     assert sheet is not None
-    sheet.title = labels["sheet"]
+    sheet.title = labels["title"]
 
-    _write_masthead(
-        sheet,
-        labels=labels,
-        company=company,
-        date_from=date_from,
-        date_to=date_to,
-        generated_at=generated_at,
+    since = date_from.isoformat() if date_from else labels["unbounded"]
+    until = date_to.isoformat() if date_to else labels["unbounded"]
+
+    sheet.cell(row=1, column=1, value=labels["title"]).font = Font(bold=True, size=14)
+    sheet.cell(row=2, column=1, value=company)
+    sheet.cell(
+        row=3,
+        column=1,
+        value=f"{since} — {until} · {generated_at:%Y-%m-%d %H:%M}",
     )
-    _write_header(sheet, HEADERS[locale])
+
+    for column, (heading, width) in enumerate(
+        zip(HEADERS[locale], WIDTHS, strict=True), start=1
+    ):
+        sheet.cell(row=_HEADER_ROW, column=column, value=heading).font = _BOLD
+        sheet.column_dimensions[get_column_letter(column)].width = width
 
     if not accounts:
-        sheet.cell(row=sheet.max_row + 1, column=1, value=labels["empty"])
+        sheet.cell(row=_HEADER_ROW + 1, column=1, value=labels["empty"])
     else:
         for account in accounts:
             _write_account(sheet, account, labels)
         _write_grand_total(sheet, accounts, labels)
 
     sheet.freeze_panes = f"A{_HEADER_ROW + 1}"
-    sheet.auto_filter.ref = (
-        f"A{_HEADER_ROW}:{get_column_letter(len(WIDTHS))}{sheet.max_row}"
-    )
 
     buffer = BytesIO()
     workbook.save(buffer)
     return buffer.getvalue()
 
 
-_HEADER_ROW: Final = 5
-
-
-def _write_masthead(
-    sheet: Worksheet,
-    *,
-    labels: dict[str, str],
-    company: str,
-    date_from: dt.date | None,
-    date_to: dt.date | None,
-    generated_at: dt.datetime,
-) -> None:
-    title = sheet.cell(row=1, column=1, value=labels["title"])
-    title.font = Font(name="Arial", size=14, bold=True)
-
-    since = date_from.isoformat() if date_from else labels["unbounded"]
-    until = date_to.isoformat() if date_to else labels["unbounded"]
-
-    for row, (label, value) in enumerate(
-        (
-            (labels["company"], company),
-            (labels["range"], f"{since} — {until}"),
-            (labels["generated"], generated_at.strftime("%Y-%m-%d %H:%M")),
-        ),
-        start=2,
-    ):
-        sheet.cell(row=row, column=1, value=label).font = Font(bold=True, size=9)
-        sheet.cell(row=row, column=2, value=value).font = Font(size=9)
-
-
-def _write_header(sheet: Worksheet, headers: list[str]) -> None:
-    for column, (heading, width) in enumerate(
-        zip(headers, WIDTHS, strict=True), start=1
-    ):
-        cell = sheet.cell(row=_HEADER_ROW, column=column, value=heading)
-        cell.fill = _HEADER_FILL
-        cell.font = _HEADER_FONT
-        cell.alignment = Alignment(
-            horizontal="center", vertical="center", wrap_text=True
-        )
-        sheet.column_dimensions[get_column_letter(column)].width = width
-
-
 def _write_account(
     sheet: Worksheet, account: AccountLedger, labels: dict[str, str]
 ) -> None:
-    opening = sheet.max_row + 1
-    sheet.cell(row=opening, column=4, value=account.code)
-    sheet.cell(row=opening, column=5, value=account.name)
-    sheet.cell(row=opening, column=7, value=labels["opening"])
-    _money_cell(sheet, opening, 10, account.opening_balance)
-
-    for column in range(1, len(WIDTHS) + 1):
-        cell = sheet.cell(row=opening, column=column)
-        cell.fill = _ACCOUNT_FILL
-        cell.font = Font(bold=True, size=10)
+    heading = sheet.max_row + 1
+    sheet.cell(
+        row=heading, column=1, value=f"{account.code}  {account.name}"
+    ).font = _BOLD
 
     for entry in account.entries:
         row = sheet.max_row + 1
@@ -187,39 +131,37 @@ def _write_account(
         date.number_format = DATE_FORMAT
         sheet.cell(row=row, column=2, value=entry.voucher_number or entry.voucher_id)
         sheet.cell(row=row, column=3, value=entry.description)
-        sheet.cell(row=row, column=4, value=account.code)
-        sheet.cell(row=row, column=5, value=account.name)
-        sheet.cell(row=row, column=6, value=entry.third_party_document)
-        sheet.cell(row=row, column=7, value=entry.third_party_name)
-        _money_cell(sheet, row, 8, entry.debit)
-        _money_cell(sheet, row, 9, entry.credit)
-        _money_cell(sheet, row, 10, entry.running_balance)
+        sheet.cell(row=row, column=4, value=entry.third_party_name)
+        _money_cell(sheet, row, 5, entry.debit)
+        _money_cell(sheet, row, 6, entry.credit)
+        _money_cell(sheet, row, 7, entry.running_balance)
 
     total = sheet.max_row + 1
-    sheet.cell(row=total, column=7, value=labels["total"])
-    _money_cell(sheet, total, 8, account.debit)
-    _money_cell(sheet, total, 9, account.credit)
-    _money_cell(sheet, total, 10, account.closing_balance)
-
-    for column in range(1, len(WIDTHS) + 1):
-        cell = sheet.cell(row=total, column=column)
-        cell.font = Font(bold=True, size=10)
-        cell.border = Border(top=_THIN)
+    sheet.cell(row=total, column=4, value=labels["total"]).font = _BOLD
+    for column, amount in enumerate(
+        (account.debit, account.credit, account.closing_balance), start=5
+    ):
+        _money_cell(sheet, total, column, amount).font = _BOLD
 
 
 def _write_grand_total(
     sheet: Worksheet, accounts: list[AccountLedger], labels: dict[str, str]
 ) -> None:
     row = sheet.max_row + 2
-    sheet.cell(row=row, column=7, value=labels["grand_total"])
-    _money_cell(sheet, row, 8, sum((a.debit for a in accounts), Decimal(0)))
-    _money_cell(sheet, row, 9, sum((a.credit for a in accounts), Decimal(0)))
-    _money_cell(sheet, row, 10, sum((a.closing_balance for a in accounts), Decimal(0)))
+    sheet.cell(row=row, column=4, value=labels["grand_total"]).font = _BOLD
 
-    for column in range(1, len(WIDTHS) + 1):
-        sheet.cell(row=row, column=column).font = Font(bold=True, size=11)
+    for column, amounts in enumerate(
+        (
+            (a.debit for a in accounts),
+            (a.credit for a in accounts),
+            (a.closing_balance for a in accounts),
+        ),
+        start=5,
+    ):
+        _money_cell(sheet, row, column, sum(amounts, Decimal(0))).font = _BOLD
 
 
-def _money_cell(sheet: Worksheet, row: int, column: int, value: Decimal) -> None:
+def _money_cell(sheet: Worksheet, row: int, column: int, value: Decimal) -> Cell:
     cell = sheet.cell(row=row, column=column, value=value)
     cell.number_format = MONEY_FORMAT
+    return cell

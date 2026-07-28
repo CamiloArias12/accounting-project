@@ -52,6 +52,29 @@ async def ledger_report(
     )
 
 
+@router.get("/book", response_model=list[AccountLedger])
+async def auxiliary_book(
+    service: ServiceDep,
+    date_from: DateFrom = None,
+    date_to: DateTo = None,
+    account_code: Annotated[
+        str | None, Query(description="Restrict to this branch of the chart")
+    ] = None,
+    third_party_id: ThirdParty = None,
+) -> list[AccountLedger]:
+    """The movements themselves, account by account.
+
+    What `/export` writes into a spreadsheet, as JSON, so the screen and the
+    file are the same book and cannot drift apart.
+    """
+    return await service.auxiliary_book(
+        date_from=date_from,
+        date_to=date_to,
+        account_prefix=account_code,
+        third_party_id=third_party_id,
+    )
+
+
 @router.get(
     "/export",
     response_class=Response,

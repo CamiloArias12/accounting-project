@@ -3,15 +3,18 @@
 import { Eye, EyeOff, Plus, Search, Upload } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
+import { accountHistory } from "@/actions/lookups";
 import { AccountForm } from "@/components/AccountForm";
+import { BalanceChart } from "@/components/BalanceChart";
 import { AccountTree } from "@/components/AccountTree";
 import { ImportForm } from "@/components/ImportForm";
 import { LoadError, PageHeader, PageShell } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { AccountNode } from "@/types/account";
+import type { AccountLedger } from "@/types/voucher";
 
 type Panel = "form" | "import";
 
@@ -36,6 +39,28 @@ export function AccountsWorkspace({ tree, loadError, showDeleted }: Props) {
     () => (selectedCode ? findNode(tree, selectedCode) : null),
     [tree, selectedCode],
   );
+
+  // The balances behind the selected account. Loaded here and not with the
+  // page: the tree is browsed far more often than a single account is opened,
+  // and its movements are of no use until one is.
+  const [history, setHistory] = useState<AccountLedger | null>(null);
+
+  useEffect(() => {
+    if (!selectedCode) return;
+
+    let current = true;
+    accountHistory(selectedCode).then((found) => {
+      if (current) setHistory(found);
+    });
+
+    return () => {
+      current = false;
+    };
+  }, [selectedCode]);
+
+  // Comparing the code is what discards a previous account's movements while
+  // the new ones are still in flight — no clearing on the way out.
+  const chart = history?.code === selectedCode ? history : null;
 
   return (
     <PageShell>
@@ -110,6 +135,11 @@ export function AccountsWorkspace({ tree, loadError, showDeleted }: Props) {
               }}
             />
           </div>
+          {chart && chart.entries.length > 0 && (
+            <div className="pt-4">
+              <BalanceChart detail={chart} />
+            </div>
+          )}
         </section>
 
         <aside className="rounded-xl bg-card p-4 shadow-sm ring-1 ring-border lg:sticky lg:top-6">

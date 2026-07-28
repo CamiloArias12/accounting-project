@@ -398,6 +398,10 @@ export const ledgerApi = {
     return request<AccountLedger>(`/ledger/${code}${toQuery({ ...params })}`);
   },
 
+  entries(params: LedgerParams = {}): Promise<AccountLedger[]> {
+    return request<AccountLedger[]>(`/ledger/book${toQuery({ ...params })}`);
+  },
+
   async book(params: LedgerParams & { locale?: string } = {}): Promise<Response> {
     return fetch(`${API}/ledger/export${toQuery({ ...params })}`, {
       cache: "no-store",

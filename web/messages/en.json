@@ -411,6 +411,7 @@
     "debit": "Debit",
     "credit": "Credit",
     "totals": "Totals",
+    "grandTotal": "Grand total",
     "voucher": "Voucher",
     "date": "Date",
     "description": "Description",
@@ -427,8 +428,8 @@
     "anyDate": "Any date",
     "downloadBook": "Download the auxiliary book",
     "chartTitle": "Balance over time",
-    "chartSummary": "The account's balance between {from} and {to}: from {opening} to {closing}. The table below carries every movement.",
-    "openAnAccount": "Open an account to see its movements and how its balance moved.",
+    "chartSummary": "The account's balance between {from} and {to}: from {opening} to {closing}.",
+    "openAnAccount": "Open an account to see it in the chart of accounts.",
     "chartTooFewPoints": "The account moved on a single day: there is no evolution to draw."
   },
   "select": {
