@@ -19,7 +19,7 @@ FastAPI + Next.js; todo corre en Docker.
 Requisito: Docker. Ni Node ni Python en la máquina.
 
 ```bash
-cp .env.example .env      # arranca tal cual, sin editar nada
+cp .env.example .env
 docker compose -f docker-compose.local.yml up -d --build
 docker compose -f docker-compose.local.yml exec api alembic upgrade head
 docker compose -f docker-compose.local.yml exec api python -m app.seed
@@ -28,20 +28,13 @@ docker compose -f docker-compose.local.yml exec api python -m app.seed
 - Web: <http://localhost:3000> — **`admin@local.dev`** / **`local-admin-2026`**
 - API: <http://localhost:8000/docs>
 
-El seed solo corre en `ENVIRONMENT=local` y es idempotente: crea el usuario,
-142 cuentas del PUC ([`api/fixtures/puc.csv`](./api/fixtures/puc.csv), con el
-concepto DIAN y la marca de retención que la exógena necesita), seis terceros y
-un año de comprobantes en 2025 — incluida una reversión y un borrador — para que
-cada pantalla tenga datos. La misma planilla en formato de importación está en
-[`api/fixtures/puc.xlsx`](./api/fixtures/puc.xlsx).
+Comandos de a diario:
 
-Comandos de a diario, todos con `-f docker-compose.local.yml`:
-
-| Comando                                     | Descripción         |
-| ------------------------------------------- | ------------------- |
-| `… exec api pytest`                         | Pruebas de la API   |
-| `… exec api alembic upgrade head`           | Aplicar migraciones |
-| `… exec api alembic revision --autogenerate -m "msg"` | Nueva migración |
+| Comando | Descripción |
+| ------- | ----------- |
+| `docker compose -f docker-compose.local.yml exec api pytest` | Pruebas de la API |
+| `docker compose -f docker-compose.local.yml exec api alembic upgrade head` | Aplicar migraciones |
+| `docker compose -f docker-compose.local.yml exec api alembic revision --autogenerate -m "msg"` | Nueva migración |
 
 ## Pantallas
 
@@ -88,22 +81,11 @@ Server Actions. Por eso `API_URL` no es `NEXT_PUBLIC_*`.
 
 ![Modelo entidad-relación](docs/modelo-entidad-relacion.png)
 
-Tres ausencias deliberadas:
-
-- **El período no tiene FK con el comprobante.** Solo los meses cerrados tienen
-  fila — un mes sin fila está abierto —, así que una FK obligaría a sembrar los
-  doce meses por adelantado. `vouchers` guarda `period_year` y `period_month`.
-- **La exógena copia la UVT en vez de apuntarla.** `uvt_values` se corrige en
-  sitio; la generación guarda el valor y el umbral usados, como una factura
-  guarda el precio.
-- **No hay tabla de saldos ni de empresa.** El libro es una agregación sobre las
-  líneas contabilizadas, y la empresa es configuración del `.env`.
 
 ## Decisiones de diseño
 
-- **El código es la jerarquía.** El nivel es la longitud del código
-  (`1` → `11` → `1105` → `110505` → auxiliar) y el padre es su prefijo: ambos se
-  derivan a la entrada y no pueden contradecirse. Leer una rama es un `LIKE`.
+- **El código es la jerarquía.** Ver la sección siguiente: el nivel es la
+  longitud del código y el padre es su prefijo.
 - **Solo las hojas reciben movimientos.** Contabilizar en `1105` existiendo
   `110505` contaría doble en todo reporte que recorra el árbol.
 - **Los saldos se calculan, nunca se guardan.** Una segunda copia se separa de
@@ -117,41 +99,83 @@ Tres ausencias deliberadas:
   cambio; un cierre irreversible volvería permanente un mes mal digitado.
 - **La empresa es configuración.** Una sola empresa haría de `companies` una
   tabla de una fila; con varias, sería una columna de tenant.
-- **Concurrencia sin bloqueos.** El consecutivo lo garantiza un índice único y
-  el perdedor reintenta; lo demás es una transacción por comprobante.
+- **Concurrencia sin bloqueos.** Ver la sección siguiente; lo demás es una
+  transacción por comprobante.
 - **Ningún float toca un importe.** `Numeric(18,2)` en Postgres, `Decimal` en
   Python, cadenas decimales en HTTP y centavos enteros en el navegador.
-- **La exógena es una instantánea.** Cada generación guarda sus bytes:
-  re-descargarla entrega lo que se presentó, no lo que dirían los libros hoy. La
-  UVT se refresca en segundo plano, con cada intento registrado, y un valor
-  manual manda sobre la fuente.
 
-## Pruebas
+## Clase, grupo, cuenta y subcuenta: cómo vive la jerarquía
 
-Cuarenta, en `api/tests`. No son cobertura: hay una por regla que, si se rompe,
-deja los libros mal sin que nadie lo note a tiempo. En orden de riesgo: el
-cuadre (con `0.10 + 0.20 = 0.30` en `Decimal`), la jerarquía del PUC, los
-estados del comprobante y las tres reversiones prohibidas, el período cerrado,
-el libro que suma cero, la exógena byte a byte contra su re-descarga, los
-reintentos de la UVT y un test que recorre todos los endpoints sin token.
+El PUC ya trae la jerarquía escrita en el propio código: `1` es la clase
+(Activo), `11` el grupo (Disponible), `1105` la cuenta (Caja), `110505` la
+subcuenta (Caja general), y de 7 dígitos en adelante van los auxiliares que
+crea cada empresa. Cada código empieza con el código de su padre.
 
-Hueco conocido: **la concurrencia no tiene prueba** — la suite corre sobre
-SQLite en memoria y la carrera por el consecutivo no se reproduce ahí. La
-garantía es el índice único más el reintento; ver «Pendientes».
+Por eso no hay una tabla por nivel ni un padre que se elija a mano. Se digita
+solo el código, y de él sale todo lo demás:
+
+- **El nivel es la longitud del código:** 1 dígito → clase, 2 → grupo,
+  4 → cuenta, 6 → subcuenta, 7 o más → auxiliar. Un código de 3 o 5 dígitos se
+  rechaza porque no corresponde a ningún nivel del PUC.
+- **El padre es el prefijo:** el padre de `110505` es `1105`, y el de `1105` es
+  `11`. Nadie escoge el padre en un formulario; sale del código.
+- **El padre debe existir primero:** no se puede crear `110505` si no existe
+  `1105`, ni borrar una cuenta que todavía tenga hijas vivas.
+
+El nivel y el padre sí se guardan como columnas — para filtrar y armar el árbol
+rápido — pero nunca los escribe el usuario: se calculan del código al crear la
+cuenta, así que no pueden contradecirlo.
+
+Qué garantiza:
+
+- **La jerarquía no puede quedar incoherente.** Como nivel y padre se derivan
+  del código, no existe forma de que `110505` termine colgada de `2105` o
+  marcada como grupo. El error simplemente no se puede digitar.
+- **Leer una rama es trivial:** todo lo que cuelga de `11` es todo código que
+  empieza por `11` — un `LIKE '11%'`, sin consultas recursivas.
+- **Los reportes no cuentan doble:** los movimientos solo entran por las hojas
+  (ver "Solo las hojas reciben movimientos"), y los niveles superiores se
+  obtienen sumando la rama.
+
+Se descartó lo complejo: tablas separadas por nivel, un `parent_id` digitado a
+mano o extensiones de árbol de Postgres. Habrían agregado piezas que pueden
+contradecirse entre sí para representar algo que el código de la cuenta ya
+dice solo.
+
+## ¿Y si dos personas contabilizan al mismo tiempo?
+
+Las dos querrían el mismo número de comprobante. Se resolvió sin bloqueos,
+con tres ideas simples:
+
+1. **Un borrador no tiene número.** El número se asigna solo al contabilizar,
+   así que los borradores abandonados no gastan consecutivo.
+2. **El número se calcula sin bloquear nada:** se mira el mayor que exista y se
+   le suma uno.
+3. **La base de datos es el árbitro.** Un índice único sobre el número hace que,
+   si dos peticiones llegan con el mismo, Postgres acepte una sola. La que
+   pierde recibe el error, recalcula con el número ya actualizado y vuelve a
+   intentar (hasta cinco veces).
+
+Qué garantiza:
+
+- **Nunca dos comprobantes con el mismo número**, aunque corran varias copias
+  de la API a la vez. Lo garantiza Postgres, no el código.
+- **Sin huecos:** como un contabilizado nunca se borra (se reversa), la
+  numeración queda 1, 2, 3… seguida.
+- **Todo o nada:** el número y la contabilización se guardan en la misma
+  transacción; no existe un comprobante "numerado pero sin contabilizar".
+
+El costo asumido: si una petición pierde cinco veces seguidas — algo que exige
+muchísima concurrencia para una empresa sola —, falla y el usuario reintenta.
+Se descartó usar una secuencia de Postgres porque deja huecos cuando una
+transacción se cancela, y en un consecutivo contable eso es peor.
 
 ## Extras implementados
 
 - **Exportación del libro a .xlsx** — un contador pega el libro en un papel de
   trabajo; openpyxl ya era dependencia de la importación.
-- **Gráfica de saldo en el tiempo** — SVG propio (una gráfica no justifica una
-  librería), escalonada porque un saldo mantiene su valor hasta el siguiente
-  movimiento.
 - **Autenticación JWT** — cookie httpOnly, solo el servidor llama a la API.
 - **Un comando levanta todo** — `docker compose -f docker-compose.local.yml up`.
-- **CI en GitHub Actions** — ruff, mypy y pytest para la API; ESLint, `tsc` y
-  build de producción para la web, todo dentro de las imágenes del repositorio;
-  en `main`, publica a GHCR y despliega con
-  [`scripts/deploy.sh`](./scripts/deploy.sh), idempotente.
 
 ## Limitaciones
 
@@ -168,10 +192,6 @@ garantía es el índice único más el reintento; ver «Pendientes».
 
 - **La prueba de concurrencia.** Cómo: Postgres dentro de la suite y dos
   contabilizaciones en paralelo; la garantía a observar ya existe.
-- **El PUC completo.** Cómo: reemplazar `api/fixtures/puc.csv` por el catálogo
-  entero — ni el seed ni la importación cambian.
-- **El libro auxiliar arma el archivo en memoria.** Cómo: cursor por cuenta y
-  `write_only` de openpyxl; el contrato de la API no cambia.
 
 ## Qué cambiaría para producción
 
@@ -185,15 +205,8 @@ garantía es el índice único más el reintento; ver «Pendientes».
 
 ## Producción
 
-No hay `docker-compose.yml`: el modo se nombra siempre y no se puede levantar
-uno creyendo que es el otro.
 
 ```bash
 docker compose -f docker-compose.prod.yml up -d --build
 docker compose -f docker-compose.prod.yml exec api alembic upgrade head
 ```
-
-Imágenes desde el target `prod` (sin dependencias de desarrollo, usuario sin
-privilegios, Next `standalone`), Postgres y Redis sin puertos en el host, y las
-migraciones se disparan explícitamente para que varias réplicas no compitan
-entre sí.
